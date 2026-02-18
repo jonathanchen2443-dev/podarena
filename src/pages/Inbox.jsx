@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { Bell, CheckCircle2, XCircle } from "lucide-react";
+import { Bell, CheckCircle2, Lock } from "lucide-react";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/components/auth/AuthContext";
+import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 
 const placeholderItems = [
   {
@@ -24,23 +26,44 @@ const placeholderItems = [
 ];
 
 export default function Inbox() {
-  const [loading] = useState(false);
-  const [error] = useState(null);
+  const { isGuest, authLoading } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
-  if (loading) return <LoadingState message="Loading inbox..." />;
-  if (error) return <ErrorState message={error} />;
+  if (authLoading) return <LoadingState message="Loading inbox..." />;
+
+  if (isGuest) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-6">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+          <Lock className="w-8 h-8 text-amber-400" />
+        </div>
+        <div>
+          <h2 className="text-white font-semibold text-lg">Login to view approvals</h2>
+          <p className="text-gray-400 text-sm mt-1">
+            Sign in to approve or reject game results logged by your playgroup.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowLoginModal(true)}
+          className="h-11 px-6 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
+        >
+          Sign In
+        </button>
+        {showLoginModal && <LoginRequiredModal onClose={() => setShowLoginModal(false)} />}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
-        <p className="text-sm text-gray-400">{placeholderItems.filter(i => i.status === "pending").length} pending</p>
+        <p className="text-sm text-gray-400">
+          {placeholderItems.filter((i) => i.status === "pending").length} pending
+        </p>
       </div>
 
       {placeholderItems.length === 0 ? (
-        <EmptyState
-          title="All caught up!"
-          description="No pending approvals or notifications."
-        />
+        <EmptyState title="All caught up!" description="No pending approvals or notifications." />
       ) : (
         <div className="space-y-3">
           {placeholderItems.map((item) => (
