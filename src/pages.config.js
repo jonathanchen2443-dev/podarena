@@ -55,6 +55,7 @@ import LeaguesList from './pages/LeaguesList';
 import LogGame from './pages/LogGame';
 import Inbox from './pages/Inbox';
 import Profile from './pages/Profile';
+import Register from './pages/Register';
 import __Layout from './Layout.jsx';
 
 
@@ -67,6 +68,7 @@ export const PAGES = {
     "LogGame": LogGame,
     "Inbox": Inbox,
     "Profile": Profile,
+    "Register": Register,
 }
 
 export const pagesConfig = {
