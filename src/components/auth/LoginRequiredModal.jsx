@@ -5,7 +5,6 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 
 export default function LoginRequiredModal({ onClose }) {
-  const navigate = useNavigate();
 
   const modalRoot = document.getElementById("modal-root");
   if (!modalRoot) return null;
