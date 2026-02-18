@@ -162,9 +162,9 @@ export default function Register() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Already have an account?{" "}
-          <Link to={createPageUrl("Login")} className="text-violet-400 hover:text-violet-300 font-medium">
+          <button onClick={() => base44.auth.redirectToLogin()} className="text-violet-400 hover:text-violet-300 font-medium">
             Sign in
-          </Link>
+          </button>
         </p>
       </div>
     </div>

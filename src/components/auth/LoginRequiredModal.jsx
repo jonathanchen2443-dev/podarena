@@ -1,8 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 import { Lock, X } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 
 export default function LoginRequiredModal({ onClose }) {
