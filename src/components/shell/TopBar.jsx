@@ -11,6 +11,8 @@ const pageTitles = {
   dashboard: "Dashboard",
   decks: "Decks",
   approvals: "Approvals",
+  leaguedetails: "League",
+  profiledecks: "My Decks",
 };
 
 export default function TopBar({ currentPageName, actionSlot }) {
