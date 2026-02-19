@@ -9,9 +9,10 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
 // Pages that use the app shell (bottom nav + top bar)
 const SHELL_PAGES = ["home", "leagueslist", "loggame", "inbox", "profile"];
 // Sub-pages that belong to a shell tab and should also show the nav
-const SHELL_SUB_PAGES = ["leagues", "dashboard", "decks", "approvals"];
-// Pages that render without the shell (standalone)
-const NO_SHELL_PAGES = ["login", "register"];
+// Note: approvals and decks are now redirect shims — still show shell so the redirect renders cleanly
+const SHELL_SUB_PAGES = ["leagues", "dashboard", "approvals", "decks"];
+// Pages that render without the shell (standalone) — /login is system-managed, not listed here
+const NO_SHELL_PAGES = ["register"];
 
 function usesShell(pageName) {
   if (!pageName) return false;
@@ -51,10 +52,13 @@ function AuthActionSlot() {
 
   if (isGuest) {
     return (
-      <Link to={createPageUrl("Login")} className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-gray-800/50">
+      <button
+        onClick={() => base44.auth.redirectToLogin()}
+        className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-gray-800/50"
+      >
         <LogIn className="w-4 h-4" />
         <span className="text-xs font-medium">Login</span>
-      </Link>
+      </button>
     );
   }
 
