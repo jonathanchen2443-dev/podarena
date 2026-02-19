@@ -1,0 +1,227 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { ArrowLeft, Globe, Lock, Trophy, Swords, Info, Users } from "lucide-react";
+import { LoadingState } from "@/components/shell/PageStates";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth/AuthContext";
+import { getLeagueById } from "@/components/services/leagueService";
+import { base44 } from "@/api/base44Client";
+
+// Parse leagueId from the URL path
+function getLeagueIdFromPath() {
+  const parts = window.location.pathname.split("/");
+  // /league-details/:leagueId
+  const idx = parts.findIndex((p) => p === "league-details");
+  return idx !== -1 ? parts[idx + 1] : null;
+}
+
+const TABS = [
+  { id: "standings", label: "Standings", icon: Trophy },
+  { id: "games", label: "Games", icon: Swords },
+  { id: "info", label: "Info", icon: Info },
+];
+
+export default function LeagueDetails() {
+  const auth = useAuth();
+  const { isGuest, authLoading } = auth;
+  const navigate = useNavigate();
+  const leagueId = getLeagueIdFromPath();
+  const [activeTab, setActiveTab] = useState("standings");
+  const [league, setLeague] = useState(null);
+  const [isMember, setIsMember] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [accessError, setAccessError] = useState(null); // "private" | "restricted" | "not_found"
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!leagueId) { setAccessError("not_found"); setLoading(false); return; }
+    loadLeague();
+  }, [authLoading, leagueId]);
+
+  async function loadLeague() {
+    setLoading(true);
+    setAccessError(null);
+    try {
+      const { league: l, isMember: m } = await getLeagueById(auth, leagueId);
+      setLeague(l);
+      setIsMember(m);
+    } catch (e) {
+      setAccessError(e.message); // "private" | "restricted" | "not_found"
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (authLoading || loading) return <LoadingState message="Loading league…" />;
+
+  // ── Access errors ─────────────────────────────────────────────────────────────
+  if (accessError === "not_found") {
+    return <GateView icon={Info} title="League not found" description="This league doesn't exist or has been removed." />;
+  }
+
+  if (accessError === "private") {
+    return (
+      <GateView icon={Lock} title="Private league" description="You need to sign in to view this league.">
+        <Button
+          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11 px-6"
+          onClick={() => base44.auth.redirectToLogin()}
+        >
+          Sign In
+        </Button>
+      </GateView>
+    );
+  }
+
+  if (accessError === "restricted") {
+    return <GateView icon={Lock} title="Access restricted" description="You are not an active member of this private league." />;
+  }
+
+  // ── League content ────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-4">
+      {/* Back nav */}
+      <button
+        onClick={() => navigate(createPageUrl("LeaguesList"))}
+        className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> Leagues
+      </button>
+
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+          <Users className="w-6 h-6 text-violet-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-white font-bold text-lg leading-tight truncate">{league.name}</h1>
+          <div className="flex items-center gap-1.5 mt-1">
+            {league.is_public ? (
+              <Globe className="w-3.5 h-3.5 text-gray-500" />
+            ) : (
+              <Lock className="w-3.5 h-3.5 text-gray-500" />
+            )}
+            <span className="text-xs text-gray-500">{league.is_public ? "Public" : "Private"} league</span>
+            {isMember && (
+              <Badge className="bg-violet-500/10 text-violet-400 border-violet-500/20 text-[10px] px-1.5 py-0 ml-1">
+                Member
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-900/60 border border-gray-800/50 rounded-xl p-1">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+              activeTab === tab.id
+                ? "bg-violet-600 text-white"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            <tab.icon className="w-3.5 h-3.5" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === "standings" && <StandingsTab />}
+      {activeTab === "games" && <GamesTab />}
+      {activeTab === "info" && <InfoTab league={league} />}
+    </div>
+  );
+}
+
+// ── Tab panels ─────────────────────────────────────────────────────────────────
+
+function StandingsTab() {
+  return (
+    <Card className="bg-gray-900/60 border-gray-800/50">
+      <CardContent className="p-6 flex flex-col items-center text-center gap-3">
+        <Trophy className="w-10 h-10 text-gray-700" />
+        <p className="text-gray-400 font-medium">Standings</p>
+        <p className="text-gray-600 text-sm">Standings calculation will be implemented in the next prompt.</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GamesTab() {
+  return (
+    <Card className="bg-gray-900/60 border-gray-800/50">
+      <CardContent className="p-6 flex flex-col items-center text-center gap-3">
+        <Swords className="w-10 h-10 text-gray-700" />
+        <p className="text-gray-400 font-medium">Games</p>
+        <p className="text-gray-600 text-sm">Game list and match modal will be implemented in a later prompt.</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InfoTab({ league }) {
+  return (
+    <div className="space-y-3">
+      <Card className="bg-gray-900/60 border-gray-800/50">
+        <CardContent className="p-4 space-y-3">
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Name</p>
+            <p className="text-white text-sm font-medium">{league.name}</p>
+          </div>
+          {league.description && (
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Description</p>
+              <p className="text-gray-300 text-sm">{league.description}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Visibility</p>
+            <div className="flex items-center gap-1.5">
+              {league.is_public ? (
+                <Globe className="w-3.5 h-3.5 text-gray-400" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 text-gray-400" />
+              )}
+              <p className="text-gray-300 text-sm">{league.is_public ? "Public" : "Private"}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="bg-gray-900/60 border-gray-800/50 border-dashed">
+        <CardContent className="p-4 flex items-center gap-3 text-gray-600">
+          <Users className="w-4 h-4 flex-shrink-0" />
+          <p className="text-sm">Members count — coming soon.</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Shared gate view ──────────────────────────────────────────────────────────
+function GateView({ icon: Icon, title, description, children }) {
+  const navigate = useNavigate();
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-5">
+      <button
+        onClick={() => navigate(createPageUrl("LeaguesList"))}
+        className="self-start flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> Leagues
+      </button>
+      <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+        <Icon className="w-8 h-8 text-violet-400" />
+      </div>
+      <div>
+        <h2 className="text-white font-semibold text-lg">{title}</h2>
+        <p className="text-gray-400 text-sm mt-1">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}

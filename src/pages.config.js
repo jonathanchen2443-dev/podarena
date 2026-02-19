@@ -57,6 +57,7 @@ import LogGame from './pages/LogGame';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
 import ProfileDecks from './pages/ProfileDecks';
+import LeagueDetails from './pages/LeagueDetails';
 import __Layout from './Layout.jsx';
 
 
@@ -71,6 +72,7 @@ export const PAGES = {
     "Profile": Profile,
     "Register": Register,
     "ProfileDecks": ProfileDecks,
+    "LeagueDetails": LeagueDetails,
 }
 
 export const pagesConfig = {
