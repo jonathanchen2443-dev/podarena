@@ -47,26 +47,26 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import Dashboard from './pages/Dashboard';
-import Leagues from './pages/Leagues';
-import Decks from './pages/Decks';
 import Approvals from './pages/Approvals';
+import Dashboard from './pages/Dashboard';
+import Decks from './pages/Decks';
+import Inbox from './pages/Inbox';
+import Leagues from './pages/Leagues';
 import LeaguesList from './pages/LeaguesList';
 import LogGame from './pages/LogGame';
-import Inbox from './pages/Inbox';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "Leagues": Leagues,
-    "Decks": Decks,
     "Approvals": Approvals,
+    "Dashboard": Dashboard,
+    "Decks": Decks,
+    "Inbox": Inbox,
+    "Leagues": Leagues,
     "LeaguesList": LeaguesList,
     "LogGame": LogGame,
-    "Inbox": Inbox,
     "Profile": Profile,
     "Register": Register,
 }
