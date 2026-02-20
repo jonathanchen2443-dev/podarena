@@ -1,21 +1,25 @@
+
+import { createPageUrl } from "@/utils";
+
 /**
  * Single source of truth for all app routes.
- * Use these constants everywhere instead of createPageUrl() + string concatenation.
+ * Uses createPageUrl() so paths always match Base44's router registration.
+ * Sub-views (new/edit deck, league details) use query params to avoid
+ * unregistered nested paths that cause 404s.
  */
-
 export const ROUTES = {
-  HOME: "/home",
-  LEAGUES: "/leagues-list",
-  LOG_GAME: "/log-game",
-  INBOX: "/inbox",
-  PROFILE: "/profile",
-  REGISTER: "/register",
+  HOME: createPageUrl("Home"),
+  LEAGUES: createPageUrl("LeaguesList"),
+  LOG_GAME: createPageUrl("LogGame"),
+  INBOX: createPageUrl("Inbox"),
+  PROFILE: createPageUrl("Profile"),
+  REGISTER: createPageUrl("Register"),
 
-  // Decks
-  PROFILE_DECKS: "/profile-decks",
-  PROFILE_DECK_NEW: "/profile-decks/new",
-  PROFILE_DECK_EDIT: (id) => `/profile-decks/${id}/edit`,
+  // Decks — all on the ProfileDecks page, mode via ?mode= query param
+  PROFILE_DECKS: createPageUrl("ProfileDecks"),
+  PROFILE_DECK_NEW: `${createPageUrl("ProfileDecks")}?mode=new`,
+  PROFILE_DECK_EDIT: (id) => `${createPageUrl("ProfileDecks")}?mode=edit&deckId=${id}`,
 
-  // League details
-  LEAGUE_DETAILS: (id) => `/league-details/${id}`,
+  // League details — on the LeagueDetails page, id via ?leagueId= query param
+  LEAGUE_DETAILS: (id) => `${createPageUrl("LeagueDetails")}?leagueId=${id}`,
 };
