@@ -10,12 +10,9 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { getLeagueById } from "@/components/services/leagueService";
 import { base44 } from "@/api/base44Client";
 
-// Parse leagueId from the URL path
+// Parse leagueId from query param: ?leagueId=xxx
 function getLeagueIdFromPath() {
-  const parts = window.location.pathname.split("/");
-  // /league-details/:leagueId
-  const idx = parts.findIndex((p) => p === "league-details");
-  return idx !== -1 ? parts[idx + 1] : null;
+  return new URLSearchParams(window.location.search).get("leagueId");
 }
 
 const TABS = [
