@@ -127,7 +127,7 @@ export default function Profile() {
               <p className="text-gray-500 text-sm">No decks yet.</p>
               <button
                 className="text-violet-400 text-sm mt-1 hover:underline"
-                onClick={() => navigate(`${createPageUrl("ProfileDecks")}/new`)}
+                onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
               >
                 Create your first deck
               </button>
@@ -143,7 +143,7 @@ export default function Profile() {
             {decks.length > 3 && (
               <button
                 className="w-full flex items-center justify-center gap-1 text-violet-400 text-sm hover:text-violet-300 py-2 transition-colors"
-                onClick={() => navigate(createPageUrl("ProfileDecks"))}
+                onClick={() => navigate(ROUTES.PROFILE_DECKS)}
               >
                 View all {decks.length} decks <ChevronRight className="w-4 h-4" />
               </button>
