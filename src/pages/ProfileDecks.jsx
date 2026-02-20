@@ -12,15 +12,12 @@ import { listMyDecks, getMyDeckById, createDeck, updateDeck, deleteDeck } from "
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 
-// Determine sub-route from URL
+// Determine sub-route from query params: ?mode=new | ?mode=edit&deckId=xxx
 function getSubRoute() {
-  const path = window.location.pathname.toLowerCase();
-  // /profile-decks/:id/edit
-  const editMatch = path.match(/profile-decks\/([^/]+)\/edit/);
-  if (editMatch) return { mode: "edit", deckId: editMatch[1] };
-  // /profile-decks/new
-  if (path.includes("/profile-decks/new")) return { mode: "new" };
-  // /profile-decks (list)
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode");
+  if (mode === "edit") return { mode: "edit", deckId: params.get("deckId") };
+  if (mode === "new") return { mode: "new" };
   return { mode: "list" };
 }
 
