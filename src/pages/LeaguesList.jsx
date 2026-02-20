@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/AuthContext";
 import { listVisibleLeagues } from "@/components/services/leagueService";
+import { toast } from "sonner";
 
 export default function LeaguesList() {
   const auth = useAuth();
@@ -37,7 +38,10 @@ export default function LeaguesList() {
       <div className="flex items-center justify-between px-1">
         <p className="text-sm text-gray-400">{leagues.length} league{leagues.length !== 1 ? "s" : ""}</p>
         {!isGuest && (
-          <button className="text-sm text-violet-400 font-medium flex items-center gap-1">
+          <button
+            className="text-sm text-violet-400 font-medium flex items-center gap-1"
+            onClick={() => toast.info("League creation coming soon!")}
+          >
             <Plus className="w-3.5 h-3.5" /> New League
           </button>
         )}
