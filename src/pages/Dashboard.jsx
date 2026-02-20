@@ -148,7 +148,7 @@ export default function Dashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-white">Recent Games</CardTitle>
-                <Link to={createPageUrl("Leagues")}>
+                <Link to={ROUTES.LEAGUES}>
                   <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
                     View All <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
@@ -190,7 +190,7 @@ export default function Dashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg text-white">Your Leagues</CardTitle>
-                <Link to={createPageUrl("Leagues")}>
+                <Link to={ROUTES.LEAGUES}>
                   <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
                     View All <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
@@ -204,7 +204,7 @@ export default function Dashboard() {
                 leagues.map((league) => (
                   <Link
                     key={league.id}
-                    to={createPageUrl("Leagues") + `?leagueId=${league.id}`}
+                    to={ROUTES.LEAGUE_DETAILS(league.id)}
                     className="flex items-center justify-between p-3 rounded-lg bg-gray-800/30 border border-gray-800/50 hover:border-gray-700/50 transition-colors"
                   >
                     <div>
