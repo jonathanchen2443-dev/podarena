@@ -1,22 +1,21 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 import { Users, PlusCircle, Home, Bell, User } from "lucide-react";
+import { ROUTES } from "@/components/utils/routes";
 
 const tabs = [
-  { label: "Leagues", icon: Users, page: "LeaguesList", root: "/leagues-list" },
-  { label: "Log Game", icon: PlusCircle, page: "LogGame", root: "/log-game" },
-  { label: "Home", icon: Home, page: "Home", root: "/home" },
-  { label: "Inbox", icon: Bell, page: "Inbox", root: "/inbox" },
-  { label: "Profile", icon: User, page: "Profile", root: "/profile" },
+  { label: "Leagues", icon: Users, href: ROUTES.LEAGUES },
+  { label: "Log Game", icon: PlusCircle, href: ROUTES.LOG_GAME },
+  { label: "Home", icon: Home, href: ROUTES.HOME },
+  { label: "Inbox", icon: Bell, href: ROUTES.INBOX },
+  { label: "Profile", icon: User, href: ROUTES.PROFILE },
 ];
 
 export default function BottomNav() {
   const location = useLocation();
 
   const isActive = (tab) => {
-    const url = createPageUrl(tab.page).toLowerCase();
-    return location.pathname.toLowerCase().startsWith(url);
+    return location.pathname.toLowerCase().startsWith(tab.href.toLowerCase());
   };
 
   return (
@@ -26,8 +25,8 @@ export default function BottomNav() {
           const active = isActive(tab);
           return (
             <Link
-              key={tab.page}
-              to={createPageUrl(tab.page)}
+              key={tab.href}
+              to={tab.href}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 relative group"
               onClick={(e) => {
                 // If already on this tab's root, do nothing extra (link handles it)
