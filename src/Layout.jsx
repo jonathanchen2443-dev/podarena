@@ -65,7 +65,7 @@ function AuthActionSlot() {
   }
 
   return (
-    <Link to={createPageUrl("Profile")} className="w-8 h-8 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center hover:bg-violet-500/20 transition-colors">
+    <Link to={ROUTES.PROFILE} className="w-8 h-8 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center hover:bg-violet-500/20 transition-colors">
       <User className="w-4 h-4 text-violet-400" />
     </Link>
   );
