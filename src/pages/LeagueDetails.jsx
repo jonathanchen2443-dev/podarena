@@ -162,9 +162,29 @@ function GamesTab() {
   );
 }
 
-function InfoTab({ league }) {
+function InfoTab({ league, auth }) {
+  const navigate = useNavigate();
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setMembersLoading(true);
+      try {
+        const data = await listLeagueMembers(auth, league.id);
+        setMembers(data);
+      } catch {
+        setMembers([]);
+      } finally {
+        setMembersLoading(false);
+      }
+    }
+    load();
+  }, [league.id]);
+
   return (
     <div className="space-y-3">
+      {/* League info */}
       <Card className="bg-gray-900/60 border-gray-800/50">
         <CardContent className="p-4 space-y-3">
           <div>
@@ -190,12 +210,49 @@ function InfoTab({ league }) {
           </div>
         </CardContent>
       </Card>
-      <Card className="bg-gray-900/60 border-gray-800/50 border-dashed">
-        <CardContent className="p-4 flex items-center gap-3 text-gray-600">
-          <Users className="w-4 h-4 flex-shrink-0" />
-          <p className="text-sm">Members count — coming soon.</p>
-        </CardContent>
-      </Card>
+
+      {/* Members */}
+      <div>
+        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 px-1">Members</p>
+        <Card className="bg-gray-900/60 border-gray-800/50">
+          <CardContent className="p-0">
+            {membersLoading ? (
+              <div className="p-4 text-center text-gray-500 text-sm">Loading members…</div>
+            ) : members.length === 0 ? (
+              <div className="p-4 text-center text-gray-500 text-sm">No members found.</div>
+            ) : (
+              <div className="divide-y divide-gray-800/60">
+                {members.map((member) => (
+                  <button
+                    key={member.userId}
+                    onClick={() => navigate(ROUTES.USER_PROFILE(member.userId))}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors text-left"
+                  >
+                    {member.avatar_url ? (
+                      <img
+                        src={member.avatar_url}
+                        alt={member.display_name}
+                        className="w-8 h-8 rounded-full object-cover border border-gray-700 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+                        <User className="w-4 h-4 text-violet-400" />
+                      </div>
+                    )}
+                    <span className="flex-1 text-sm text-white truncate">{member.display_name}</span>
+                    {member.role === "admin" && (
+                      <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] px-1.5">
+                        Admin
+                      </Badge>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
