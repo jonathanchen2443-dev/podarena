@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { ArrowLeft, Globe, Lock, Trophy, Swords, Info, Users } from "lucide-react";
+import { ArrowLeft, Globe, Lock, Trophy, Swords, Info, Users, User, ChevronRight, Shield } from "lucide-react";
 import { LoadingState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
-import { getLeagueById } from "@/components/services/leagueService";
+import { getLeagueById, listLeagueMembers } from "@/components/services/leagueService";
 import { base44 } from "@/api/base44Client";
 
 // Parse leagueId from query param: ?leagueId=xxx
