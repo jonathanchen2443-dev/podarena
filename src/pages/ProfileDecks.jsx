@@ -45,7 +45,7 @@ export default function ProfileDecks() {
     } else {
       setLoading(false);
     }
-  }, [authLoading, isGuest, window.location.pathname]);
+  }, [authLoading, isGuest, window.location.search]);
 
   async function loadDecks() {
     setLoading(true);
