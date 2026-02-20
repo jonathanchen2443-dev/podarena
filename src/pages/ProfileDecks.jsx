@@ -70,7 +70,7 @@ export default function ProfileDecks() {
     setSaving(true);
     await createDeck(auth, payload);
     toast.success("Deck created!");
-    navigate(createPageUrl("ProfileDecks"));
+    navigate(ROUTES.PROFILE_DECKS);
     setSaving(false);
   }
 
@@ -78,7 +78,7 @@ export default function ProfileDecks() {
     setSaving(true);
     await updateDeck(auth, subRoute.deckId, payload);
     toast.success("Deck updated!");
-    navigate(createPageUrl("ProfileDecks"));
+    navigate(ROUTES.PROFILE_DECKS);
     setSaving(false);
   }
 
@@ -152,14 +152,14 @@ export default function ProfileDecks() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <button
-          onClick={() => navigate(createPageUrl("Profile"))}
+          onClick={() => navigate(ROUTES.PROFILE)}
           className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Profile
         </button>
         <Button
           className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-9 text-sm px-4"
-          onClick={() => navigate(`${createPageUrl("ProfileDecks")}/new`)}
+          onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
         >
           <Plus className="w-4 h-4 mr-1" /> Add Deck
         </Button>
