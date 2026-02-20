@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import { ROUTES } from "@/components/utils/routes";
 import { Users, ChevronRight, Globe, Lock, Plus } from "lucide-react";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
