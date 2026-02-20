@@ -119,7 +119,7 @@ export default function ProfileDecks() {
     return (
       <div className="space-y-5">
         <button
-          onClick={() => navigate(createPageUrl("ProfileDecks"))}
+          onClick={() => navigate(ROUTES.PROFILE_DECKS)}
           className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Decks
@@ -136,7 +136,7 @@ export default function ProfileDecks() {
     return (
       <div className="space-y-5">
         <button
-          onClick={() => navigate(createPageUrl("ProfileDecks"))}
+          onClick={() => navigate(ROUTES.PROFILE_DECKS)}
           className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Decks
