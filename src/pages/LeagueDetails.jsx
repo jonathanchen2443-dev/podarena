@@ -209,7 +209,7 @@ function GateView({ icon: Icon, title, description, children }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-5">
       <button
-        onClick={() => navigate(createPageUrl("LeaguesList"))}
+        onClick={() => navigate(ROUTES.LEAGUES)}
         className="self-start flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
       >
         <ArrowLeft className="w-4 h-4" /> Leagues
