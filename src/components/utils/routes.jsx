@@ -22,4 +22,7 @@ export const ROUTES = {
 
   // League details — on the LeagueDetails page, id via ?leagueId= query param
   LEAGUE_DETAILS: (id) => `${createPageUrl("LeagueDetails")}?leagueId=${id}`,
+
+  // Public user profile — read-only, id via ?userId= query param
+  USER_PROFILE: (userId) => `${createPageUrl("UserProfile")}?userId=${userId}`,
 };

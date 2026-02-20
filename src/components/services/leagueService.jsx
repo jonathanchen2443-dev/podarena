@@ -63,3 +63,33 @@ async function _checkMembership(profileId, leagueId) {
   });
   return m.length > 0;
 }
+
+/**
+ * List active members of a league with their public profile info.
+ * Applies the same visibility gating as getLeagueById.
+ * Returns array of { userId, display_name, avatar_url, role }
+ */
+export async function listLeagueMembers(auth, leagueId) {
+  // Re-use visibility gating
+  await getLeagueById(auth, leagueId); // throws if not visible
+
+  const members = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    status: "active",
+  });
+
+  // Fetch profiles in parallel
+  const profileResults = await Promise.all(
+    members.map((m) => base44.entities.Profile.filter({ id: m.user_id }))
+  );
+
+  return members.map((m, i) => {
+    const profile = profileResults[i]?.[0];
+    return {
+      userId: m.user_id,
+      display_name: profile?.display_name || "Unknown",
+      avatar_url: profile?.avatar_url || null,
+      role: m.role,
+    };
+  });
+}
