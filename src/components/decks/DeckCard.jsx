@@ -53,7 +53,7 @@ export default function DeckCard({ deck, onDelete }) {
               className="h-8 w-8 text-gray-400 hover:text-violet-400 hover:bg-violet-500/10"
               asChild
             >
-              <Link to={`${createPageUrl("ProfileDecks")}/${deck.id}/edit`}>
+              <Link to={ROUTES.PROFILE_DECK_EDIT(deck.id)}>
                 <Pencil className="w-3.5 h-3.5" />
               </Link>
             </Button>
