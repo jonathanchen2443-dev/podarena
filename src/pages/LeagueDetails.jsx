@@ -84,7 +84,7 @@ export default function LeagueDetails() {
     <div className="space-y-4">
       {/* Back nav */}
       <button
-        onClick={() => navigate(createPageUrl("LeaguesList"))}
+        onClick={() => navigate(ROUTES.LEAGUES)}
         className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
       >
         <ArrowLeft className="w-4 h-4" /> Leagues
