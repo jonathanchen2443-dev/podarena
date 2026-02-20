@@ -113,7 +113,7 @@ export default function Profile() {
           <Button
             size="sm"
             className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-8 text-xs px-3"
-            onClick={() => navigate(`${createPageUrl("ProfileDecks")}/new`)}
+            onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
           >
             <Plus className="w-3.5 h-3.5 mr-1" /> Add Deck
           </Button>
