@@ -130,7 +130,7 @@ export default function LeagueDetails() {
       </div>
 
       {/* Tab content */}
-      {activeTab === "standings" && <StandingsTab />}
+      {activeTab === "standings" && <StandingsTab auth={auth} leagueId={leagueId} />}
       {activeTab === "games" && <GamesTab />}
       {activeTab === "info" && <InfoTab league={league} auth={auth} />}
     </div>
