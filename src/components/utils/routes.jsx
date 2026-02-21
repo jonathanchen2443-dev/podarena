@@ -8,7 +8,7 @@ import { createPageUrl } from "@/utils";
  * unregistered nested paths that cause 404s.
  */
 export const ROUTES = {
-  HOME: createPageUrl("Home"),
+  HOME: createPageUrl("Dashboard"),
   LEAGUES: createPageUrl("LeaguesList"),
   LOG_GAME: createPageUrl("LogGame"),
   INBOX: createPageUrl("Inbox"),
