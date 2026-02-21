@@ -209,6 +209,13 @@ function InfoTab({ league, auth }) {
           <CardContent className="p-0">
             {membersLoading ? (
               <div className="p-4 text-center text-gray-500 text-sm">Loading members…</div>
+            ) : membersError ? (
+              <div className="p-4 flex flex-col items-center gap-3 text-center">
+                <p className="text-red-400 text-xs">{membersError}</p>
+                <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800" onClick={loadMembers}>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Retry
+                </Button>
+              </div>
             ) : members.length === 0 ? (
               <div className="p-4 text-center text-gray-500 text-sm">No members found.</div>
             ) : (
