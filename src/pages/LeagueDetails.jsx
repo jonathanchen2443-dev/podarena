@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { ArrowLeft, Globe, Lock, Trophy, Swords, Info, Users, User, ChevronRight, Shield } from "lucide-react";
+import { ArrowLeft, Globe, Lock, Trophy, Swords, Info, Users, User, ChevronRight } from "lucide-react";
 import { LoadingState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -136,10 +136,6 @@ export default function LeagueDetails() {
     </div>
   );
 }
-
-// ── Tab panels ─────────────────────────────────────────────────────────────────
-
-
 
 function GamesTab() {
   return (
