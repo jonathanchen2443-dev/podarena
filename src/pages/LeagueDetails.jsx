@@ -138,17 +138,7 @@ export default function LeagueDetails() {
   );
 }
 
-function GamesTab() {
-  return (
-    <Card className="bg-gray-900/60 border-gray-800/50">
-      <CardContent className="p-6 flex flex-col items-center text-center gap-3">
-        <Swords className="w-10 h-10 text-gray-700" />
-        <p className="text-gray-400 font-medium">Games</p>
-        <p className="text-gray-600 text-sm">Game list and match modal will be implemented in a later prompt.</p>
-      </CardContent>
-    </Card>
-  );
-}
+
 
 function InfoTab({ league, auth }) {
   const navigate = useNavigate();
