@@ -142,20 +142,33 @@ function InfoTab({ league, auth }) {
   const navigate = useNavigate();
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);
+  const [membersError, setMembersError] = useState(null);
+  const fetchingRef = useRef(false);
+
+  async function loadMembers() {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    setMembersLoading(true);
+    setMembersError(null);
+    try {
+      const data = await listLeagueMembers(auth, league.id);
+      setMembers(data);
+    } catch (e) {
+      const isRateLimit = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
+      setMembersError(isRateLimit
+        ? "Too many requests right now. Please wait a few seconds and try again."
+        : e.message
+      );
+      setMembers([]);
+    } finally {
+      setMembersLoading(false);
+      fetchingRef.current = false;
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      setMembersLoading(true);
-      try {
-        const data = await listLeagueMembers(auth, league.id);
-        setMembers(data);
-      } catch {
-        setMembers([]);
-      } finally {
-        setMembersLoading(false);
-      }
-    }
-    load();
+    loadMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [league.id]);
 
   return (
