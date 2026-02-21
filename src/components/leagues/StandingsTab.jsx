@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Trophy, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
