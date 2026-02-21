@@ -139,17 +139,7 @@ export default function LeagueDetails() {
 
 // ── Tab panels ─────────────────────────────────────────────────────────────────
 
-function StandingsTab() {
-  return (
-    <Card className="bg-gray-900/60 border-gray-800/50">
-      <CardContent className="p-6 flex flex-col items-center text-center gap-3">
-        <Trophy className="w-10 h-10 text-gray-700" />
-        <p className="text-gray-400 font-medium">Standings</p>
-        <p className="text-gray-600 text-sm">Standings calculation will be implemented in the next prompt.</p>
-      </CardContent>
-    </Card>
-  );
-}
+
 
 function GamesTab() {
   return (
