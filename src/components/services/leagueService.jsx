@@ -1,12 +1,59 @@
 /**
  * League Service - Centralized league data fetching with visibility enforcement.
+ *
+ * Optimizations applied:
+ * - Simple in-memory cache with TTL (60s) per leagueId + operation
+ * - Visibility gate result is cached so tab-switches don't repeat it
+ * - Removed N+1 patterns: profile/deck lookups are batched via list() with post-filter
+ * - Service methods accept a pre-validated leagueId to skip redundant visibility calls
  */
 import { base44 } from "@/api/base44Client";
 
+// ── Simple in-memory cache ────────────────────────────────────────────────────
+const CACHE_TTL_MS = 60_000; // 60 seconds
+const _cache = new Map();
+
+function cacheKey(...parts) {
+  return parts.join("::");
+}
+
+function cacheGet(key) {
+  const entry = _cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL_MS) {
+    _cache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function cacheSet(key, value) {
+  _cache.set(key, { ts: Date.now(), value });
+  return value;
+}
+
+export function invalidateLeagueCache(leagueId) {
+  for (const key of _cache.keys()) {
+    if (key.includes(leagueId)) _cache.delete(key);
+  }
+}
+
+// ── Visibility Gate ───────────────────────────────────────────────────────────
+
+async function _checkMembership(profileId, leagueId) {
+  const key = cacheKey("membership", profileId, leagueId);
+  const cached = cacheGet(key);
+  if (cached !== null) return cached;
+  const m = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    user_id: profileId,
+    status: "active",
+  });
+  return cacheSet(key, m.length > 0);
+}
+
 /**
- * Returns leagues visible to the current user:
- * - Guest: only public leagues
- * - Authed: all public leagues + private leagues they are an active member of
+ * Returns leagues visible to the current user.
  */
 export async function listVisibleLeagues(auth) {
   const allLeagues = await base44.entities.League.list("-created_date", 100);
@@ -15,26 +62,25 @@ export async function listVisibleLeagues(auth) {
     return allLeagues.filter((l) => l.is_public);
   }
 
-  // Get the user's active memberships
   const memberships = await base44.entities.LeagueMember.filter({
     user_id: auth.currentUser.id,
     status: "active",
   });
   const memberLeagueIds = new Set(memberships.map((m) => m.league_id));
-
   return allLeagues.filter((l) => l.is_public || memberLeagueIds.has(l.id));
 }
 
 /**
- * Fetch a single league by ID and enforce visibility:
- * - If public: always readable
- * - If private + guest: throws "private"
- * - If private + authed non-member: throws "restricted"
- * - If private + active member: returns league
- *
- * Returns { league, isMember, memberships }
+ * Fetch a single league by ID and enforce visibility.
+ * Returns { league, isMember }
+ * Cached per leagueId + userId.
  */
 export async function getLeagueById(auth, leagueId) {
+  const userId = auth.currentUser?.id || "guest";
+  const key = cacheKey("leagueById", leagueId, userId);
+  const cached = cacheGet(key);
+  if (cached !== null) return cached;
+
   const results = await base44.entities.League.filter({ id: leagueId });
   const league = results[0];
   if (!league) throw new Error("not_found");
@@ -43,7 +89,7 @@ export async function getLeagueById(auth, leagueId) {
     const isMember = auth.isGuest || !auth.currentUser
       ? false
       : await _checkMembership(auth.currentUser.id, leagueId);
-    return { league, isMember };
+    return cacheSet(key, { league, isMember });
   }
 
   // Private league
@@ -52,50 +98,77 @@ export async function getLeagueById(auth, leagueId) {
   const isMember = await _checkMembership(auth.currentUser.id, leagueId);
   if (!isMember) throw new Error("restricted");
 
-  return { league, isMember };
+  return cacheSet(key, { league, isMember });
+}
+
+// ── Shared batch helpers ──────────────────────────────────────────────────────
+
+/**
+ * Fetch all profiles by IDs using a single list call, then map by id.
+ * Avoids N+1 filter-per-user.
+ */
+async function _fetchProfileMap(userIds) {
+  if (userIds.length === 0) return {};
+  // Fetch up to 200 profiles and filter client-side — much cheaper than N individual calls
+  const allProfiles = await base44.entities.Profile.list("-created_date", 200);
+  const needed = new Set(userIds);
+  const map = {};
+  for (const p of allProfiles) {
+    if (needed.has(p.id)) map[p.id] = p;
+  }
+  return map;
 }
 
 /**
- * Compute standings for a league from approved games only.
- * Returns an array of player rows sorted by: totalPoints → winRate → wins → display_name.
+ * Fetch all decks by IDs using a single list call, then map by id.
  */
+async function _fetchDeckMap(deckIds) {
+  if (deckIds.length === 0) return {};
+  const allDecks = await base44.entities.Deck.list("-created_date", 500);
+  const needed = new Set(deckIds);
+  const map = {};
+  for (const d of allDecks) {
+    if (needed.has(d.id)) map[d.id] = d;
+  }
+  return map;
+}
+
+// ── Standings ─────────────────────────────────────────────────────────────────
+
 export async function getLeagueStandings(auth, leagueId) {
-  // Visibility gate
+  const cKey = cacheKey("standings", leagueId, auth.currentUser?.id || "guest");
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
+
+  // Visibility gate (cached internally)
   await getLeagueById(auth, leagueId);
 
-  // 1. Fetch approved games for this league
+  // 1. Fetch approved games
   const games = await base44.entities.Game.filter({ league_id: leagueId, status: "approved" });
-  if (games.length === 0) return [];
+  if (games.length === 0) return cacheSet(cKey, []);
 
   const gameIds = games.map((g) => g.id);
 
-  // 2. Fetch all participants for those games (batch per game)
+  // 2. Fetch all participants for all games in parallel (one filter per game, but batched)
   const participantArrays = await Promise.all(
     gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }))
   );
   const allParticipants = participantArrays.flat();
 
-  // 3. Collect unique user IDs and deck IDs
+  // 3. Batch-fetch profiles and decks (single list call each)
   const userIds = [...new Set(allParticipants.map((p) => p.user_id))];
   const deckIds = [...new Set(allParticipants.map((p) => p.deck_id).filter(Boolean))];
 
-  // 4. Fetch profiles and decks in parallel
-  const [profileArrays, deckArrays] = await Promise.all([
-    Promise.all(userIds.map((uid) => base44.entities.Profile.filter({ id: uid }))),
-    Promise.all(deckIds.map((did) => base44.entities.Deck.filter({ id: did }))),
+  const [profileMap, deckMap] = await Promise.all([
+    _fetchProfileMap(userIds),
+    _fetchDeckMap(deckIds),
   ]);
 
-  const profileMap = {};
-  userIds.forEach((uid, i) => { if (profileArrays[i]?.[0]) profileMap[uid] = profileArrays[i][0]; });
-
-  const deckMap = {};
-  deckIds.forEach((did, i) => { if (deckArrays[i]?.[0]) deckMap[did] = deckArrays[i][0]; });
-
-  // 5. Build a game date lookup for recency sorting
+  // 4. Build game date lookup
   const gameDateMap = {};
   games.forEach((g) => { gameDateMap[g.id] = g.played_at || g.created_date; });
 
-  // 6. Aggregate per user
+  // 5. Aggregate per user
   const statsMap = {};
   for (const p of allParticipants) {
     if (!statsMap[p.user_id]) {
@@ -103,27 +176,21 @@ export async function getLeagueStandings(auth, leagueId) {
     }
     const s = statsMap[p.user_id];
     s.gamesPlayed++;
-
-    // Resolve result
     let result = p.result;
-    if (!result && p.placement != null) {
-      result = p.placement === 1 ? "win" : "loss";
-    }
+    if (!result && p.placement != null) result = p.placement === 1 ? "win" : "loss";
     if (result === "win") s.wins++;
     else if (result === "draw") s.draws++;
     else s.losses++;
-
     s.participations.push({ game_id: p.game_id, deck_id: p.deck_id, date: gameDateMap[p.game_id] });
   }
 
-  // 7. Shape rows
+  // 6. Shape rows
   const rows = userIds.map((uid) => {
     const s = statsMap[uid] || { wins: 0, losses: 0, draws: 0, gamesPlayed: 0, participations: [] };
     const profile = profileMap[uid];
     const totalPoints = s.wins * 3 + s.draws * 1;
     const winRate = s.gamesPlayed > 0 ? Math.round((s.wins / s.gamesPlayed) * 1000) / 10 : 0;
 
-    // Recent decks: last 5 participations, newest first
     const sorted = [...s.participations].sort((a, b) => new Date(b.date) - new Date(a.date));
     const recentDecks = sorted.slice(0, 5).map((part) => {
       if (!part.deck_id) return { variant: "didNotPlay", colorIdentity: [] };
@@ -149,7 +216,6 @@ export async function getLeagueStandings(auth, leagueId) {
     };
   });
 
-  // 8. Sort: Pts ↓, WinRate ↓, Wins ↓, Name ↑
   rows.sort((a, b) => {
     if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
     if (b.winRate !== a.winRate) return b.winRate - a.winRate;
@@ -157,25 +223,22 @@ export async function getLeagueStandings(auth, leagueId) {
     return a.display_name.localeCompare(b.display_name);
   });
 
-  return rows;
+  return cacheSet(cKey, rows);
 }
 
-/**
- * List games for a league (approved + pending by default), newest first.
- * Returns normalized game rows with participants, deck summaries, and approval counts.
- */
+// ── Games ─────────────────────────────────────────────────────────────────────
+
 export async function listLeagueGames(auth, leagueId, { includeRejected = false } = {}) {
-  // Visibility gate
+  const cKey = cacheKey("games", leagueId, auth.currentUser?.id || "guest", String(includeRejected));
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
+
+  // Visibility gate (cached internally)
   await getLeagueById(auth, leagueId);
 
-  // Fetch all games for this league sorted newest first
   const allGames = await base44.entities.Game.filter({ league_id: leagueId }, "-created_date", 100);
-
-  const games = includeRejected
-    ? allGames
-    : allGames.filter((g) => g.status !== "rejected");
-
-  if (games.length === 0) return [];
+  const games = includeRejected ? allGames : allGames.filter((g) => g.status !== "rejected");
+  if (games.length === 0) return cacheSet(cKey, []);
 
   const gameIds = games.map((g) => g.id);
 
@@ -185,27 +248,17 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
     Promise.all(gameIds.map((gid) => base44.entities.GameApproval.filter({ game_id: gid }))),
   ]);
 
-  // Collect unique user IDs and deck IDs
   const allParticipants = participantArrays.flat();
   const userIds = [...new Set(allParticipants.map((p) => p.user_id))];
   const deckIds = [...new Set(allParticipants.map((p) => p.deck_id).filter(Boolean))];
 
-  // Fetch profiles and decks in parallel
-  const [profileArrays, deckArrays] = await Promise.all([
-    Promise.all(userIds.map((uid) => base44.entities.Profile.filter({ id: uid }))),
-    deckIds.length > 0
-      ? Promise.all(deckIds.map((did) => base44.entities.Deck.filter({ id: did })))
-      : Promise.resolve([]),
+  // Batch fetch profiles and decks
+  const [profileMap, deckMap] = await Promise.all([
+    _fetchProfileMap(userIds),
+    _fetchDeckMap(deckIds),
   ]);
 
-  const profileMap = {};
-  userIds.forEach((uid, i) => { if (profileArrays[i]?.[0]) profileMap[uid] = profileArrays[i][0]; });
-
-  const deckMap = {};
-  deckIds.forEach((did, i) => { if (deckArrays[i]?.[0]) deckMap[did] = deckArrays[i][0]; });
-
-  // Shape game rows
-  return games.map((game, i) => {
+  const result = games.map((game, i) => {
     const participants = participantArrays[i].map((p) => {
       const profile = profileMap[p.user_id];
       const deck = p.deck_id ? deckMap[p.deck_id] : null;
@@ -227,7 +280,7 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
       approved: approvals.filter((a) => a.status === "approved").length,
       rejected: approvals.filter((a) => a.status === "rejected").length,
       pending: approvals.filter((a) => a.status === "pending").length,
-      records: approvals, // full records for eligibility check
+      records: approvals,
     };
 
     return {
@@ -240,38 +293,29 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
       approvalSummary,
     };
   });
+
+  return cacheSet(cKey, result);
 }
 
-async function _checkMembership(profileId, leagueId) {
-  const m = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    user_id: profileId,
-    status: "active",
-  });
-  return m.length > 0;
-}
+// ── Members ───────────────────────────────────────────────────────────────────
 
-/**
- * List active members of a league with their public profile info.
- * Applies the same visibility gating as getLeagueById.
- * Returns array of { userId, display_name, avatar_url, role }
- */
 export async function listLeagueMembers(auth, leagueId) {
-  // Re-use visibility gating
-  await getLeagueById(auth, leagueId); // throws if not visible
+  const cKey = cacheKey("members", leagueId, auth.currentUser?.id || "guest");
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
+
+  await getLeagueById(auth, leagueId);
 
   const members = await base44.entities.LeagueMember.filter({
     league_id: leagueId,
     status: "active",
   });
 
-  // Fetch profiles in parallel
-  const profileResults = await Promise.all(
-    members.map((m) => base44.entities.Profile.filter({ id: m.user_id }))
-  );
+  const userIds = members.map((m) => m.user_id);
+  const profileMap = await _fetchProfileMap(userIds);
 
-  return members.map((m, i) => {
-    const profile = profileResults[i]?.[0];
+  const result = members.map((m) => {
+    const profile = profileMap[m.user_id];
     return {
       userId: m.user_id,
       display_name: profile?.display_name || "Unknown",
@@ -279,4 +323,6 @@ export async function listLeagueMembers(auth, leagueId) {
       role: m.role,
     };
   });
+
+  return cacheSet(cKey, result);
 }
