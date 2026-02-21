@@ -204,7 +204,9 @@ function InfoTab({ league, auth }) {
 
       {/* Members */}
       <div>
-        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 px-1">Members</p>
+        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 px-1">
+          Members{members.length > 0 && !membersLoading ? ` · ${members.length}` : ""}
+        </p>
         <Card className="bg-gray-900/60 border-gray-800/50">
           <CardContent className="p-0">
             {membersLoading ? (
