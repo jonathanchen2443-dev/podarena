@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
 import { getLeagueById, listLeagueMembers } from "@/components/services/leagueService";
+import StandingsTab from "@/components/leagues/StandingsTab";
 import { base44 } from "@/api/base44Client";
 
 // Parse leagueId from query param: ?leagueId=xxx
