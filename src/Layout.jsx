@@ -9,7 +9,7 @@ import BottomNav from "@/components/shell/BottomNav";
 import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
 
 // Pages that use the app shell (bottom nav + top bar)
-const SHELL_PAGES = ["home", "leagueslist", "loggame", "inbox", "profile"];
+const SHELL_PAGES = ["home", "dashboard", "leagueslist", "loggame", "inbox", "profile"];
 // Sub-pages that belong to a shell tab and should also show the nav
 // Note: approvals and decks are redirect shims — kept so they render inside the shell cleanly
 const SHELL_SUB_PAGES = ["leagues", "dashboard", "approvals", "decks", "profiledecks", "leaguedetails", "userprofile"];
