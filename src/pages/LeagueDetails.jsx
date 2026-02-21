@@ -138,8 +138,6 @@ export default function LeagueDetails() {
   );
 }
 
-
-
 function InfoTab({ league, auth }) {
   const navigate = useNavigate();
   const [members, setMembers] = useState([]);
