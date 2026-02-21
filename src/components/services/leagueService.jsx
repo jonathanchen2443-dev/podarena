@@ -160,6 +160,88 @@ export async function getLeagueStandings(auth, leagueId) {
   return rows;
 }
 
+/**
+ * List games for a league (approved + pending by default), newest first.
+ * Returns normalized game rows with participants, deck summaries, and approval counts.
+ */
+export async function listLeagueGames(auth, leagueId, { includeRejected = false } = {}) {
+  // Visibility gate
+  await getLeagueById(auth, leagueId);
+
+  // Fetch all games for this league sorted newest first
+  const allGames = await base44.entities.Game.filter({ league_id: leagueId }, "-created_date", 100);
+
+  const games = includeRejected
+    ? allGames
+    : allGames.filter((g) => g.status !== "rejected");
+
+  if (games.length === 0) return [];
+
+  const gameIds = games.map((g) => g.id);
+
+  // Fetch participants + approvals for all games in parallel
+  const [participantArrays, approvalArrays] = await Promise.all([
+    Promise.all(gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }))),
+    Promise.all(gameIds.map((gid) => base44.entities.GameApproval.filter({ game_id: gid }))),
+  ]);
+
+  // Collect unique user IDs and deck IDs
+  const allParticipants = participantArrays.flat();
+  const userIds = [...new Set(allParticipants.map((p) => p.user_id))];
+  const deckIds = [...new Set(allParticipants.map((p) => p.deck_id).filter(Boolean))];
+
+  // Fetch profiles and decks in parallel
+  const [profileArrays, deckArrays] = await Promise.all([
+    Promise.all(userIds.map((uid) => base44.entities.Profile.filter({ id: uid }))),
+    deckIds.length > 0
+      ? Promise.all(deckIds.map((did) => base44.entities.Deck.filter({ id: did })))
+      : Promise.resolve([]),
+  ]);
+
+  const profileMap = {};
+  userIds.forEach((uid, i) => { if (profileArrays[i]?.[0]) profileMap[uid] = profileArrays[i][0]; });
+
+  const deckMap = {};
+  deckIds.forEach((did, i) => { if (deckArrays[i]?.[0]) deckMap[did] = deckArrays[i][0]; });
+
+  // Shape game rows
+  return games.map((game, i) => {
+    const participants = participantArrays[i].map((p) => {
+      const profile = profileMap[p.user_id];
+      const deck = p.deck_id ? deckMap[p.deck_id] : null;
+      return {
+        userId: p.user_id,
+        display_name: profile?.display_name || "Unknown",
+        avatar_url: profile?.avatar_url || null,
+        result: p.result || null,
+        placement: p.placement || null,
+        deck: deck
+          ? { id: deck.id, name: deck.name, color_identity: deck.color_identity || [] }
+          : null,
+      };
+    });
+
+    const approvals = approvalArrays[i];
+    const approvalSummary = {
+      total: approvals.length,
+      approved: approvals.filter((a) => a.status === "approved").length,
+      rejected: approvals.filter((a) => a.status === "rejected").length,
+      pending: approvals.filter((a) => a.status === "pending").length,
+      records: approvals, // full records for eligibility check
+    };
+
+    return {
+      id: game.id,
+      status: game.status,
+      played_at: game.played_at || game.created_date,
+      created_date: game.created_date,
+      notes: game.notes || "",
+      participants,
+      approvalSummary,
+    };
+  });
+}
+
 async function _checkMembership(profileId, leagueId) {
   const m = await base44.entities.LeagueMember.filter({
     league_id: leagueId,
