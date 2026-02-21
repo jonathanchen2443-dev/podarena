@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { listLeagueGames } from "@/components/services/leagueService";
-import { LoadingState, EmptyState, ErrorState } from "@/components/shell/PageStates";
+import React, { useState, useEffect, useRef } from "react";
+import { listLeagueGames, invalidateLeagueCache } from "@/components/services/leagueService";
+import { LoadingState, EmptyState } from "@/components/shell/PageStates";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Swords, ChevronRight, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Swords, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 
@@ -33,13 +34,9 @@ function GameRow({ game, onClick }) {
             {formatDistanceToNow(new Date(game.played_at), { addSuffix: true })}
           </span>
         </div>
-        <p className="text-white text-sm truncate font-medium">
-          {preview}
-        </p>
+        <p className="text-white text-sm truncate font-medium">{preview}</p>
         {winner && game.status === "approved" && (
-          <p className="text-gray-500 text-xs truncate">
-            Winner: {winner.display_name}
-          </p>
+          <p className="text-gray-500 text-xs truncate">Winner: {winner.display_name}</p>
         )}
       </div>
       <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
@@ -51,24 +48,39 @@ export default function GamesTab({ auth, leagueId }) {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedGameId, setSelectedGameId] = useState(() => {
-    return new URLSearchParams(window.location.search).get("gameId");
-  });
+  const [selectedGameId, setSelectedGameId] = useState(() =>
+    new URLSearchParams(window.location.search).get("gameId")
+  );
 
-  const loadGames = useCallback(async () => {
+  // Guard against duplicate in-flight fetches
+  const fetchingRef = useRef(false);
+
+  async function loadGames(invalidate = false) {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    if (invalidate) invalidateLeagueCache(leagueId);
     setLoading(true);
     setError(null);
     try {
       const data = await listLeagueGames(auth, leagueId);
       setGames(data);
     } catch (e) {
-      setError(e.message);
+      const isRateLimit = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
+      setError(isRateLimit
+        ? "Too many requests right now. Please wait a few seconds and try again."
+        : e.message
+      );
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
-  }, [leagueId]);
+  }
 
-  useEffect(() => { loadGames(); }, [loadGames]);
+  // Only fetch once on mount (leagueId won't change while tab is mounted)
+  useEffect(() => {
+    loadGames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId]);
 
   function openGame(gameId) {
     setSelectedGameId(gameId);
@@ -84,18 +96,36 @@ export default function GamesTab({ auth, leagueId }) {
     window.history.replaceState(null, "", url.toString());
   }
 
+  // After approve/reject: invalidate cache and reload only games
+  async function handleActionComplete() {
+    invalidateLeagueCache(leagueId);
+    await loadGames(true);
+  }
+
   const selectedGame = games.find((g) => g.id === selectedGameId) || null;
 
   if (loading) return <LoadingState message="Loading games…" />;
-  if (error) return <ErrorState message={error} />;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center px-6">
+        <AlertCircle className="w-10 h-10 text-red-400/70" />
+        <p className="text-red-400 text-sm font-medium">{error}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-gray-700 text-gray-300 hover:bg-gray-800"
+          onClick={() => loadGames(true)}
+        >
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   if (games.length === 0) {
-    return (
-      <EmptyState
-        title="No games yet"
-        description="Games will appear here after players log them."
-      />
-    );
+    return <EmptyState title="No games yet" description="Games will appear here after players log them." />;
   }
 
   return (
@@ -114,7 +144,7 @@ export default function GamesTab({ auth, leagueId }) {
           auth={auth}
           leagueId={leagueId}
           onClose={closeModal}
-          onActionComplete={loadGames}
+          onActionComplete={handleActionComplete}
         />
       )}
     </>
