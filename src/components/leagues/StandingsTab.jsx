@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Trophy, User } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Trophy, User, AlertCircle, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
 import { getLeagueStandings } from "@/components/services/leagueService";
 import { ROUTES } from "@/components/utils/routes";
@@ -39,13 +40,7 @@ function RecentDecksCell({ recentDecks }) {
             ? "Colorless"
             : d.colorIdentity?.join("/") || "Unknown";
         return (
-          <RecentDecksIcon
-            key={i}
-            colors={d.colorIdentity}
-            variant={d.variant}
-            size={16}
-            title={title}
-          />
+          <RecentDecksIcon key={i} colors={d.colorIdentity} variant={d.variant} size={16} title={title} />
         );
       })}
     </div>
@@ -56,25 +51,65 @@ export default function StandingsTab({ auth, leagueId }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetchingRef = useRef(false);
 
-  useEffect(() => {
+  async function loadStandings() {
     if (!leagueId || auth.authLoading) return;
-    let cancelled = false;
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setLoading(true);
     setError(null);
-    getLeagueStandings(auth, leagueId)
-      .then((data) => { if (!cancelled) { setRows(data); setLoading(false); } })
-      .catch((e) => { if (!cancelled) { setError(e.message); setLoading(false); } });
-    return () => { cancelled = true; };
+    try {
+      const data = await getLeagueStandings(auth, leagueId);
+      setRows(data);
+    } catch (e) {
+      const isRateLimit = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
+      setError(isRateLimit
+        ? "Too many requests right now. Please wait a few seconds and try again."
+        : e.message
+      );
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+    }
+  }
+
+  // Only re-fetch when leagueId or auth loading state changes
+  useEffect(() => {
+    if (auth.authLoading) return;
+    loadStandings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, auth.authLoading]);
 
-  if (loading) return <Card className="bg-gray-900/60 border-gray-800/50"><CardContent className="p-0"><LoadingRows /></CardContent></Card>;
-  if (error) return (
-    <Card className="bg-gray-900/60 border-gray-800/50">
-      <CardContent className="p-6 text-center text-red-400 text-sm">{error}</CardContent>
-    </Card>
-  );
-  if (rows.length === 0) return <Card className="bg-gray-900/60 border-gray-800/50"><EmptyStandings /></Card>;
+  if (loading) {
+    return (
+      <Card className="bg-gray-900/60 border-gray-800/50">
+        <CardContent className="p-0"><LoadingRows /></CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center px-6">
+        <AlertCircle className="w-10 h-10 text-red-400/70" />
+        <p className="text-red-400 text-sm font-medium">{error}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-gray-700 text-gray-300 hover:bg-gray-800"
+          onClick={loadStandings}
+        >
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
+    return <Card className="bg-gray-900/60 border-gray-800/50"><EmptyStandings /></Card>;
+  }
 
   return (
     <Card className="bg-gray-900/60 border-gray-800/50 overflow-hidden">
@@ -95,12 +130,9 @@ export default function StandingsTab({ auth, leagueId }) {
             key={row.userId}
             className="grid grid-cols-[28px_1fr_32px_60px_36px_56px_88px] items-center gap-1 px-3 py-2.5"
           >
-            {/* Rank */}
             <span className={`text-xs font-bold ${idx === 0 ? "text-amber-400" : idx === 1 ? "text-gray-300" : idx === 2 ? "text-amber-700" : "text-gray-600"}`}>
               {idx + 1}
             </span>
-
-            {/* Player */}
             <div className="flex items-center gap-1.5 min-w-0">
               {row.avatar_url ? (
                 <img src={row.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover border border-gray-700 flex-shrink-0" />
@@ -111,11 +143,7 @@ export default function StandingsTab({ auth, leagueId }) {
               )}
               <span className="text-xs text-white truncate">{row.display_name}</span>
             </div>
-
-            {/* GP */}
             <span className="text-xs text-gray-400 text-center">{row.gamesPlayed}</span>
-
-            {/* W-L-D */}
             <span className="text-xs text-gray-400 text-center tabular-nums">
               <span className="text-emerald-400">{row.wins}</span>
               <span className="text-gray-600">-</span>
@@ -123,14 +151,8 @@ export default function StandingsTab({ auth, leagueId }) {
               <span className="text-gray-600">-</span>
               <span className="text-blue-400">{row.draws}</span>
             </span>
-
-            {/* Pts */}
             <span className="text-xs font-bold text-violet-300 text-center tabular-nums">{row.totalPoints}</span>
-
-            {/* Win% */}
             <span className="text-xs text-gray-400 text-center tabular-nums">{row.winRate}%</span>
-
-            {/* Recent Decks */}
             <RecentDecksCell recentDecks={row.recentDecks} />
           </div>
         ))}
