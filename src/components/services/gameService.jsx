@@ -193,6 +193,99 @@ export async function getOrCreateProfile() {
 }
 
 /**
+ * List all pending GameApproval records assigned to the current user,
+ * enriched with game / league / participant context for Inbox display.
+ * Batches all secondary fetches to avoid N+1.
+ */
+export async function listMyPendingApprovals(auth) {
+  if (auth.isGuest || !auth.currentUser) return [];
+
+  // 1. My pending approvals
+  const myApprovals = await base44.entities.GameApproval.filter({
+    approver_user_id: auth.currentUser.id,
+    status: "pending",
+  });
+  if (myApprovals.length === 0) return [];
+
+  const gameIds = [...new Set(myApprovals.map((a) => a.game_id))];
+
+  // 2. Fetch games + all approvals for those games in parallel
+  const [games, allApprovalArrays, participantArrays] = await Promise.all([
+    Promise.all(gameIds.map((gid) => base44.entities.Game.filter({ id: gid }).then((r) => r[0]))),
+    Promise.all(gameIds.map((gid) => base44.entities.GameApproval.filter({ game_id: gid }))),
+    Promise.all(gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }))),
+  ]);
+
+  // Filter out any games that no longer exist or are no longer pending
+  const validGames = games.filter(Boolean).filter((g) => g.status === "pending");
+  const validGameIds = new Set(validGames.map((g) => g.id));
+
+  // 3. Batch fetch leagues + profiles
+  const leagueIds = [...new Set(validGames.map((g) => g.league_id))];
+  const allParticipants = participantArrays.flat();
+  const participantUserIds = [...new Set(allParticipants.map((p) => p.user_id))];
+
+  const [allLeagues, allProfiles] = await Promise.all([
+    base44.entities.League.list("-created_date", 200),
+    base44.entities.Profile.list("-created_date", 200),
+  ]);
+
+  const leagueMap = {};
+  allLeagues.forEach((l) => { leagueMap[l.id] = l; });
+  const profileMap = {};
+  allProfiles.forEach((p) => { profileMap[p.id] = p; });
+
+  // 4. Assemble rows
+  return gameIds
+    .map((gid, i) => {
+      const game = games[i];
+      if (!game || !validGameIds.has(gid)) return null;
+
+      const approval = myApprovals.find((a) => a.game_id === gid);
+      const league = leagueMap[game.league_id];
+      const participants = participantArrays[i].map((p) => ({
+        userId: p.user_id,
+        display_name: profileMap[p.user_id]?.display_name || "Unknown",
+        avatar_url: profileMap[p.user_id]?.avatar_url || null,
+        result: p.result || null,
+        placement: p.placement || null,
+        deck: null, // not needed for inbox row
+      }));
+
+      const approvalRecords = allApprovalArrays[i];
+      const approvalSummary = {
+        total: approvalRecords.length,
+        approved: approvalRecords.filter((a) => a.status === "approved").length,
+        rejected: approvalRecords.filter((a) => a.status === "rejected").length,
+        pending: approvalRecords.filter((a) => a.status === "pending").length,
+        records: approvalRecords,
+      };
+
+      // Who submitted? (created_by is game creator email, map to profile)
+      const submittedByProfile = Object.values(profileMap).find(
+        (p) => p.email === game.created_by
+      );
+
+      return {
+        approvalId: approval?.id,
+        game: {
+          id: game.id,
+          status: game.status,
+          played_at: game.played_at || game.created_date,
+          created_date: game.created_date,
+          notes: game.notes || "",
+          participants,
+          approvalSummary,
+        },
+        leagueId: game.league_id,
+        leagueName: league?.name || "Unknown League",
+        submittedByName: submittedByProfile?.display_name || null,
+      };
+    })
+    .filter(Boolean);
+}
+
+/**
  * Permission helper: Can the current user read this league?
  */
 export function canReadLeague(league, membership) {
