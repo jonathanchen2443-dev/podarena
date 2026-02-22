@@ -28,7 +28,8 @@ export default function LeagueDetails() {
   const { isGuest, authLoading } = auth;
   const navigate = useNavigate();
   const leagueId = getLeagueIdFromPath();
-  const [activeTab, setActiveTab] = useState("standings");
+  const initialTab = new URLSearchParams(window.location.search).get("tab") || "standings";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [league, setLeague] = useState(null);
   const [isMember, setIsMember] = useState(false);
   const [loading, setLoading] = useState(true);
