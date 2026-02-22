@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, Lock, AlertCircle, RefreshCw, Swords, ChevronRight } from "lucide-react";
+import { Bell, Lock, AlertCircle, RefreshCw, ChevronRight } from "lucide-react";
 import { LoadingState, EmptyState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
