@@ -50,6 +50,7 @@
 import Approvals from './pages/Approvals';
 import Dashboard from './pages/Dashboard';
 import Decks from './pages/Decks';
+import Home from './pages/Home';
 import Inbox from './pages/Inbox';
 import LeagueDetails from './pages/LeagueDetails';
 import Leagues from './pages/Leagues';
@@ -59,7 +60,6 @@ import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
 import UserProfile from './pages/UserProfile';
-import Home from './pages/Home';
 import __Layout from './Layout.jsx';
 
 
@@ -67,6 +67,7 @@ export const PAGES = {
     "Approvals": Approvals,
     "Dashboard": Dashboard,
     "Decks": Decks,
+    "Home": Home,
     "Inbox": Inbox,
     "LeagueDetails": LeagueDetails,
     "Leagues": Leagues,
@@ -76,7 +77,6 @@ export const PAGES = {
     "ProfileDecks": ProfileDecks,
     "Register": Register,
     "UserProfile": UserProfile,
-    "Home": Home,
 }
 
 export const pagesConfig = {
