@@ -1,237 +1,325 @@
-import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { getOrCreateProfile } from "@/components/services/gameService";
-import { Swords, Shield, Users, AlertCircle, ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/components/auth/AuthContext";
+import { getDashboardData } from "@/components/services/dashboardService";
+import { base44 } from "@/api/base44Client";
+import {
+  Users, Bell, Swords, BookOpen, ChevronRight, LogIn,
+  Plus, RefreshCw, AlertCircle, Layers, Trophy
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistanceToNow } from "date-fns";
+import { createPageUrl } from "@/utils";
 
-export default function Dashboard() {
-  const [profile, setProfile] = useState(null);
-  const [leagues, setLeagues] = useState([]);
-  const [pendingApprovals, setPendingApprovals] = useState([]);
-  const [recentGames, setRecentGames] = useState([]);
-  const [decks, setDecks] = useState([]);
-  const [loading, setLoading] = useState(true);
+// ── Status badge ──────────────────────────────────────────────────────────────
+const STATUS_STYLES = {
+  approved: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  pending:  "bg-amber-500/10  text-amber-400  border-amber-500/20",
+  rejected: "bg-red-500/10   text-red-400    border-red-500/20",
+};
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
+function StatusBadge({ status }) {
+  return (
+    <Badge variant="outline" className={STATUS_STYLES[status] || STATUS_STYLES.pending}>
+      {status}
+    </Badge>
+  );
+}
 
-  async function loadDashboard() {
-    const p = await getOrCreateProfile();
-    if (!p) {
-      base44.auth.redirectToLogin();
-      return;
-    }
-    setProfile(p);
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function StatCard({ icon: Icon, iconClass, label, value, to, badge }) {
+  const inner = (
+    <CardContent className="p-4 flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconClass}`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-2xl font-bold text-white leading-none">{value}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+      </div>
+      {badge !== undefined && badge > 0 && (
+        <span className="text-xs font-semibold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
+          {badge}
+        </span>
+      )}
+      {to && <ChevronRight className="w-4 h-4 text-gray-600" />}
+    </CardContent>
+  );
 
-    const [allLeagues, allApprovals, allGames, allDecks] = await Promise.all([
-      base44.entities.LeagueMember.filter({ user_id: p.id, status: "active" }),
-      base44.entities.GameApproval.filter({ approver_user_id: p.id, status: "pending" }),
-      base44.entities.GameParticipant.filter({ user_id: p.id }),
-      base44.entities.Deck.filter({ owner_id: p.id }),
-    ]);
+  if (to) {
+    return (
+      <Link to={to}>
+        <Card className="bg-gray-900/60 border-gray-800/50 hover:border-gray-700/50 transition-colors cursor-pointer">
+          {inner}
+        </Card>
+      </Link>
+    );
+  }
+  return (
+    <Card className="bg-gray-900/60 border-gray-800/50">
+      {inner}
+    </Card>
+  );
+}
 
-    // Get league details
-    const leagueIds = [...new Set(allLeagues.map((m) => m.league_id))];
-    const leagueDetails = [];
-    for (const id of leagueIds) {
-      const leagues = await base44.entities.League.filter({ id });
-      if (leagues.length) leagueDetails.push(leagues[0]);
-    }
+// ── Skeleton loader ───────────────────────────────────────────────────────────
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-7 w-48 bg-gray-800 rounded-lg" />
+        <Skeleton className="h-4 w-64 bg-gray-800 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {[1,2,3,4].map(i => <Skeleton key={i} className="h-20 bg-gray-800 rounded-xl" />)}
+      </div>
+      <Skeleton className="h-40 bg-gray-800 rounded-xl" />
+    </div>
+  );
+}
 
-    setLeagues(leagueDetails);
-    setPendingApprovals(allApprovals);
-    setDecks(allDecks);
+// ── Guest view ────────────────────────────────────────────────────────────────
+function GuestView() {
+  return (
+    <div className="space-y-8">
+      <div className="text-center pt-6 pb-2">
+        <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">
+          <Trophy className="w-8 h-8 text-violet-400" />
+        </div>
+        <h1 className="text-2xl font-bold text-white">Commander League Tracker</h1>
+        <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto">
+          Track games, standings, and approvals across your playgroup leagues.
+        </p>
+      </div>
 
-    // Get recent games
-    const gameIds = [...new Set(allGames.map((gp) => gp.game_id))];
-    const gameDetails = [];
-    for (const id of gameIds.slice(0, 5)) {
-      const games = await base44.entities.Game.filter({ id });
-      if (games.length) gameDetails.push(games[0]);
-    }
-    setRecentGames(gameDetails.sort((a, b) => new Date(b.played_at) - new Date(a.played_at)));
+      <div className="grid grid-cols-1 gap-3">
+        <Button
+          className="bg-violet-600 hover:bg-violet-700 text-white h-11 rounded-xl"
+          onClick={() => base44.auth.redirectToLogin()}
+        >
+          <LogIn className="w-4 h-4 mr-2" />
+          Sign In
+        </Button>
+        <Link to={ROUTES.LEAGUES}>
+          <Button variant="outline" className="w-full border-gray-700 text-gray-300 hover:bg-gray-800 h-11 rounded-xl">
+            <Layers className="w-4 h-4 mr-2" />
+            Browse Leagues
+          </Button>
+        </Link>
+      </div>
 
-    setLoading(false);
+      <Card className="bg-gray-900/60 border-gray-800/50">
+        <CardContent className="p-4 space-y-3">
+          {[
+            { icon: Swords, label: "Log game results with your playgroup" },
+            { icon: Bell, label: "Approve or reject games logged by others" },
+            { icon: Trophy, label: "Track standings across multiple leagues" },
+          ].map(({ icon: Icon, label }, i) => (
+            <div key={i} className="flex items-center gap-3 text-gray-400 text-sm">
+              <Icon className="w-4 h-4 text-violet-400 flex-shrink-0" />
+              <span>{label}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <p className="text-center text-gray-600 text-xs">
+        Game logging and approvals require a free account.
+      </p>
+    </div>
+  );
+}
+
+// ── Authenticated view ────────────────────────────────────────────────────────
+function AuthDashboard({ data, displayName }) {
+  const { myLeaguesCount, pendingApprovalsCount, myDecksCount, recentGames } = data;
+
+  function gameUrl(game) {
+    return `${ROUTES.LEAGUE_DETAILS(game.league_id)}&tab=games&gameId=${game.id}`;
   }
 
-  const statusColors = {
-    approved: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    pending: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-    rejected: "bg-red-500/10 text-red-400 border-red-500/20",
-  };
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold text-white">
+          {displayName ? `Hey, ${displayName} 👋` : "Welcome back 👋"}
+        </h1>
+        <p className="text-gray-400 text-sm mt-0.5">Track games, approvals, and league activity.</p>
+      </div>
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-950 p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <Skeleton className="h-10 w-48 bg-gray-800" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-32 bg-gray-800 rounded-xl" />
-            ))}
-          </div>
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard
+          icon={Users}
+          iconClass="bg-violet-500/10 text-violet-400"
+          label="My Leagues"
+          value={myLeaguesCount}
+          to={ROUTES.LEAGUES}
+        />
+        <StatCard
+          icon={Bell}
+          iconClass="bg-amber-500/10 text-amber-400"
+          label="Pending Approvals"
+          value={pendingApprovalsCount}
+          to={ROUTES.INBOX}
+          badge={pendingApprovalsCount}
+        />
+        <StatCard
+          icon={BookOpen}
+          iconClass="bg-sky-500/10 text-sky-400"
+          label="My Decks"
+          value={myDecksCount}
+          to={ROUTES.PROFILE_DECKS}
+        />
+        <StatCard
+          icon={Swords}
+          iconClass="bg-emerald-500/10 text-emerald-400"
+          label="Recent Games"
+          value={recentGames.length}
+        />
+      </div>
+
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link to={ROUTES.LOG_GAME}>
+          <Button className="w-full bg-violet-600 hover:bg-violet-700 h-10 rounded-xl text-sm">
+            <Plus className="w-4 h-4 mr-1.5" />
+            Log Game
+          </Button>
+        </Link>
+        <Link to={ROUTES.INBOX}>
+          <Button variant="outline" className="w-full border-gray-700 text-gray-300 hover:bg-gray-800 h-10 rounded-xl text-sm relative">
+            <Bell className="w-4 h-4 mr-1.5" />
+            Inbox
+            {pendingApprovalsCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
+                {pendingApprovalsCount > 9 ? "9+" : pendingApprovalsCount}
+              </span>
+            )}
+          </Button>
+        </Link>
+      </div>
+
+      {/* Recent activity */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-300">Recent Activity</h2>
+          <Link to={ROUTES.LEAGUES} className="text-xs text-violet-400 hover:text-violet-300">
+            View Leagues →
+          </Link>
         </div>
+
+        {recentGames.length === 0 ? (
+          <Card className="bg-gray-900/60 border-gray-800/50">
+            <CardContent className="p-8 text-center">
+              <Swords className="w-8 h-8 text-gray-700 mx-auto mb-2" />
+              <p className="text-gray-500 text-sm">No games yet.</p>
+              <Link to={ROUTES.LOG_GAME}>
+                <Button variant="ghost" size="sm" className="text-violet-400 hover:text-violet-300 mt-2">
+                  Log your first game
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-gray-900/60 border-gray-800/50">
+            <CardContent className="p-0">
+              {recentGames.map((game, i) => (
+                <Link
+                  key={game.id}
+                  to={gameUrl(game)}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors border-b border-gray-800/50 last:border-0"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-white text-sm font-medium truncate">{game.leagueName}</span>
+                      <StatusBadge status={game.status} />
+                    </div>
+                    <p className="text-gray-500 text-xs truncate">{game.participantsSummary}</p>
+                    <p className="text-gray-600 text-xs mt-0.5">
+                      {formatDistanceToNow(new Date(game.played_at), { addSuffix: true })}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+export default function Dashboard() {
+  const auth = useAuth();
+  const { isGuest, authLoading, currentUser } = auth;
+
+  const [data, setData] = useState(null);
+  const [displayName, setDisplayName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const fetchingRef = useRef(false);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (isGuest) { setLoading(false); return; }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isGuest]);
+
+  async function load() {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    setLoading(true);
+    setError(null);
+    try {
+      // Get display name from profile
+      if (currentUser) {
+        const profiles = await base44.entities.Profile.filter({ email: currentUser.email });
+        if (profiles.length > 0) setDisplayName(profiles[0].display_name || "");
+        else setDisplayName(currentUser.full_name || "");
+      }
+      const result = await getDashboardData(auth);
+      setData(result);
+    } catch (e) {
+      const isRate = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
+      setError(isRate ? "Too many requests right now. Please wait a few seconds and try again." : (e.message || "Failed to load dashboard."));
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+    }
+  }
+
+  if (authLoading || loading) return <DashboardSkeleton />;
+
+  if (isGuest) return <GuestView />;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center px-6">
+        <AlertCircle className="w-10 h-10 text-red-400/70" />
+        <p className="text-red-400 text-sm font-medium">{error}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-gray-700 text-gray-300 hover:bg-gray-800"
+          onClick={() => { fetchingRef.current = false; load(); }}
+        >
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+          Retry
+        </Button>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, {profile?.display_name}
-          </h1>
-          <p className="text-gray-400 mt-1">Here's what's happening in your leagues.</p>
-        </div>
+  if (!data) return null;
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-gray-900/50 border-gray-800/50">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-violet-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{leagues.length}</p>
-                <p className="text-sm text-gray-400">Leagues</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900/50 border-gray-800/50">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Swords className="w-5 h-5 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{recentGames.length}</p>
-                <p className="text-sm text-gray-400">Games</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900/50 border-gray-800/50">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-sky-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{decks.length}</p>
-                <p className="text-sm text-gray-400">Decks</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900/50 border-gray-800/50">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-rose-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{pendingApprovals.length}</p>
-                <p className="text-sm text-gray-400">Pending Approvals</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Games */}
-          <Card className="bg-gray-900/50 border-gray-800/50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-white">Recent Games</CardTitle>
-                <Link to={ROUTES.LEAGUES}>
-                  <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                    View All <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {recentGames.length === 0 ? (
-                <p className="text-gray-500 text-sm py-4 text-center">No games yet. Log your first game!</p>
-              ) : (
-                recentGames.map((game) => (
-                  <div
-                    key={game.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-800/30 border border-gray-800/50"
-                  >
-                    <div>
-                      <p className="text-sm text-white font-medium">
-                        {new Date(game.played_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </p>
-                      {game.notes && (
-                        <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">{game.notes}</p>
-                      )}
-                    </div>
-                    <Badge variant="outline" className={statusColors[game.status]}>
-                      {game.status}
-                    </Badge>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Your Leagues */}
-          <Card className="bg-gray-900/50 border-gray-800/50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg text-white">Your Leagues</CardTitle>
-                <Link to={ROUTES.LEAGUES}>
-                  <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                    View All <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {leagues.length === 0 ? (
-                <p className="text-gray-500 text-sm py-4 text-center">You haven't joined any leagues yet.</p>
-              ) : (
-                leagues.map((league) => (
-                  <Link
-                    key={league.id}
-                    to={ROUTES.LEAGUE_DETAILS(league.id)}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-800/30 border border-gray-800/50 hover:border-gray-700/50 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm text-white font-medium">{league.name}</p>
-                      {league.description && (
-                        <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">
-                          {league.description}
-                        </p>
-                      )}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={
-                        league.is_public
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                          : "bg-gray-500/10 text-gray-400 border-gray-500/20"
-                      }
-                    >
-                      {league.is_public ? "Public" : "Private"}
-                    </Badge>
-                  </Link>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
+  return <AuthDashboard data={data} displayName={displayName} />;
 }
