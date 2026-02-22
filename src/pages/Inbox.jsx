@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
 import { base44 } from "@/api/base44Client";
-import { listMyPendingApprovals, invalidateApprovalCache } from "@/components/services/gameService";
+import { listMyPendingApprovals } from "@/components/services/gameService";
 import { invalidateLeagueCache } from "@/components/services/leagueService";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 import { formatDistanceToNow } from "date-fns";
