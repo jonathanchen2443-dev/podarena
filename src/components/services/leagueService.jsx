@@ -297,6 +297,31 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
   return cacheSet(cKey, result);
 }
 
+// ── Leagues for Game Logging ──────────────────────────────────────────────────
+
+/**
+ * Returns only leagues where the current user is an active member
+ * (they can submit games to these leagues).
+ * Result is cached 60s.
+ */
+export async function listLeaguesForGameLogging(auth) {
+  if (auth.isGuest || !auth.currentUser) return [];
+  const cKey = cacheKey("leaguesForLogging", auth.currentUser.id);
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
+
+  const memberships = await base44.entities.LeagueMember.filter({
+    user_id: auth.currentUser.id,
+    status: "active",
+  });
+  if (memberships.length === 0) return cacheSet(cKey, []);
+
+  const leagueIds = memberships.map((m) => m.league_id);
+  const allLeagues = await base44.entities.League.list("-created_date", 100);
+  const result = allLeagues.filter((l) => leagueIds.includes(l.id));
+  return cacheSet(cKey, result);
+}
+
 // ── Members ───────────────────────────────────────────────────────────────────
 
 export async function listLeagueMembers(auth, leagueId) {
