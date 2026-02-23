@@ -6,6 +6,7 @@ import { X, Trophy, User, CheckCircle, XCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { approveGame, rejectGame } from "@/components/services/gameService";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
+import { toast } from "sonner";
 
 function statusBadge(status) {
   if (status === "approved") return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Approved</Badge>;
