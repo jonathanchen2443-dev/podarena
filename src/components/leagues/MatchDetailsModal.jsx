@@ -77,28 +77,38 @@ export default function MatchDetailsModal({ game, auth, leagueId, onClose, onAct
   const canAct = !auth.isGuest && !!myApproval && game.status === "pending";
 
   async function handleApprove() {
+    if (actionLoading) return;
     setActionLoading("approve");
     setActionError(null);
     try {
       await approveGame(game.id, currentUserId);
+      toast.success("Game approved!");
       await onActionComplete();
       onClose();
     } catch (e) {
-      setActionError(e.message);
+      const isRate = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
+      const msg = isRate ? "Too many requests. Wait a moment and try again." : (e.message || "Failed to approve.");
+      setActionError(msg);
+      toast.error(msg);
     } finally {
       setActionLoading(null);
     }
   }
 
   async function handleReject() {
+    if (actionLoading) return;
     setActionLoading("reject");
     setActionError(null);
     try {
       await rejectGame(game.id, currentUserId, "");
+      toast.success("Game rejected.");
       await onActionComplete();
       onClose();
     } catch (e) {
-      setActionError(e.message);
+      const isRate = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
+      const msg = isRate ? "Too many requests. Wait a moment and try again." : (e.message || "Failed to reject.");
+      setActionError(msg);
+      toast.error(msg);
     } finally {
       setActionLoading(null);
     }
