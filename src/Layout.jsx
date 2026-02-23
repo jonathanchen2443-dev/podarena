@@ -7,6 +7,7 @@ import { ROUTES } from "@/components/utils/routes";
 import TopBar from "@/components/shell/TopBar";
 import BottomNav from "@/components/shell/BottomNav";
 import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
 // Pages that use the app shell (bottom nav + top bar)
 const SHELL_PAGES = ["home", "dashboard", "leagueslist", "loggame", "inbox", "profile"];
