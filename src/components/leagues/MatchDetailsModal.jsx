@@ -183,23 +183,32 @@ export default function MatchDetailsModal({ game, auth, leagueId, onClose, onAct
             </div>
           </div>
 
-          {/* Approvals summary */}
+          {/* Approvals breakdown */}
           {total > 0 && (
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Approvals</p>
-              <div className="flex gap-3">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-xs text-gray-300">{approved} approved</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-xs text-gray-300">{pending} pending</span>
-                </div>
-                {rejected > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <XCircle className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-xs text-gray-300">{rejected} rejected</span>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                Approvals · {approved}/{total} complete
+              </p>
+              <div className="space-y-1.5">
+                {approvedNames.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-emerald-400 font-medium">Approved: </span>
+                    <span className="text-xs text-gray-300">{approvedNames.join(", ")}</span>
+                  </div>
+                )}
+                {pendingNames.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <Clock className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-amber-400 font-medium">Pending: </span>
+                    <span className="text-xs text-gray-300">{pendingNames.join(", ")}</span>
+                  </div>
+                )}
+                {rejectedNames.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <XCircle className="w-3.5 h-3.5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-red-400 font-medium">Rejected: </span>
+                    <span className="text-xs text-gray-300">{rejectedNames.join(", ")}</span>
                   </div>
                 )}
               </div>
