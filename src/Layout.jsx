@@ -82,6 +82,7 @@ function AppShell({ children, currentPageName }) {
       </main>
       <BottomNav />
       <div id="modal-root" />
+      <Toaster position="bottom-center" richColors />
     </div>
   );
 }
