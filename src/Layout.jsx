@@ -94,6 +94,7 @@ function StandaloneShell({ children }) {
       {children}
       {/* modal-root available even on standalone pages */}
       <div id="modal-root" />
+      <Toaster position="bottom-center" richColors />
     </div>
   );
 }
