@@ -114,7 +114,15 @@ export default function MatchDetailsModal({ game, auth, leagueId, onClose, onAct
     }
   }
 
-  const { approved, rejected, pending, total } = game.approvalSummary;
+  const { approved, rejected, pending, total, records } = game.approvalSummary;
+
+  // Build per-name breakdown using participant data as a profile map
+  const participantNameMap = {};
+  game.participants.forEach((p) => { participantNameMap[p.userId] = p.display_name; });
+
+  const approvedNames = records.filter((r) => r.status === "approved").map((r) => participantNameMap[r.approver_user_id] || "Unknown");
+  const pendingNames  = records.filter((r) => r.status === "pending").map((r) => participantNameMap[r.approver_user_id] || "Unknown");
+  const rejectedNames = records.filter((r) => r.status === "rejected").map((r) => participantNameMap[r.approver_user_id] || "Unknown");
 
   const modal = (
     <div
