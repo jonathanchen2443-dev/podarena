@@ -188,7 +188,7 @@ export async function getLeagueStandings(auth, leagueId) {
   const rows = userIds.map((uid) => {
     const s = statsMap[uid] || { wins: 0, losses: 0, draws: 0, gamesPlayed: 0, participations: [] };
     const profile = profileMap[uid];
-    const totalPoints = s.wins * 3 + s.draws * 1;
+    const totalPoints = s.wins * 1; // win=1, draw=0, loss=0
     const winRate = s.gamesPlayed > 0 ? Math.round((s.wins / s.gamesPlayed) * 1000) / 10 : 0;
 
     const sorted = [...s.participations].sort((a, b) => new Date(b.date) - new Date(a.date));
