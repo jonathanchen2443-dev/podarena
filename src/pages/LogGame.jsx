@@ -153,6 +153,7 @@ export default function LogGame() {
         participants: participantsPayload,
       });
 
+      toast.success("Game logged! Waiting for participant approvals.");
       // Navigate to LeagueDetails Games tab, open the new game's modal
       const dest = `${ROUTES.LEAGUE_DETAILS(selectedLeagueId)}&tab=games&gameId=${game.id}`;
       navigate(dest);
