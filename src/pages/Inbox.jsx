@@ -32,9 +32,16 @@ function ApprovalRow({ row, onClick }) {
           </span>
         </div>
         <p className="text-gray-400 text-xs truncate">{preview}</p>
-        {submittedByName && (
-          <p className="text-gray-600 text-xs">Logged by {submittedByName}</p>
-        )}
+        <div className="flex items-center gap-2 mt-0.5">
+          {submittedByName && (
+            <p className="text-gray-600 text-xs">Logged by {submittedByName}</p>
+          )}
+          {game.approvalSummary && game.approvalSummary.total > 0 && (
+            <span className="text-xs text-amber-500/80">
+              · {game.approvalSummary.approved}/{game.approvalSummary.total} approved
+            </span>
+          )}
+        </div>
       </div>
       <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
     </button>
