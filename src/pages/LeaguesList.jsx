@@ -40,7 +40,7 @@ export default function LeaguesList() {
         {!isGuest && (
           <button
             className="text-sm text-violet-400 font-medium flex items-center gap-1"
-            onClick={() => toast.info("League creation coming soon!")}
+            onClick={() => navigate(ROUTES.CREATE_LEAGUE)}
           >
             <Plus className="w-3.5 h-3.5" /> New League
           </button>
