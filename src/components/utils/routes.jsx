@@ -20,6 +20,9 @@ export const ROUTES = {
   PROFILE_DECK_NEW: `${createPageUrl("ProfileDecks")}?mode=new`,
   PROFILE_DECK_EDIT: (id) => `${createPageUrl("ProfileDecks")}?mode=edit&deckId=${id}`,
 
+  // Create league — dedicated page
+  CREATE_LEAGUE: createPageUrl("CreateLeague"),
+
   // League details — on the LeagueDetails page, id via ?leagueId= query param
   LEAGUE_DETAILS: (id) => `${createPageUrl("LeagueDetails")}?leagueId=${id}`,
 
