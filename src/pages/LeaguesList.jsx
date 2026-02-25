@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/AuthContext";
 import { listVisibleLeagues } from "@/components/services/leagueService";
-import { toast } from "sonner";
 
 export default function LeaguesList() {
   const auth = useAuth();
