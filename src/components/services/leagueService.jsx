@@ -297,6 +297,40 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
   return cacheSet(cKey, result);
 }
 
+// ── Create League ─────────────────────────────────────────────────────────────
+
+/**
+ * Create a new league and add the creator as admin member.
+ * Returns { league, membership }.
+ */
+export async function createLeague(auth, { name, description, is_public }) {
+  if (auth.isGuest || !auth.currentUser) {
+    throw new Error("You must be signed in to create a league.");
+  }
+  const trimmedName = (name || "").trim();
+  if (!trimmedName) throw new Error("League name is required.");
+  if (trimmedName.length > 100) throw new Error("League name is too long (max 100 characters).");
+
+  const league = await base44.entities.League.create({
+    name: trimmedName,
+    description: (description || "").trim(),
+    is_public: is_public !== false, // default true
+  });
+
+  const membership = await base44.entities.LeagueMember.create({
+    league_id: league.id,
+    user_id: auth.currentUser.id,
+    role: "admin",
+    status: "active",
+    joined_at: new Date().toISOString(),
+  });
+
+  // Invalidate relevant caches
+  invalidateLeagueCache(league.id);
+
+  return { league, membership };
+}
+
 // ── Leagues for Game Logging ──────────────────────────────────────────────────
 
 /**
