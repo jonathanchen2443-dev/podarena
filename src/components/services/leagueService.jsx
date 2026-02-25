@@ -143,32 +143,38 @@ export async function getLeagueStandings(auth, leagueId) {
   // Visibility gate (cached internally)
   await getLeagueById(auth, leagueId);
 
-  // 1. Fetch approved games
-  const games = await base44.entities.Game.filter({ league_id: leagueId, status: "approved" });
-  if (games.length === 0) return cacheSet(cKey, []);
+  // 1. Fetch all active league members (determines who appears in standings)
+  const activeMembers = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    status: "active",
+  });
+  const allMemberUserIds = [...new Set(activeMembers.map((m) => m.user_id))];
 
+  // 2. Fetch approved games
+  const games = await base44.entities.Game.filter({ league_id: leagueId, status: "approved" });
   const gameIds = games.map((g) => g.id);
 
-  // 2. Fetch all participants for all games in parallel (one filter per game, but batched)
-  const participantArrays = await Promise.all(
-    gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }))
-  );
+  // 3. Fetch all participants for all games in parallel
+  const participantArrays = gameIds.length > 0
+    ? await Promise.all(gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid })))
+    : [];
   const allParticipants = participantArrays.flat();
 
-  // 3. Batch-fetch profiles and decks (single list call each)
-  const userIds = [...new Set(allParticipants.map((p) => p.user_id))];
+  // 4. Batch-fetch profiles (union of member ids + participant ids) and decks
+  const participantUserIds = allParticipants.map((p) => p.user_id);
+  const allUserIds = [...new Set([...allMemberUserIds, ...participantUserIds])];
   const deckIds = [...new Set(allParticipants.map((p) => p.deck_id).filter(Boolean))];
 
   const [profileMap, deckMap] = await Promise.all([
-    _fetchProfileMap(userIds),
+    _fetchProfileMap(allUserIds),
     _fetchDeckMap(deckIds),
   ]);
 
-  // 4. Build game date lookup
+  // 5. Build game date lookup
   const gameDateMap = {};
   games.forEach((g) => { gameDateMap[g.id] = g.played_at || g.created_date; });
 
-  // 5. Aggregate per user
+  // 6. Aggregate stats per user from approved game participants
   const statsMap = {};
   for (const p of allParticipants) {
     if (!statsMap[p.user_id]) {
@@ -184,11 +190,11 @@ export async function getLeagueStandings(auth, leagueId) {
     s.participations.push({ game_id: p.game_id, deck_id: p.deck_id, date: gameDateMap[p.game_id] });
   }
 
-  // 6. Shape rows
-  const rows = userIds.map((uid) => {
+  // 7. Shape rows — start from ALL active members (zero-game members included)
+  const rows = allMemberUserIds.map((uid) => {
     const s = statsMap[uid] || { wins: 0, losses: 0, draws: 0, gamesPlayed: 0, participations: [] };
     const profile = profileMap[uid];
-    const totalPoints = s.wins * 1; // win=1, draw=0, loss=0
+    const totalPoints = s.wins; // win=1, draw=0, loss=0
     const winRate = s.gamesPlayed > 0 ? Math.round((s.wins / s.gamesPlayed) * 1000) / 10 : 0;
 
     const sorted = [...s.participations].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -216,10 +222,12 @@ export async function getLeagueStandings(auth, leagueId) {
     };
   });
 
+  // 8. Sort: points → winRate → wins → losses (asc) → name (asc)
   rows.sort((a, b) => {
     if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
     if (b.winRate !== a.winRate) return b.winRate - a.winRate;
     if (b.wins !== a.wins) return b.wins - a.wins;
+    if (a.losses !== b.losses) return a.losses - b.losses;
     return a.display_name.localeCompare(b.display_name);
   });
 
