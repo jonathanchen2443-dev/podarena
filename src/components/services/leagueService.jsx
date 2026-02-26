@@ -72,12 +72,12 @@ export async function listVisibleLeagues(auth) {
 
 /**
  * Fetch a single league by ID and enforce visibility.
- * Returns { league, isMember }
- * Cached per leagueId + userId.
+ * Returns { league, isMember, accessMode: "member" | "public" | "invited_view" }
+ * Cached per leagueId + userId + inviteToken.
  */
-export async function getLeagueById(auth, leagueId) {
+export async function getLeagueById(auth, leagueId, inviteToken = null) {
   const userId = auth.currentUser?.id || "guest";
-  const key = cacheKey("leagueById", leagueId, userId);
+  const key = cacheKey("leagueById", leagueId, userId, inviteToken || "");
   const cached = cacheGet(key);
   if (cached !== null) return cached;
 
@@ -89,16 +89,23 @@ export async function getLeagueById(auth, leagueId) {
     const isMember = auth.isGuest || !auth.currentUser
       ? false
       : await _checkMembership(auth.currentUser.id, leagueId);
-    return cacheSet(key, { league, isMember });
+    const accessMode = isMember ? "member" : "public";
+    return cacheSet(key, { league, isMember, accessMode });
   }
 
   // Private league
   if (auth.isGuest || !auth.currentUser) throw new Error("private");
 
   const isMember = await _checkMembership(auth.currentUser.id, leagueId);
-  if (!isMember) throw new Error("restricted");
+  if (isMember) return cacheSet(key, { league, isMember: true, accessMode: "member" });
 
-  return cacheSet(key, { league, isMember });
+  // Non-member: check invite token
+  if (inviteToken) {
+    const { valid } = await validateInvite(leagueId, inviteToken);
+    if (valid) return cacheSet(key, { league, isMember: false, accessMode: "invited_view" });
+  }
+
+  throw new Error("restricted");
 }
 
 // ── Shared batch helpers ──────────────────────────────────────────────────────
