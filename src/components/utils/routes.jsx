@@ -26,6 +26,9 @@ export const ROUTES = {
   // League details — on the LeagueDetails page, id via ?leagueId= query param
   LEAGUE_DETAILS: (id) => `${createPageUrl("LeagueDetails")}?leagueId=${id}`,
 
+  // League invite link — appends invite token as query param
+  LEAGUE_INVITE: (id, token) => `${createPageUrl("LeagueDetails")}?leagueId=${id}&invite=${token}`,
+
   // Public user profile — read-only, id via ?userId= query param
   USER_PROFILE: (userId) => `${createPageUrl("UserProfile")}?userId=${userId}`,
 };
