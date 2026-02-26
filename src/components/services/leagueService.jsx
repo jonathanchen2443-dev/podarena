@@ -650,13 +650,14 @@ export async function removeMember(auth, leagueId, memberUserId) {
 
 // ── Members ───────────────────────────────────────────────────────────────────
 
-export async function listLeagueMembers(auth, leagueId) {
-  const cKey = cacheKey("members", leagueId, auth.currentUser?.id || "guest");
+export async function listLeagueMembers(auth, leagueId, inviteToken = null) {
+  const userId = auth.currentUser?.id || "guest";
+  const cKey = cacheKey("members", leagueId, userId, inviteToken || "none");
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
-  await getLeagueById(auth, leagueId);
+  await getLeagueById(auth, leagueId, inviteToken);
 
   const members = await base44.entities.LeagueMember.filter({
     league_id: leagueId,
