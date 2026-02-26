@@ -282,7 +282,8 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
         setMembers(data);
       }
     } catch (e) {
-      setMembersError(e.message?.toLowerCase().includes("rate") ? "Too many requests. Please wait and retry." : e.message);
+      const isRate = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
+      setMembersError(isRate ? "Too many requests right now. Please wait a few seconds and try again." : e.message);
       setMembers([]);
     } finally {
       setMembersLoading(false);
