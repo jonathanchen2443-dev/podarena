@@ -169,8 +169,8 @@ export async function getLeagueStandings(auth, leagueId) {
   const cKey = cacheKey("standings", leagueId, auth.currentUser?.id || "guest");
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
+  if (_inflight.has(cKey)) return _inflight.get(cKey);
 
-  // Visibility gate (cached internally)
   await getLeagueById(auth, leagueId);
 
   // 1. Fetch all active league members (determines who appears in standings)
