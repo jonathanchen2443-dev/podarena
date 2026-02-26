@@ -484,8 +484,12 @@ export async function getOrCreateInvite(auth, leagueId) {
     });
   }
 
-  const { ROUTES } = await import("@/components/utils/routes");
-  const url = `${window.location.origin}${ROUTES.LEAGUE_INVITE(leagueId, token)}`;
+  // Build invite URL directly (avoids circular import; ROUTES format is stable)
+  const base = window.location.origin;
+  const path = window.location.pathname.includes("league-details")
+    ? window.location.pathname
+    : "/league-details"; // fallback, Base44 router always uses this path
+  const url = `${base}${path}?leagueId=${leagueId}&invite=${token}`;
   const result = { token, url };
   return cacheSet(cKey, result);
 }
