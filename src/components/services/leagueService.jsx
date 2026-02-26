@@ -261,6 +261,9 @@ export async function getLeagueStandings(auth, leagueId) {
     return a.display_name.localeCompare(b.display_name);
   });
 
+  const promise = Promise.resolve(rows);
+  _inflight.set(cKey, promise);
+  promise.finally(() => _inflight.delete(cKey));
   return cacheSet(cKey, rows);
 }
 
