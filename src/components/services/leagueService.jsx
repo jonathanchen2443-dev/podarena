@@ -654,5 +654,8 @@ export async function listLeagueMembers(auth, leagueId) {
     };
   });
 
+  const membersPromise = Promise.resolve(result);
+  _inflight.set(cKey, membersPromise);
+  membersPromise.finally(() => _inflight.delete(cKey));
   return cacheSet(cKey, result);
 }
