@@ -321,11 +321,18 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     setLeaving(true);
     try {
       await leaveLeague(auth, league.id);
-      toast.success("You have left the league");
-      setIsMember(false);
-      setAccessMode(league.is_public ? "public" : "invited_view_expired");
-      setConfirmLeave(false);
       invalidateLeagueCache(league.id);
+      toast.success("You left the league");
+      if (!league.is_public) {
+        // Private league: user no longer has access — navigate away immediately
+        navigate(ROUTES.LEAGUES, { replace: true });
+        return;
+      }
+      // Public league: stay on page as a non-member
+      setIsMember(false);
+      setAccessMode("public");
+      setConfirmLeave(false);
+      updateQP({ invite: null });
     } catch (e) {
       toast.error(e.message || "Failed to leave.");
     } finally {
