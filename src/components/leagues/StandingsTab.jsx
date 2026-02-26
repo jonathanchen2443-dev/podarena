@@ -47,7 +47,7 @@ function RecentDecksCell({ recentDecks }) {
   );
 }
 
-export default function StandingsTab({ auth, leagueId }) {
+export default function StandingsTab({ auth, leagueId, inviteToken = null }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,7 +60,7 @@ export default function StandingsTab({ auth, leagueId }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await getLeagueStandings(auth, leagueId);
+      const data = await getLeagueStandings(auth, leagueId, inviteToken);
       setRows(data);
     } catch (e) {
       const isRateLimit = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
