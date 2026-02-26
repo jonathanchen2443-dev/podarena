@@ -45,9 +45,15 @@ export function invalidateLeagueCache(leagueId) {
   for (const key of _cache.keys()) {
     if (key.includes(leagueId)) _cache.delete(key);
   }
-  // Also clear any matching in-flight entries so the next call re-fetches fresh
   for (const key of _inflight.keys()) {
     if (key.includes(leagueId)) _inflight.delete(key);
+  }
+}
+
+/** Call after join/leave so the leagues list re-fetches for the current user. */
+export function invalidateLeaguesListCache() {
+  for (const key of _cache.keys()) {
+    if (key.startsWith("visibleLeagues::") || key.startsWith("leaguesForLogging::")) _cache.delete(key);
   }
 }
 
