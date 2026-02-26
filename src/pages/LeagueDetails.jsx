@@ -141,7 +141,7 @@ export default function LeagueDetails() {
       {/* Tab content */}
       {activeTab === "standings" && <StandingsTab auth={auth} leagueId={leagueId} />}
       {activeTab === "games" && <GamesTab auth={auth} leagueId={leagueId} />}
-      {activeTab === "info" && <InfoTab league={league} auth={auth} />}
+      {activeTab === "info" && <InfoTab league={league} auth={auth} onLeagueUpdated={handleLeagueUpdated} />}
     </div>
   );
 }
