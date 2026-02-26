@@ -38,6 +38,40 @@ export function invalidateLeagueCache(leagueId) {
   }
 }
 
+// ── Invite token validation (placed before getLeagueById which uses it) ───────
+
+/**
+ * Generate a UUID-like token.
+ */
+function _generateToken() {
+  const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1);
+  return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
+}
+
+/**
+ * Validate an invite token for a league. Does NOT require membership.
+ * Returns { valid: boolean, invite: record | null }
+ */
+export async function validateInvite(leagueId, token) {
+  if (!token) return { valid: false, invite: null };
+  const cKey = cacheKey("invite_validate", leagueId, token);
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
+
+  const results = await base44.entities.LeagueInvite.filter({
+    league_id: leagueId,
+    token,
+    is_active: true,
+  });
+  const invite = results[0] || null;
+  if (!invite) return cacheSet(cKey, { valid: false, invite: null });
+
+  if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+    return cacheSet(cKey, { valid: false, invite: null });
+  }
+  return cacheSet(cKey, { valid: true, invite });
+}
+
 // ── Visibility Gate ───────────────────────────────────────────────────────────
 
 async function _checkMembership(profileId, leagueId) {
