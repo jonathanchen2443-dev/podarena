@@ -415,6 +415,23 @@ export async function listLeaguesForGameLogging(auth) {
 
 // ── Invite ────────────────────────────────────────────────────────────────────
 
+function _generateToken() {
+  const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1);
+  return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
+}
+
+export async function validateInvite(leagueId, token) {
+  if (!token) return { valid: false, invite: null };
+  const cKey = cacheKey("invite_validate", leagueId, token);
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
+  const results = await base44.entities.LeagueInvite.filter({ league_id: leagueId, token, is_active: true });
+  const invite = results[0] || null;
+  if (!invite) return cacheSet(cKey, { valid: false, invite: null });
+  if (invite.expires_at && new Date(invite.expires_at) < new Date()) return cacheSet(cKey, { valid: false, invite: null });
+  return cacheSet(cKey, { valid: true, invite });
+}
+
 /**
  * getOrCreateInvite: Get or create an active invite for a league.
  * Requires the caller to be an active member.
