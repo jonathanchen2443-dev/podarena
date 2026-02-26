@@ -145,12 +145,74 @@ export default function LeagueDetails() {
   );
 }
 
-function InfoTab({ league, auth }) {
+function InfoTab({ league: initialLeague, auth, onLeagueUpdated }) {
   const navigate = useNavigate();
+  const [league, setLeague] = useState(initialLeague);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);
   const [membersError, setMembersError] = useState(null);
   const fetchingRef = useRef(false);
+
+  // Admin check
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (auth.isGuest || !auth.currentUser) return;
+    isLeagueAdmin(auth, league.id).then(setIsAdmin);
+  }, [auth, league.id]);
+
+  // Inline edit state
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(league.name);
+  const [editDesc, setEditDesc] = useState(league.description || "");
+  const [editPublic, setEditPublic] = useState(league.is_public !== false);
+  const [editError, setEditError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+
+  function enterEdit() {
+    setEditName(league.name);
+    setEditDesc(league.description || "");
+    setEditPublic(league.is_public !== false);
+    setEditError(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setEditError(null);
+  }
+
+  async function handleSave() {
+    if (savingRef.current) return;
+    setEditError(null);
+    const trimmed = editName.trim();
+    if (!trimmed) { setEditError("League name is required."); return; }
+    if (trimmed.length > 100) { setEditError("League name is too long (max 100 characters)."); return; }
+
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await updateLeague(auth, league.id, {
+        name: trimmed,
+        description: editDesc,
+        is_public: editPublic,
+      });
+      const updated = { ...league, name: trimmed, description: editDesc, is_public: editPublic };
+      setLeague(updated);
+      onLeagueUpdated?.(updated);
+      setEditing(false);
+      toast.success("League updated");
+    } catch (e) {
+      const isRateLimit = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
+      setEditError(isRateLimit
+        ? "Too many requests right now. Please wait a few seconds and try again."
+        : e.message || "Failed to save. Please try again.");
+      savingRef.current = false;
+    } finally {
+      setSaving(false);
+      savingRef.current = false;
+    }
+  }
 
   async function loadMembers() {
     if (fetchingRef.current) return;
@@ -180,34 +242,139 @@ function InfoTab({ league, auth }) {
 
   return (
     <div className="space-y-3">
-      {/* League info */}
+      {/* League info card */}
       <Card className="bg-gray-900/60 border-gray-800/50">
-        <CardContent className="p-4 space-y-3">
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Name</p>
-            <p className="text-white text-sm font-medium">{league.name}</p>
-          </div>
-          {league.description && (
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Description</p>
-              <p className="text-gray-300 text-sm">{league.description}</p>
+        <CardContent className="p-4">
+          {editing ? (
+            /* ── INLINE EDIT FORM ── */
+            <div className="space-y-3">
+              {/* Name */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500 uppercase tracking-wider">
+                  League Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  maxLength={100}
+                  className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 transition-colors"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500 uppercase tracking-wider">
+                  Description <span className="text-gray-600">(optional)</span>
+                </label>
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 transition-colors resize-none"
+                />
+              </div>
+
+              {/* Visibility */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500 uppercase tracking-wider">Visibility</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditPublic(true)}
+                    className={`flex items-center gap-2 h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                      editPublic
+                        ? "border-violet-500 bg-violet-500/10 text-violet-300"
+                        : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
+                    }`}
+                  >
+                    <Globe className="w-4 h-4" /> Public
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditPublic(false)}
+                    className={`flex items-center gap-2 h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                      !editPublic
+                        ? "border-violet-500 bg-violet-500/10 text-violet-300"
+                        : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"
+                    }`}
+                  >
+                    <Lock className="w-4 h-4" /> Private
+                  </button>
+                </div>
+              </div>
+
+              {/* Error */}
+              {editError && (
+                <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  {editError}
+                </p>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <Button
+                  size="sm"
+                  disabled={saving}
+                  onClick={handleSave}
+                  className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex-1"
+                >
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={cancelEdit}
+                  className="border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* ── READ-ONLY VIEW ── */
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-3 flex-1 min-w-0">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Name</p>
+                    <p className="text-white text-sm font-medium">{league.name}</p>
+                  </div>
+                  {league.description && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Description</p>
+                      <p className="text-gray-300 text-sm">{league.description}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Visibility</p>
+                    <div className="flex items-center gap-1.5">
+                      {league.is_public ? (
+                        <Globe className="w-3.5 h-3.5 text-gray-400" />
+                      ) : (
+                        <Lock className="w-3.5 h-3.5 text-gray-400" />
+                      )}
+                      <p className="text-gray-300 text-sm">{league.is_public ? "Public" : "Private"}</p>
+                    </div>
+                  </div>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={enterEdit}
+                    className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 text-xs font-medium transition-colors flex-shrink-0"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </button>
+                )}
+              </div>
             </div>
           )}
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Visibility</p>
-            <div className="flex items-center gap-1.5">
-              {league.is_public ? (
-                <Globe className="w-3.5 h-3.5 text-gray-400" />
-              ) : (
-                <Lock className="w-3.5 h-3.5 text-gray-400" />
-              )}
-              <p className="text-gray-300 text-sm">{league.is_public ? "Public" : "Private"}</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Members */}
+      {/* Members — ADMIN badge preserved */}
       <div>
         <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 px-1">
           Members{members.length > 0 && !membersLoading ? ` · ${members.length}` : ""}
