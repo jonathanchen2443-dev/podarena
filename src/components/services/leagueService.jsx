@@ -178,13 +178,14 @@ async function _fetchDeckMap(deckIds) {
 
 // ── Standings ─────────────────────────────────────────────────────────────────
 
-export async function getLeagueStandings(auth, leagueId) {
-  const cKey = cacheKey("standings", leagueId, auth.currentUser?.id || "guest");
+export async function getLeagueStandings(auth, leagueId, inviteToken = null) {
+  const userId = auth.currentUser?.id || "guest";
+  const cKey = cacheKey("standings", leagueId, userId, inviteToken || "none");
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
-  await getLeagueById(auth, leagueId);
+  await getLeagueById(auth, leagueId, inviteToken);
 
   // 1. Fetch all active league members (determines who appears in standings)
   const activeMembers = await base44.entities.LeagueMember.filter({
