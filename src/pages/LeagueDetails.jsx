@@ -324,9 +324,8 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
       await leaveLeague(auth, league.id);
       toast.success("You have left the league");
       setIsMember(false);
-      setAccessMode(league.is_public ? "public" : "restricted");
+      setAccessMode(league.is_public ? "public" : "invited_view_expired");
       setConfirmLeave(false);
-      onJoined?.(); // trigger parent refresh (reuse onJoined as generic state refresh)
       invalidateLeagueCache(league.id);
     } catch (e) {
       toast.error(e.message || "Failed to leave.");
