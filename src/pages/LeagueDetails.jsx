@@ -118,7 +118,12 @@ export default function LeagueDetails() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              const url = new URL(window.location.href);
+              url.searchParams.set("tab", tab.id);
+              window.history.replaceState(null, "", url.toString());
+            }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
               activeTab === tab.id
                 ? "bg-violet-600 text-white"

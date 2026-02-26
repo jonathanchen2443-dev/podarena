@@ -48,6 +48,7 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import Approvals from './pages/Approvals';
+import CreateLeague from './pages/CreateLeague';
 import Dashboard from './pages/Dashboard';
 import Decks from './pages/Decks';
 import Home from './pages/Home';
@@ -60,12 +61,12 @@ import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
 import UserProfile from './pages/UserProfile';
-import CreateLeague from './pages/CreateLeague';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Approvals": Approvals,
+    "CreateLeague": CreateLeague,
     "Dashboard": Dashboard,
     "Decks": Decks,
     "Home": Home,
@@ -78,7 +79,6 @@ export const PAGES = {
     "ProfileDecks": ProfileDecks,
     "Register": Register,
     "UserProfile": UserProfile,
-    "CreateLeague": CreateLeague,
 }
 
 export const pagesConfig = {
