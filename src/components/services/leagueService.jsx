@@ -396,6 +396,7 @@ export async function updateLeague(auth, leagueId, updates) {
 
   const updated = await base44.entities.League.update(leagueId, payload);
   invalidateLeagueCache(leagueId);
+  invalidateLeaguesListCache();
   return updated;
 }
 
