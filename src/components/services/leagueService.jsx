@@ -432,6 +432,7 @@ export async function createLeague(auth, { name, description, is_public }) {
 
   // Invalidate relevant caches
   invalidateLeagueCache(league.id);
+  invalidateLeaguesListCache();
 
   return { league, membership };
 }
