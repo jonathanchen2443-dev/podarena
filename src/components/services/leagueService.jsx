@@ -632,6 +632,7 @@ export async function listLeagueMembers(auth, leagueId) {
   const cKey = cacheKey("members", leagueId, auth.currentUser?.id || "guest");
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
+  if (_inflight.has(cKey)) return _inflight.get(cKey);
 
   await getLeagueById(auth, leagueId);
 
