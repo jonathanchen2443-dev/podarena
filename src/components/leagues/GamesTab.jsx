@@ -153,7 +153,7 @@ function FilterBar({ statusFilter, setStatusFilter, sortOrder, setSortOrder, gam
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function GamesTab({ auth, leagueId }) {
+export default function GamesTab({ auth, leagueId, inviteToken = null }) {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
