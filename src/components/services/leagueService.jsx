@@ -93,19 +93,27 @@ export async function getLeagueById(auth, leagueId, inviteToken = null) {
     return cacheSet(key, { league, isMember, accessMode });
   }
 
-  // Private league
   if (auth.isGuest || !auth.currentUser) throw new Error("private");
 
   const isMember = await _checkMembership(auth.currentUser.id, leagueId);
   if (isMember) return cacheSet(key, { league, isMember: true, accessMode: "member" });
 
-  // Non-member: check invite token
   if (inviteToken) {
-    const { valid } = await validateInvite(leagueId, inviteToken);
+    const { valid } = await _validateInviteInternal(leagueId, inviteToken);
     if (valid) return cacheSet(key, { league, isMember: false, accessMode: "invited_view" });
   }
 
   throw new Error("restricted");
+}
+
+// Internal alias used by getLeagueById (validateInvite is defined later in file)
+async function _validateInviteInternal(leagueId, token) {
+  if (!token) return { valid: false };
+  const results = await base44.entities.LeagueInvite.filter({ league_id: leagueId, token, is_active: true });
+  const invite = results[0] || null;
+  if (!invite) return { valid: false };
+  if (invite.expires_at && new Date(invite.expires_at) < new Date()) return { valid: false };
+  return { valid: true, invite };
 }
 
 // ── Shared batch helpers ──────────────────────────────────────────────────────
