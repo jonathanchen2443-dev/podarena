@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { listLeagueGames, invalidateLeagueCache } from "@/components/services/leagueService";
-import { LoadingState, EmptyState } from "@/components/shell/PageStates";
+import { LoadingState } from "@/components/shell/PageStates";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Swords, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
+import { Swords, ChevronRight, AlertCircle, RefreshCw, ArrowUpDown } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function statusBadge(status) {
   if (status === "approved") return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] px-1.5">Approved</Badge>;
@@ -14,10 +16,59 @@ function statusBadge(status) {
   return <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] px-1.5">Pending</Badge>;
 }
 
+function gameDate(game) {
+  return game.played_at || game.created_date || game.created_at || "";
+}
+
+const STATUS_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "pending", label: "Pending" },
+  { id: "approved", label: "Approved" },
+  { id: "rejected", label: "Rejected" },
+];
+
+const SORT_OPTIONS = [
+  { id: "newest", label: "Newest" },
+  { id: "oldest", label: "Oldest" },
+];
+
+const VALID_STATUSES = new Set(["all", "pending", "approved", "rejected"]);
+const VALID_SORTS = new Set(["newest", "oldest"]);
+
+function readQP(key, valid, fallback) {
+  const val = new URLSearchParams(window.location.search).get(key);
+  return val && valid.has(val) ? val : fallback;
+}
+
+function applyFilterSort(games, statusFilter, sortOrder) {
+  let result = statusFilter === "all" ? games : games.filter((g) => g.status === statusFilter);
+  result = [...result].sort((a, b) => {
+    const da = new Date(gameDate(a)).getTime() || 0;
+    const db = new Date(gameDate(b)).getTime() || 0;
+    return sortOrder === "oldest" ? da - db : db - da;
+  });
+  return result;
+}
+
+function emptyStateLabel(statusFilter) {
+  if (statusFilter === "pending") return { title: "No pending games", desc: "There are no games awaiting approval right now." };
+  if (statusFilter === "approved") return { title: "No approved games yet", desc: "Approved games will appear here." };
+  if (statusFilter === "rejected") return { title: "No rejected games", desc: "No games have been rejected." };
+  return { title: "No games yet", desc: "Games will appear here after players log them." };
+}
+
+function countLabel(count, statusFilter) {
+  if (statusFilter === "all") return `${count} ${count === 1 ? "game" : "games"}`;
+  return `${count} ${statusFilter} ${count === 1 ? "game" : "games"}`;
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
 function GameRow({ game, onClick }) {
   const names = game.participants.map((p) => p.display_name);
   const preview = names.length <= 3 ? names.join(", ") : `${names.slice(0, 2).join(", ")} +${names.length - 2} more`;
   const winner = game.participants.find((p) => p.result === "win" || p.placement === 1);
+  const date = gameDate(game);
 
   return (
     <button
@@ -30,9 +81,11 @@ function GameRow({ game, onClick }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           {statusBadge(game.status)}
-          <span className="text-gray-500 text-xs">
-            {formatDistanceToNow(new Date(game.played_at), { addSuffix: true })}
-          </span>
+          {date && (
+            <span className="text-gray-500 text-xs">
+              {formatDistanceToNow(new Date(date), { addSuffix: true })}
+            </span>
+          )}
         </div>
         <p className="text-white text-sm truncate font-medium">{preview}</p>
         {winner && game.status === "approved" && (
@@ -44,16 +97,102 @@ function GameRow({ game, onClick }) {
   );
 }
 
+function FilterBar({ statusFilter, setStatusFilter, sortOrder, setSortOrder, games }) {
+  const pendingCount = games.filter((g) => g.status === "pending").length;
+
+  return (
+    <div className="space-y-2.5 mb-3">
+      {/* Status chips */}
+      <div className="flex gap-1.5 flex-wrap">
+        {STATUS_FILTERS.map((f) => {
+          const isActive = statusFilter === f.id;
+          const showBadge = f.id === "pending" && pendingCount > 0;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setStatusFilter(f.id)}
+              className={`flex items-center gap-1 h-7 px-3 rounded-full text-xs font-medium transition-colors ${
+                isActive
+                  ? "bg-violet-600 text-white"
+                  : "bg-gray-800/60 text-gray-400 hover:text-white hover:bg-gray-800"
+              }`}
+            >
+              {f.label}
+              {showBadge && (
+                <span className={`ml-0.5 text-[10px] font-semibold ${isActive ? "text-violet-200" : "text-amber-400"}`}>
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Sort + count row */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1">
+          {SORT_OPTIONS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSortOrder(s.id)}
+              className={`flex items-center gap-1 h-6 px-2.5 rounded-full text-[11px] font-medium transition-colors ${
+                sortOrder === s.id
+                  ? "bg-gray-700 text-white"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              {s.id === "newest" && <ArrowUpDown className="w-3 h-3" />}
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function GamesTab({ auth, leagueId }) {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Read filter/sort from query params on init
+  const [statusFilter, setStatusFilterState] = useState(() =>
+    readQP("gameStatus", VALID_STATUSES, "all")
+  );
+  const [sortOrder, setSortOrderState] = useState(() =>
+    readQP("gameSort", VALID_SORTS, "newest")
+  );
   const [selectedGameId, setSelectedGameId] = useState(() =>
     new URLSearchParams(window.location.search).get("gameId")
   );
 
-  // Guard against duplicate in-flight fetches
   const fetchingRef = useRef(false);
+
+  // ── Query param sync helpers ───────────────────────────────────────────────
+
+  function updateQP(updates) {
+    const url = new URL(window.location.href);
+    Object.entries(updates).forEach(([k, v]) => {
+      if (v == null) url.searchParams.delete(k);
+      else url.searchParams.set(k, v);
+    });
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  function setStatusFilter(val) {
+    setStatusFilterState(val);
+    updateQP({ gameStatus: val });
+  }
+
+  function setSortOrder(val) {
+    setSortOrderState(val);
+    updateQP({ gameSort: val });
+  }
+
+  // ── Data loading ──────────────────────────────────────────────────────────
 
   async function loadGames(invalidate = false) {
     if (fetchingRef.current) return;
@@ -76,33 +215,34 @@ export default function GamesTab({ auth, leagueId }) {
     }
   }
 
-  // Only fetch once on mount (leagueId won't change while tab is mounted)
   useEffect(() => {
     loadGames();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId]);
 
+  // ── Modal helpers ──────────────────────────────────────────────────────────
+
   function openGame(gameId) {
     setSelectedGameId(gameId);
-    const url = new URL(window.location.href);
-    url.searchParams.set("gameId", gameId);
-    window.history.replaceState(null, "", url.toString());
+    updateQP({ gameId });
   }
 
   function closeModal() {
     setSelectedGameId(null);
-    const url = new URL(window.location.href);
-    url.searchParams.delete("gameId");
-    window.history.replaceState(null, "", url.toString());
+    updateQP({ gameId: null });
   }
 
-  // After approve/reject: invalidate cache and reload only games
   async function handleActionComplete() {
-    invalidateLeagueCache(leagueId);
+    closeModal();
     await loadGames(true);
   }
 
+  // ── Derived list ──────────────────────────────────────────────────────────
+
+  const visibleGames = applyFilterSort(games, statusFilter, sortOrder);
   const selectedGame = games.find((g) => g.id === selectedGameId) || null;
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) return <LoadingState message="Loading games…" />;
 
@@ -124,19 +264,56 @@ export default function GamesTab({ auth, leagueId }) {
     );
   }
 
-  if (games.length === 0) {
-    return <EmptyState title="No games yet" description="Games will appear here after players log them." />;
-  }
+  const { title: emptyTitle, desc: emptyDesc } = emptyStateLabel(statusFilter);
 
   return (
     <>
-      <Card className="bg-gray-900/60 border-gray-800/50">
-        <CardContent className="p-0">
-          {games.map((game) => (
-            <GameRow key={game.id} game={game} onClick={() => openGame(game.id)} />
-          ))}
-        </CardContent>
-      </Card>
+      {/* Controls — always show if there are any games loaded */}
+      {games.length > 0 && (
+        <FilterBar
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
+          games={games}
+        />
+      )}
+
+      {/* Count label */}
+      {games.length > 0 && (
+        <p className="text-xs text-gray-500 mb-2 px-0.5">
+          {countLabel(visibleGames.length, statusFilter)}
+        </p>
+      )}
+
+      {/* Empty state */}
+      {games.length === 0 || visibleGames.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-14 gap-3 text-center px-4">
+          <div className="w-12 h-12 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center">
+            <Swords className="w-5 h-5 text-gray-600" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-medium">{emptyTitle}</p>
+            <p className="text-gray-500 text-xs mt-0.5">{emptyDesc}</p>
+          </div>
+          {games.length > 0 && statusFilter !== "all" && (
+            <button
+              onClick={() => setStatusFilter("all")}
+              className="text-violet-400 text-xs hover:text-violet-300 transition-colors"
+            >
+              Show all games
+            </button>
+          )}
+        </div>
+      ) : (
+        <Card className="bg-gray-900/60 border-gray-800/50">
+          <CardContent className="p-0">
+            {visibleGames.map((game) => (
+              <GameRow key={game.id} game={game} onClick={() => openGame(game.id)} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {selectedGame && (
         <MatchDetailsModal
