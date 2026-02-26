@@ -1,11 +1,10 @@
 /**
  * League Service - Centralized league data fetching with visibility enforcement.
  *
- * Optimizations applied:
- * - Simple in-memory cache with TTL (60s) per leagueId + operation
- * - Visibility gate result is cached so tab-switches don't repeat it
- * - Removed N+1 patterns: profile/deck lookups are batched via list() with post-filter
- * - Service methods accept a pre-validated leagueId to skip redundant visibility calls
+ * Cache key scheme: `${op}::${leagueId}::${userId||"guest"}::${inviteToken||"none"}`
+ * - All keys are scoped by operation + leagueId + userId + inviteToken
+ * - invited_view results never pollute member/public cache entries (different token in key)
+ * - invalidateLeagueCache(leagueId) wipes all keys containing leagueId
  */
 import { base44 } from "@/api/base44Client";
 
