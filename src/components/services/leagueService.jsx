@@ -305,6 +305,48 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
   return cacheSet(cKey, result);
 }
 
+// ── Update League ─────────────────────────────────────────────────────────────
+
+/**
+ * Check if current user is an active admin of a league.
+ * Uses cached membership data where possible.
+ */
+export async function isLeagueAdmin(auth, leagueId) {
+  if (auth.isGuest || !auth.currentUser) return false;
+  const members = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    user_id: auth.currentUser.id,
+    status: "active",
+  });
+  return members.length > 0 && members[0].role === "admin";
+}
+
+/**
+ * Update league details (name, description, is_public).
+ * Only active admins may call this.
+ */
+export async function updateLeague(auth, leagueId, updates) {
+  if (auth.isGuest || !auth.currentUser) {
+    throw new Error("You must be signed in to edit a league.");
+  }
+  const admin = await isLeagueAdmin(auth, leagueId);
+  if (!admin) throw new Error("Only admins can edit this league.");
+
+  const trimmedName = (updates.name || "").trim();
+  if (!trimmedName) throw new Error("League name is required.");
+  if (trimmedName.length > 100) throw new Error("League name is too long (max 100 characters).");
+
+  const payload = {
+    name: trimmedName,
+    description: (updates.description || "").trim(),
+    is_public: updates.is_public !== false,
+  };
+
+  const updated = await base44.entities.League.update(leagueId, payload);
+  invalidateLeagueCache(leagueId);
+  return updated;
+}
+
 // ── Create League ─────────────────────────────────────────────────────────────
 
 /**
