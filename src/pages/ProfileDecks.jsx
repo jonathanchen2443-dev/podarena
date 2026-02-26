@@ -157,6 +157,24 @@ export default function ProfileDecks() {
   }
 
   // ── Deck list ────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center px-6">
+        <AlertCircle className="w-10 h-10 text-red-400/70" />
+        <p className="text-red-400 text-sm font-medium">{error}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-gray-700 text-gray-300 hover:bg-gray-800"
+          onClick={() => { fetchingRef.current = false; loadDecks(); }}
+        >
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
