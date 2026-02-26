@@ -90,36 +90,38 @@ export async function listVisibleLeagues(auth) {
  */
 export async function getLeagueById(auth, leagueId, inviteToken = null) {
   const userId = auth.currentUser?.id || "guest";
-  const key = cacheKey("leagueById", leagueId, userId, inviteToken || "");
+  // Key includes token so member vs invited_view results never cross-pollute
+  const key = cacheKey("leagueById", leagueId, userId, inviteToken || "none");
   const cached = cacheGet(key);
   if (cached !== null) return cached;
 
-  const results = await base44.entities.League.filter({ id: leagueId });
-  const league = results[0];
-  if (!league) throw new Error("not_found");
+  return dedupedFetch(key, async () => {
+    const results = await base44.entities.League.filter({ id: leagueId });
+    const league = results[0];
+    if (!league) throw new Error("not_found");
 
-  if (league.is_public) {
-    const isMember = auth.isGuest || !auth.currentUser
-      ? false
-      : await _checkMembership(auth.currentUser.id, leagueId);
-    const accessMode = isMember ? "member" : "public";
-    return cacheSet(key, { league, isMember, accessMode });
-  }
+    if (league.is_public) {
+      const isMember = auth.isGuest || !auth.currentUser
+        ? false
+        : await _checkMembership(auth.currentUser.id, leagueId);
+      const accessMode = isMember ? "member" : "public";
+      return cacheSet(key, { league, isMember, accessMode });
+    }
 
-  if (auth.isGuest || !auth.currentUser) throw new Error("private");
+    if (auth.isGuest || !auth.currentUser) throw new Error("private");
 
-  const isMember = await _checkMembership(auth.currentUser.id, leagueId);
-  if (isMember) return cacheSet(key, { league, isMember: true, accessMode: "member" });
+    const isMember = await _checkMembership(auth.currentUser.id, leagueId);
+    if (isMember) return cacheSet(key, { league, isMember: true, accessMode: "member" });
 
-  if (inviteToken) {
-    const { valid } = await _validateInviteInternal(leagueId, inviteToken);
-    if (valid) return cacheSet(key, { league, isMember: false, accessMode: "invited_view" });
-  }
+    if (inviteToken) {
+      const { valid } = await _validateInviteInternal(leagueId, inviteToken);
+      if (valid) return cacheSet(key, { league, isMember: false, accessMode: "invited_view" });
+    }
 
-  throw new Error("restricted");
+    throw new Error("restricted");
+  });
 }
 
-// Internal alias used by getLeagueById (validateInvite is defined later in file)
 async function _validateInviteInternal(leagueId, token) {
   if (!token) return { valid: false };
   const results = await base44.entities.LeagueInvite.filter({ league_id: leagueId, token, is_active: true });
