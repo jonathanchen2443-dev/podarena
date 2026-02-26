@@ -27,11 +27,13 @@ export default function ProfileDecks() {
   const { isGuest, authLoading } = auth;
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [deletingDeck, setDeletingDeck] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editDeck, setEditDeck] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
+  const fetchingRef = useRef(false);
 
   const subRoute = getSubRoute();
 
@@ -48,10 +50,20 @@ export default function ProfileDecks() {
   }, [authLoading, isGuest, window.location.search]);
 
   async function loadDecks() {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setLoading(true);
-    const data = await listMyDecks(auth);
-    setDecks(data);
-    setLoading(false);
+    setError(null);
+    try {
+      const data = await listMyDecks(auth);
+      setDecks(data);
+    } catch (e) {
+      const isRate = e?.message?.toLowerCase().includes("rate") || e?.message?.toLowerCase().includes("429");
+      setError(isRate ? "Too many requests right now. Please wait a few seconds and try again." : e.message || "Failed to load decks.");
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+    }
   }
 
   async function loadEditDeck(deckId) {
