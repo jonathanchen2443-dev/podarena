@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
-import { getLeagueById, listLeagueMembers } from "@/components/services/leagueService";
+import { getLeagueById, listLeagueMembers, isLeagueAdmin, updateLeague } from "@/components/services/leagueService";
 import StandingsTab from "@/components/leagues/StandingsTab";
 import GamesTab from "@/components/leagues/GamesTab";
 import { base44 } from "@/api/base44Client";
