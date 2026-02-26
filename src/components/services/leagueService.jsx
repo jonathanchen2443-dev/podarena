@@ -450,7 +450,7 @@ export async function listLeaguesForGameLogging(auth) {
 // ── Invite ────────────────────────────────────────────────────────────────────
 
 /**
- * Get or create an active invite for a league.
+ * getOrCreateInvite: Get or create an active invite for a league.
  * Requires the caller to be an active member.
  * Returns { token, url }
  */
