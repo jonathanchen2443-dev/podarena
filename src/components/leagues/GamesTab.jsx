@@ -201,7 +201,7 @@ export default function GamesTab({ auth, leagueId, inviteToken = null }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await listLeagueGames(auth, leagueId);
+      const data = await listLeagueGames(auth, leagueId, { inviteToken });
       setGames(data);
     } catch (e) {
       const isRateLimit = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
