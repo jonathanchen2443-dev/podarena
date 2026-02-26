@@ -618,6 +618,7 @@ export async function leaveLeague(auth, leagueId) {
 
   await base44.entities.LeagueMember.update(myMembership.id, { status: "left" });
   invalidateLeagueCache(leagueId);
+  invalidateLeaguesListCache();
 }
 
 /**
