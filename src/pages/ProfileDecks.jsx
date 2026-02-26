@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { Plus, Lock, ArrowLeft } from "lucide-react";
+import { Plus, Lock, ArrowLeft, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
 import { LoadingState, EmptyState } from "@/components/shell/PageStates";
