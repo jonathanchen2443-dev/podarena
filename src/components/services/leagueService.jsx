@@ -358,16 +358,19 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
 
 /**
  * Check if current user is an active admin of a league.
- * Uses cached membership data where possible.
+ * Uses cached membership check to avoid extra DB reads.
  */
 export async function isLeagueAdmin(auth, leagueId) {
   if (auth.isGuest || !auth.currentUser) return false;
+  const cKey = cacheKey("adminCheck", leagueId, auth.currentUser.id);
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
   const members = await base44.entities.LeagueMember.filter({
     league_id: leagueId,
     user_id: auth.currentUser.id,
     status: "active",
   });
-  return members.length > 0 && members[0].role === "admin";
+  return cacheSet(cKey, members.length > 0 && members[0].role === "admin");
 }
 
 /**
