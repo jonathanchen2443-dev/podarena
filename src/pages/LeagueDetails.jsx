@@ -33,6 +33,7 @@ export default function LeagueDetails() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [league, setLeague] = useState(null);
   const [isMember, setIsMember] = useState(false);
+  function handleLeagueUpdated(updated) { setLeague(updated); }
   const [loading, setLoading] = useState(true);
   const [accessError, setAccessError] = useState(null); // "private" | "restricted" | "not_found"
 
