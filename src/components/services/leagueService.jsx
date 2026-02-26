@@ -66,21 +66,28 @@ async function _checkMembership(profileId, leagueId) {
 }
 
 /**
- * Returns leagues visible to the current user.
+ * Returns leagues visible to the current user. Cached 60s, deduped.
  */
 export async function listVisibleLeagues(auth) {
-  const allLeagues = await base44.entities.League.list("-created_date", 100);
+  const userId = auth.currentUser?.id || "guest";
+  const cKey = cacheKey("visibleLeagues", userId);
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
 
-  if (auth.isGuest || !auth.currentUser) {
-    return allLeagues.filter((l) => l.is_public);
-  }
+  return dedupedFetch(cKey, async () => {
+    const allLeagues = await base44.entities.League.list("-created_date", 100);
 
-  const memberships = await base44.entities.LeagueMember.filter({
-    user_id: auth.currentUser.id,
-    status: "active",
+    if (auth.isGuest || !auth.currentUser) {
+      return cacheSet(cKey, allLeagues.filter((l) => l.is_public));
+    }
+
+    const memberships = await base44.entities.LeagueMember.filter({
+      user_id: auth.currentUser.id,
+      status: "active",
+    });
+    const memberLeagueIds = new Set(memberships.map((m) => m.league_id));
+    return cacheSet(cKey, allLeagues.filter((l) => l.is_public || memberLeagueIds.has(l.id)));
   });
-  const memberLeagueIds = new Set(memberships.map((m) => m.league_id));
-  return allLeagues.filter((l) => l.is_public || memberLeagueIds.has(l.id));
 }
 
 /**
