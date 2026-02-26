@@ -552,6 +552,7 @@ export async function joinPublicLeague(auth, leagueId) {
     });
   }
   invalidateLeagueCache(leagueId);
+  invalidateLeaguesListCache();
   return membership;
 }
 
