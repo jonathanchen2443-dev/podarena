@@ -590,6 +590,7 @@ export async function acceptInviteJoinLeague(auth, leagueId, token) {
     });
   }
   invalidateLeagueCache(leagueId);
+  invalidateLeaguesListCache();
   return membership;
 }
 
