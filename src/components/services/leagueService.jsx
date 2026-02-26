@@ -335,6 +335,9 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
     };
   });
 
+  const gamesPromise = Promise.resolve(result);
+  _inflight.set(cKey, gamesPromise);
+  gamesPromise.finally(() => _inflight.delete(cKey));
   return cacheSet(cKey, result);
 }
 
