@@ -283,13 +283,14 @@ export async function getLeagueStandings(auth, leagueId, inviteToken = null) {
 
 // ── Games ─────────────────────────────────────────────────────────────────────
 
-export async function listLeagueGames(auth, leagueId, { includeRejected = false } = {}) {
-  const cKey = cacheKey("games", leagueId, auth.currentUser?.id || "guest", String(includeRejected));
+export async function listLeagueGames(auth, leagueId, { includeRejected = false, inviteToken = null } = {}) {
+  const userId = auth.currentUser?.id || "guest";
+  const cKey = cacheKey("games", leagueId, userId, inviteToken || "none", String(includeRejected));
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
-  await getLeagueById(auth, leagueId);
+  await getLeagueById(auth, leagueId, inviteToken);
 
   const allGames = await base44.entities.Game.filter({ league_id: leagueId }, "-created_date", 100);
   const games = includeRejected ? allGames : allGames.filter((g) => g.status !== "rejected");
