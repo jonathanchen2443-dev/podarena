@@ -179,12 +179,15 @@ export default function LeagueDetails() {
 
 // ── InfoTab ───────────────────────────────────────────────────────────────────
 
+const MEMBERS_PAGE_SIZE = 20;
+
 function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, accessMode: initialAccessMode, inviteToken, onLeagueUpdated, onJoined }) {
   const navigate = useNavigate();
   const [league, setLeague] = useState(initialLeague);
   const [isMember, setIsMember] = useState(initialIsMember);
   const [accessMode, setAccessMode] = useState(initialAccessMode);
   const [members, setMembers] = useState([]);
+  const [visibleMemberCount, setVisibleMemberCount] = useState(MEMBERS_PAGE_SIZE);
   const [membersLoading, setMembersLoading] = useState(true);
   const [membersError, setMembersError] = useState(null);
   const fetchingRef = useRef(false);
