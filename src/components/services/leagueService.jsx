@@ -273,8 +273,8 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false 
   const cKey = cacheKey("games", leagueId, auth.currentUser?.id || "guest", String(includeRejected));
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
+  if (_inflight.has(cKey)) return _inflight.get(cKey);
 
-  // Visibility gate (cached internally)
   await getLeagueById(auth, leagueId);
 
   const allGames = await base44.entities.Game.filter({ league_id: leagueId }, "-created_date", 100);
