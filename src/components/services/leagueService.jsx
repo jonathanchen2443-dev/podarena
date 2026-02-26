@@ -406,6 +406,202 @@ export async function listLeaguesForGameLogging(auth) {
   return cacheSet(cKey, result);
 }
 
+// ── Invite ────────────────────────────────────────────────────────────────────
+
+/**
+ * Generate a UUID-like token (no crypto dependency needed).
+ */
+function _generateToken() {
+  const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1);
+  return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
+}
+
+/**
+ * Validate an invite token for a league. Does NOT require membership.
+ * Returns { valid: boolean, invite: record | null }
+ */
+export async function validateInvite(leagueId, token) {
+  if (!token) return { valid: false, invite: null };
+  const cKey = cacheKey("invite_validate", leagueId, token);
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
+
+  const results = await base44.entities.LeagueInvite.filter({
+    league_id: leagueId,
+    token,
+    is_active: true,
+  });
+  const invite = results[0] || null;
+  if (!invite) return cacheSet(cKey, { valid: false, invite: null });
+
+  // Check expiry
+  if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+    return cacheSet(cKey, { valid: false, invite: null });
+  }
+  return cacheSet(cKey, { valid: true, invite });
+}
+
+/**
+ * Get or create an active invite for a league.
+ * Requires the caller to be an active member.
+ * Returns { token, url }
+ */
+export async function getOrCreateInvite(auth, leagueId) {
+  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
+  const isMember = await _checkMembership(auth.currentUser.id, leagueId);
+  if (!isMember) throw new Error("Only members can create invite links.");
+
+  // Check cache first
+  const cKey = cacheKey("invite_get", leagueId);
+  const cached = cacheGet(cKey);
+  if (cached !== null) return cached;
+
+  // Try to reuse existing active invite
+  const existing = await base44.entities.LeagueInvite.filter({
+    league_id: leagueId,
+    is_active: true,
+  });
+  const validInvite = existing.find((i) => !i.expires_at || new Date(i.expires_at) > new Date());
+
+  let token;
+  if (validInvite) {
+    token = validInvite.token;
+  } else {
+    token = _generateToken();
+    await base44.entities.LeagueInvite.create({
+      league_id: leagueId,
+      token,
+      created_by_user_id: auth.currentUser.id,
+      is_active: true,
+    });
+  }
+
+  const { ROUTES } = await import("@/components/utils/routes");
+  const url = `${window.location.origin}${ROUTES.LEAGUE_INVITE(leagueId, token)}`;
+  const result = { token, url };
+  return cacheSet(cKey, result);
+}
+
+/**
+ * Join a public league (authed non-member).
+ */
+export async function joinPublicLeague(auth, leagueId) {
+  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in to join.");
+
+  const results = await base44.entities.League.filter({ id: leagueId });
+  const league = results[0];
+  if (!league) throw new Error("League not found.");
+  if (!league.is_public) throw new Error("This league is private. Use an invite link to join.");
+
+  // Idempotency: check if already member
+  const existing = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    user_id: auth.currentUser.id,
+  });
+  if (existing.length > 0 && existing[0].status === "active") {
+    throw new Error("You are already a member.");
+  }
+
+  let membership;
+  if (existing.length > 0) {
+    membership = await base44.entities.LeagueMember.update(existing[0].id, { status: "active" });
+  } else {
+    membership = await base44.entities.LeagueMember.create({
+      league_id: leagueId,
+      user_id: auth.currentUser.id,
+      role: "member",
+      status: "active",
+      joined_at: new Date().toISOString(),
+    });
+  }
+  invalidateLeagueCache(leagueId);
+  return membership;
+}
+
+/**
+ * Accept an invite and join the league.
+ */
+export async function acceptInviteJoinLeague(auth, leagueId, token) {
+  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in to join.");
+
+  const { valid } = await validateInvite(leagueId, token);
+  if (!valid) throw new Error("This invite link is invalid or expired.");
+
+  // Idempotency
+  const existing = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    user_id: auth.currentUser.id,
+  });
+  if (existing.length > 0 && existing[0].status === "active") {
+    throw new Error("You are already a member.");
+  }
+
+  let membership;
+  if (existing.length > 0) {
+    membership = await base44.entities.LeagueMember.update(existing[0].id, {
+      status: "active",
+      joined_at: new Date().toISOString(),
+    });
+  } else {
+    membership = await base44.entities.LeagueMember.create({
+      league_id: leagueId,
+      user_id: auth.currentUser.id,
+      role: "member",
+      status: "active",
+      joined_at: new Date().toISOString(),
+    });
+  }
+  invalidateLeagueCache(leagueId);
+  return membership;
+}
+
+/**
+ * Leave a league. Blocks if last admin.
+ */
+export async function leaveLeague(auth, leagueId) {
+  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
+
+  const allMembers = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    status: "active",
+  });
+
+  const myMembership = allMembers.find((m) => m.user_id === auth.currentUser.id);
+  if (!myMembership) throw new Error("You are not an active member of this league.");
+
+  // Block if last admin
+  if (myMembership.role === "admin") {
+    const adminCount = allMembers.filter((m) => m.role === "admin").length;
+    if (adminCount <= 1) {
+      throw new Error("You are the only admin. Promote another member to admin before leaving.");
+    }
+  }
+
+  await base44.entities.LeagueMember.update(myMembership.id, { status: "left" });
+  invalidateLeagueCache(leagueId);
+}
+
+/**
+ * Admin removes a member from the league.
+ */
+export async function removeMember(auth, leagueId, memberUserId) {
+  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
+
+  const allMembers = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    status: "active",
+  });
+
+  const myMembership = allMembers.find((m) => m.user_id === auth.currentUser.id);
+  if (!myMembership || myMembership.role !== "admin") throw new Error("Only admins can remove members.");
+
+  const targetMembership = allMembers.find((m) => m.user_id === memberUserId);
+  if (!targetMembership) throw new Error("Member not found.");
+
+  await base44.entities.LeagueMember.update(targetMembership.id, { status: "removed" });
+  invalidateLeagueCache(leagueId);
+}
+
 // ── Members ───────────────────────────────────────────────────────────────────
 
 export async function listLeagueMembers(auth, leagueId) {
