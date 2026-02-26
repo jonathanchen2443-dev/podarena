@@ -11,6 +11,8 @@ import { base44 } from "@/api/base44Client";
 // ── Simple in-memory cache ────────────────────────────────────────────────────
 const CACHE_TTL_MS = 60_000; // 60 seconds
 const _cache = new Map();
+// In-flight promise dedup: prevent concurrent identical requests
+const _inflight = new Map();
 
 function cacheKey(...parts) {
   return parts.join("::");
@@ -31,9 +33,21 @@ function cacheSet(key, value) {
   return value;
 }
 
+/** Dedup concurrent async calls with the same key. */
+async function dedupedFetch(key, fn) {
+  if (_inflight.has(key)) return _inflight.get(key);
+  const promise = fn().finally(() => _inflight.delete(key));
+  _inflight.set(key, promise);
+  return promise;
+}
+
 export function invalidateLeagueCache(leagueId) {
   for (const key of _cache.keys()) {
     if (key.includes(leagueId)) _cache.delete(key);
+  }
+  // Also clear any matching in-flight entries so the next call re-fetches fresh
+  for (const key of _inflight.keys()) {
+    if (key.includes(leagueId)) _inflight.delete(key);
   }
 }
 
