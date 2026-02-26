@@ -59,7 +59,6 @@ export default function LeagueDetails() {
   function handleJoined() {
     setIsMember(true);
     setAccessMode("member");
-    // Remove invite param from URL
     updateQP({ invite: null });
   }
 
