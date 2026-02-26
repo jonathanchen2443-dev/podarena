@@ -646,6 +646,7 @@ export async function removeMember(auth, leagueId, memberUserId) {
 
   await base44.entities.LeagueMember.update(targetMembership.id, { status: "removed" });
   invalidateLeagueCache(leagueId);
+  invalidateLeaguesListCache();
 }
 
 // ── Members ───────────────────────────────────────────────────────────────────
