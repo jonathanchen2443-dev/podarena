@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { ArrowLeft, Globe, Lock, Info, Users, User, ChevronRight, Trophy, Swords, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Globe, Lock, Info, Users, User, ChevronRight, Trophy, Swords, AlertCircle, RefreshCw, Pencil, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { LoadingState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
