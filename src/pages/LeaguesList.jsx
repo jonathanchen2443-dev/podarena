@@ -1,20 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { Users, ChevronRight, Globe, Lock, Plus } from "lucide-react";
-import { LoadingState, EmptyState, ErrorState } from "@/components/shell/PageStates";
+import { Users, ChevronRight, Globe, Lock, Plus, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
+import { LoadingState, EmptyState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
 import { listVisibleLeagues } from "@/components/services/leagueService";
+
+const PAGE_SIZE = 20;
+
+function isRateLimitError(e) {
+  const m = e?.message?.toLowerCase() || "";
+  return m.includes("rate") || m.includes("429");
+}
 
 export default function LeaguesList() {
   const auth = useAuth();
   const { isGuest, authLoading } = auth;
   const navigate = useNavigate();
-  const [leagues, setLeagues] = useState([]);
+  const [allLeagues, setAllLeagues] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -22,12 +31,27 @@ export default function LeaguesList() {
   }, [authLoading, isGuest]);
 
   async function loadLeagues() {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setLoading(true);
     setError(null);
-    const data = await listVisibleLeagues(auth);
-    setLeagues(data);
-    setLoading(false);
+    try {
+      const data = await listVisibleLeagues(auth);
+      setAllLeagues(data);
+      setVisibleCount(PAGE_SIZE);
+    } catch (e) {
+      setError(isRateLimitError(e)
+        ? "Too many requests right now. Please wait a few seconds and try again."
+        : e.message || "Failed to load leagues."
+      );
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+    }
   }
+
+  const leagues = allLeagues.slice(0, visibleCount);
+  const hasMore = visibleCount < allLeagues.length;
 
   if (authLoading || loading) return <LoadingState message="Loading leagues…" />;
   if (error) return <ErrorState message={error} />;
