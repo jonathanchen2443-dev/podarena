@@ -242,7 +242,9 @@ export default function GamesTab({ auth, leagueId, inviteToken = null }) {
 
   // ── Derived list ──────────────────────────────────────────────────────────
 
-  const visibleGames = applyFilterSort(games, statusFilter, sortOrder);
+  const filteredGames = applyFilterSort(games, statusFilter, sortOrder);
+  const visibleGames = filteredGames.slice(0, visibleCount);
+  const hasMore = filteredGames.length > visibleCount;
   const selectedGame = games.find((g) => g.id === selectedGameId) || null;
 
   // ── Render ────────────────────────────────────────────────────────────────
