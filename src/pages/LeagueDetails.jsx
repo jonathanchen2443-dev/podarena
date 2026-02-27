@@ -615,7 +615,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
               <div className="p-4 text-center text-gray-500 text-sm">No members found.</div>
             ) : (
               <div className="divide-y divide-gray-800/60">
-                {members.map((member) => {
+                {members.slice(0, visibleMemberCount).map((member) => {
                   const isCurrentUser = auth.currentUser?.id === member.userId;
                   const showRemoveBtn = editing && isAdmin && !isCurrentUser;
                   const isConfirming = confirmRemoveUserId === member.userId;
