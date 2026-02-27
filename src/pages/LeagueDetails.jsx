@@ -687,6 +687,14 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
             )}
           </CardContent>
         </Card>
+        {members.length > visibleMemberCount && (
+          <button
+            onClick={() => setVisibleMemberCount((c) => c + MEMBERS_PAGE_SIZE)}
+            className="w-full mt-2 py-2.5 text-xs text-violet-400 hover:text-violet-300 hover:bg-gray-800/40 rounded-xl border border-gray-800/50 transition-colors"
+          >
+            Load more ({members.length - visibleMemberCount} remaining)
+          </button>
+        )}
       </div>
     </div>
   );
