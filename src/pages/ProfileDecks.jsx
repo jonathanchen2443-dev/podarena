@@ -21,11 +21,14 @@ function getSubRoute() {
   return { mode: "list" };
 }
 
+const PAGE_SIZE = 20;
+
 export default function ProfileDecks() {
   const auth = useAuth();
   const navigate = useNavigate();
   const { isGuest, authLoading } = auth;
   const [decks, setDecks] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deletingDeck, setDeletingDeck] = useState(null);
