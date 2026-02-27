@@ -204,9 +204,17 @@ export default function ProfileDecks() {
         />
       ) : (
         <div className="space-y-3">
-          {decks.map((deck) => (
+          {decks.slice(0, visibleCount).map((deck) => (
             <DeckCard key={deck.id} deck={deck} onDelete={setDeletingDeck} />
           ))}
+          {decks.length > visibleCount && (
+            <button
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              className="w-full py-2.5 text-xs text-violet-400 hover:text-violet-300 hover:bg-gray-800/40 rounded-xl border border-gray-800/50 transition-colors"
+            >
+              Load more ({decks.length - visibleCount} remaining)
+            </button>
+          )}
         </div>
       )}
 
