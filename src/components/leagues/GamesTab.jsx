@@ -287,12 +287,12 @@ export default function GamesTab({ auth, leagueId, inviteToken = null }) {
       {/* Count label */}
       {games.length > 0 && (
         <p className="text-xs text-gray-500 mb-2 px-0.5">
-          {countLabel(visibleGames.length, statusFilter)}
+          {countLabel(filteredGames.length, statusFilter)}
         </p>
       )}
 
       {/* Empty state */}
-      {games.length === 0 || visibleGames.length === 0 ? (
+      {games.length === 0 || filteredGames.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-14 gap-3 text-center px-4">
           <div className="w-12 h-12 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center">
             <Swords className="w-5 h-5 text-gray-600" />
@@ -311,13 +311,23 @@ export default function GamesTab({ auth, leagueId, inviteToken = null }) {
           )}
         </div>
       ) : (
-        <Card className="bg-gray-900/60 border-gray-800/50">
-          <CardContent className="p-0">
-            {visibleGames.map((game) => (
-              <GameRow key={game.id} game={game} onClick={() => openGame(game.id)} />
-            ))}
-          </CardContent>
-        </Card>
+        <>
+          <Card className="bg-gray-900/60 border-gray-800/50">
+            <CardContent className="p-0">
+              {visibleGames.map((game) => (
+                <GameRow key={game.id} game={game} onClick={() => openGame(game.id)} />
+              ))}
+            </CardContent>
+          </Card>
+          {hasMore && (
+            <button
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              className="w-full mt-2 py-2.5 text-xs text-violet-400 hover:text-violet-300 hover:bg-gray-800/40 rounded-xl border border-gray-800/50 transition-colors"
+            >
+              Load more ({filteredGames.length - visibleCount} remaining)
+            </button>
+          )}
+        </>
       )}
 
       {selectedGame && (
