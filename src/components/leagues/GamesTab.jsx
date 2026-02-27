@@ -151,12 +151,15 @@ function FilterBar({ statusFilter, setStatusFilter, sortOrder, setSortOrder, gam
   );
 }
 
+const PAGE_SIZE = 20;
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function GamesTab({ auth, leagueId, inviteToken = null }) {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Read filter/sort from query params on init
   const [statusFilter, setStatusFilterState] = useState(() =>
