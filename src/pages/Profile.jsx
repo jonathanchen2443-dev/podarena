@@ -245,27 +245,6 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Other profile links */}
-      <div className="space-y-2">
-        {[
-          { icon: Trophy, label: "My Leagues", description: "View leagues you're a member of" },
-          { icon: Swords, label: "Game History", description: "Browse all your logged games" },
-        ].map((action) => (
-          <Card key={action.label} className="bg-gray-900/60 border-gray-800/50 hover:border-violet-800/40 transition-all">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gray-800 flex items-center justify-center border border-gray-700">
-                <action.icon className="w-4 h-4 text-gray-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">{action.label}</p>
-                <p className="text-xs text-gray-500">{action.description}</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-gray-600" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
       {/* Logout */}
       <button
         onClick={logout}
