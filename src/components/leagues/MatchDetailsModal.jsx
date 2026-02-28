@@ -67,6 +67,11 @@ export default function MatchDetailsModal({ game, auth, leagueId, onClose, onAct
   const [actionLoading, setActionLoading] = useState(null); // "approve" | "reject"
   const [actionError, setActionError] = useState(null);
 
+  // Deck selection state
+  const [myDecks, setMyDecks] = useState([]);
+  const [decksLoading, setDecksLoading] = useState(false);
+  const [selectedDeckId, setSelectedDeckId] = useState(null);
+
   const currentUserId = auth.currentUser?.id;
 
   // Determine if current user is an eligible pending approver
@@ -77,11 +82,34 @@ export default function MatchDetailsModal({ game, auth, leagueId, onClose, onAct
     : null;
   const canAct = !auth.isGuest && !!myApproval && game.status === "pending";
 
+  // Preselect deck if participant already has one recorded
+  useEffect(() => {
+    if (!canAct) return;
+    const myParticipant = game.participants.find((p) => p.userId === currentUserId);
+    if (myParticipant?.deck_id) setSelectedDeckId(myParticipant.deck_id);
+  }, [canAct, currentUserId]);
+
+  // Load active decks when user can act
+  useEffect(() => {
+    if (!canAct || auth.isGuest) return;
+    setDecksLoading(true);
+    listMyDecks(auth)
+      .then((decks) => setMyDecks(decks.filter((d) => d.is_active !== false)))
+      .catch(() => setMyDecks([]))
+      .finally(() => setDecksLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canAct]);
+
   async function handleApprove() {
     if (actionLoading) return;
+    if (!selectedDeckId) {
+      setActionError("Please select the deck you played before approving.");
+      return;
+    }
     setActionLoading("approve");
     setActionError(null);
     try {
+      await setMyDeckForGame(auth, game.id, selectedDeckId);
       await approveGame(game.id, currentUserId);
       toast.success("Game approved!");
       await onActionComplete();
