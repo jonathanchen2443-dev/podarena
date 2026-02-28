@@ -84,8 +84,8 @@ export default function Profile() {
     setProfile((p) => p ? { ...p, avatar_url: newUrl } : p);
   }
 
-  function handleUsernameSaved(newUsername) {
-    setProfile((p) => p ? { ...p, username: newUsername, username_lc: newUsername.toLowerCase() } : p);
+  function handleDisplayNameSaved(newName) {
+    setProfile((p) => p ? { ...p, display_name: newName, display_name_lc: newName.toLowerCase() } : p);
   }
 
   if (authLoading) return <LoadingState message="Loading profile…" />;
