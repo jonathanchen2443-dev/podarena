@@ -56,6 +56,9 @@ export default function LogGame() {
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
 
+  // ── Casual mode: profile cache for PlacementInput display names ───────────
+  const [casualProfiles, setCasualProfiles] = useState({}); // id -> { userId, display_name, avatar_url }
+
   // ── Shared ────────────────────────────────────────────────────────────────
   const [myDecks, setMyDecks] = useState([]);
   const [selectedLeagueId, setSelectedLeagueId] = useState(preselectedLeagueId || null);
@@ -140,9 +143,13 @@ export default function LogGame() {
     lastMembersLeagueRef.current = null;
   }
 
-  function addParticipant(uid) {
+  function addParticipant(uid, profileData) {
     if (participantIds.includes(uid)) return;
     setParticipantIds((prev) => [...prev, uid]);
+    // Cache profile for PlacementInput
+    if (profileData) {
+      setCasualProfiles((prev) => ({ ...prev, [uid]: profileData }));
+    }
   }
 
   function removeParticipant(uid) {
@@ -254,9 +261,12 @@ export default function LogGame() {
 
   const allPlacementsFilled = participantIds.length >= 2 && participantIds.every((uid) => placements[uid]);
 
-  // For casual PlacementInput we pass an empty members array but use allProfiles via CasualParticipantPicker
-  // PlacementInput only needs the list to look up display_name; for casual we build a synthetic list
-  const casualMembersForPlacement = participantIds.map((uid) => ({ userId: uid, display_name: uid }));
+  // Build member-like list for PlacementInput in casual mode
+  const casualMembersForPlacement = participantIds.map((uid) => ({
+    userId: uid,
+    display_name: casualProfiles[uid]?.display_name || uid,
+    avatar_url: casualProfiles[uid]?.avatar_url || null,
+  }));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
