@@ -128,8 +128,11 @@ export default function DeckForm({ initialValues, onSave, saving }) {
 
       <div className="flex items-center justify-between py-2">
         <div>
-          <p className="text-gray-300 text-sm font-medium">Active</p>
-          <p className="text-gray-500 text-xs">Inactive decks are hidden from game logging</p>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${isActive ? "bg-green-400" : "bg-gray-500"}`} />
+            <p className="text-gray-300 text-sm font-medium">{isActive ? "Active" : "Retired"}</p>
+          </div>
+          <p className="text-gray-500 text-xs mt-0.5">Retired decks are hidden from game logging</p>
         </div>
         <Switch checked={isActive} onCheckedChange={setIsActive} />
       </div>
