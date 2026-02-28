@@ -246,6 +246,7 @@ export default function LogGame() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {topNav}
       <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
         <p className="text-sm text-violet-300 leading-relaxed">
           Log a completed game. All participants will be asked to approve the result before it counts in the standings.
