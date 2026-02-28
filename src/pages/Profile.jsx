@@ -115,7 +115,9 @@ export default function Profile() {
   }
 
   // ── Authenticated view ───────────────────────────────────────────────────────
-  const previewDecks = decks.slice(0, 4);
+  // Sort by most-played desc, take top 4
+  const sortedDecks = [...decks].sort((a, b) => (b.gamesWithDeck || 0) - (a.gamesWithDeck || 0));
+  const previewDecks = sortedDecks.slice(0, 4);
 
   const orbStats = [
     { label: "Games", value: stats ? stats.gamesPlayed : (decksLoading ? "…" : "—"), color: "violet" },
