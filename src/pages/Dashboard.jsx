@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { useAuth } from "@/components/auth/AuthContext";
 import { getDashboardData } from "@/components/services/dashboardService";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
+import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -135,11 +136,15 @@ function GuestView() {
 }
 
 // ── Authenticated view ────────────────────────────────────────────────────────
-function AuthDashboard({ data, displayName }) {
+function AuthDashboard({ data, displayName, auth }) {
   const { myLeaguesCount, pendingApprovalsCount, myDecksCount, recentGames } = data;
+  const [casualModal, setCasualModal] = useState(null); // { gameId, game }
 
-  function gameUrl(game) {
-    return `${ROUTES.LEAGUE_DETAILS(game.league_id)}&tab=games&gameId=${game.id}`;
+  function handleGameClick(game) {
+    if (game.context_type === "casual" || !game.league_id) {
+      setCasualModal({ gameId: game.id });
+    }
+    // league games: navigate via Link below
   }
 
   return (
@@ -154,34 +159,10 @@ function AuthDashboard({ data, displayName }) {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard
-          icon={Users}
-          iconClass="bg-violet-500/10 text-violet-400"
-          label="My Leagues"
-          value={myLeaguesCount}
-          to={ROUTES.LEAGUES}
-        />
-        <StatCard
-          icon={Bell}
-          iconClass="bg-amber-500/10 text-amber-400"
-          label="Pending Approvals"
-          value={pendingApprovalsCount}
-          to={ROUTES.INBOX}
-          badge={pendingApprovalsCount}
-        />
-        <StatCard
-          icon={BookOpen}
-          iconClass="bg-sky-500/10 text-sky-400"
-          label="My Decks"
-          value={myDecksCount}
-          to={ROUTES.PROFILE_DECKS}
-        />
-        <StatCard
-          icon={Swords}
-          iconClass="bg-emerald-500/10 text-emerald-400"
-          label="Recent Games"
-          value={recentGames.length}
-        />
+        <StatCard icon={Users} iconClass="bg-violet-500/10 text-violet-400" label="My Leagues" value={myLeaguesCount} to={ROUTES.LEAGUES} />
+        <StatCard icon={Bell} iconClass="bg-amber-500/10 text-amber-400" label="Pending Approvals" value={pendingApprovalsCount} to={ROUTES.INBOX} badge={pendingApprovalsCount} />
+        <StatCard icon={BookOpen} iconClass="bg-sky-500/10 text-sky-400" label="My Decks" value={myDecksCount} to={ROUTES.PROFILE_DECKS} />
+        <StatCard icon={Swords} iconClass="bg-emerald-500/10 text-emerald-400" label="Recent Games" value={recentGames.length} />
       </div>
 
       {/* Quick actions */}
@@ -229,29 +210,57 @@ function AuthDashboard({ data, displayName }) {
         ) : (
           <Card className="bg-gray-900/60 border-gray-800/50">
             <CardContent className="p-0">
-              {recentGames.map((game, i) => (
-                <Link
-                  key={game.id}
-                  to={gameUrl(game)}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors border-b border-gray-800/50 last:border-0"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-white text-sm font-medium truncate">{game.leagueName}</span>
-                      <StatusBadge status={game.status} />
+              {recentGames.map((game) => {
+                const isCasual = game.context_type === "casual" || !game.league_id;
+                const inner = (
+                  <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors border-b border-gray-800/50 last:border-0 cursor-pointer">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        {isCasual ? (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                            🎲 Casual
+                          </span>
+                        ) : (
+                          <span className="text-white text-sm font-medium truncate">{game.leagueName}</span>
+                        )}
+                        <StatusBadge status={game.status} />
+                      </div>
+                      <p className="text-gray-500 text-xs truncate">{game.participantsSummary}</p>
+                      <p className="text-gray-600 text-xs mt-0.5">
+                        {formatDistanceToNow(new Date(game.played_at), { addSuffix: true })}
+                      </p>
                     </div>
-                    <p className="text-gray-500 text-xs truncate">{game.participantsSummary}</p>
-                    <p className="text-gray-600 text-xs mt-0.5">
-                      {formatDistanceToNow(new Date(game.played_at), { addSuffix: true })}
-                    </p>
+                    <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                </Link>
-              ))}
+                );
+
+                if (isCasual) {
+                  return (
+                    <div key={game.id} onClick={() => handleGameClick(game)}>
+                      {inner}
+                    </div>
+                  );
+                }
+                return (
+                  <Link key={game.id} to={`${ROUTES.LEAGUE_DETAILS(game.league_id)}&tab=games&gameId=${game.id}`}>
+                    {inner}
+                  </Link>
+                );
+              })}
             </CardContent>
           </Card>
         )}
       </div>
+
+      {/* Casual game modal */}
+      {casualModal && (
+        <MatchDetailsModal
+          gameId={casualModal.gameId}
+          leagueId={null}
+          onClose={() => setCasualModal(null)}
+          auth={auth}
+        />
+      )}
     </div>
   );
 }
