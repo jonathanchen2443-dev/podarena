@@ -272,18 +272,28 @@ export default function ProfileDecks() {
       ) : filteredDecks.length === 0 ? (
         <EmptyState title="No decks yet" description="Create your first Commander deck to get started." />
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {filteredDecks.map((deck) => (
-            <DeckTile
-              key={deck.id}
-              deck={deck}
-              onDelete={setDeletingDeck}
-              isGuest={isGuest}
-              onFavoriteToggle={handleFavoriteToggle}
-              onInsights={setInsightsDeck}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            {visibleDecks.map((deck) => (
+              <DeckTile
+                key={deck.id}
+                deck={deck}
+                onDelete={setDeletingDeck}
+                isGuest={isGuest}
+                onFavoriteToggle={handleFavoriteToggle}
+                onInsights={setInsightsDeck}
+              />
+            ))}
+          </div>
+          {visibleCount < filteredDecks.length && (
+            <button
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              className="w-full py-2.5 rounded-xl border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800/50 text-sm transition-colors"
+            >
+              Load more ({filteredDecks.length - visibleCount} remaining)
+            </button>
+          )}
+        </>
       )}
 
       <DeleteDeckModal
