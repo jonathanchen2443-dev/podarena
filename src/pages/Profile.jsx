@@ -238,6 +238,11 @@ export default function Profile() {
                   deck={deck}
                   onDelete={setDeletingDeck}
                   editHref={`${ROUTES.PROFILE_DECK_EDIT(deck.id)}&returnTo=profile`}
+                  isGuest={isGuest}
+                  onFavoriteToggle={(d, newFav) => {
+                    setDecks((prev) => prev.map((x) => x.id === d.id ? { ...x, is_favorite: newFav } : x));
+                  }}
+                  onInsights={setInsightsDeck}
                 />
               ))}
             </div>
