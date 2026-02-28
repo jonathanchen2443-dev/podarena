@@ -6,6 +6,7 @@ import {
   AlertCircle, RefreshCw, Pencil, Loader2, Share2, LogOut, UserX, X,
   ShieldCheck, MessageCircle, Copy, Check
 } from "lucide-react";
+import { formatLeagueInviteMessage } from "@/components/utils/inviteUtils";
 import { toast } from "sonner";
 import { LoadingState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
