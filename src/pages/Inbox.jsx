@@ -51,20 +51,25 @@ function ApprovalRow({ row, onClick }) {
 
 // ── Notification row (info-only, no actions) ──────────────────────────────────
 function NotificationRow({ notif }) {
+  const isSystemMsg = notif.type === "system_message";
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-800/50 last:border-0">
-      <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-        <Users className="w-4 h-4 text-violet-400" />
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        isSystemMsg ? "bg-sky-500/10 border border-sky-500/20" : "bg-violet-500/10 border border-violet-500/20"
+      }`}>
+        {isSystemMsg ? <Bell className="w-4 h-4 text-sky-400" /> : <Users className="w-4 h-4 text-violet-400" />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-white text-sm font-medium truncate">{notif.leagueName}</span>
+          <span className="text-white text-sm font-medium truncate">
+            {isSystemMsg ? "System Message" : notif.leagueName}
+          </span>
           <span className="text-gray-500 text-xs shrink-0">
             {formatDistanceToNow(new Date(notif.created_date), { addSuffix: true })}
           </span>
         </div>
         <p className="text-gray-400 text-xs">
-          <span className="text-violet-300">{notif.actorName}</span> joined the league
+          {isSystemMsg ? notif.message : <><span className="text-violet-300">{notif.actorName}</span> joined the league</>}
         </p>
       </div>
     </div>
