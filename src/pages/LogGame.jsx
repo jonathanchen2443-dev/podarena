@@ -28,8 +28,11 @@ export default function LogGame() {
 
   const [myDecks, setMyDecks] = useState([]);
 
+  // Read leagueId from query param for league-scoped entry
+  const preselectedLeagueId = new URLSearchParams(window.location.search).get("leagueId");
+
   // ── Form state ────────────────────────────────────────────────────────────
-  const [selectedLeagueId, setSelectedLeagueId] = useState(null);
+  const [selectedLeagueId, setSelectedLeagueId] = useState(preselectedLeagueId || null);
   const [participantIds, setParticipantIds] = useState([]);
   const [placements, setPlacements] = useState({}); // { userId: number }
   const [deckSelections, setDeckSelections] = useState({}); // { userId: deckId|null }
