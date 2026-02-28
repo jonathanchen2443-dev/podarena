@@ -28,8 +28,19 @@ export default function LogGame() {
 
   const [myDecks, setMyDecks] = useState([]);
 
-  // Read leagueId from query param for league-scoped entry
-  const preselectedLeagueId = new URLSearchParams(window.location.search).get("leagueId");
+  // Read query params
+  const qp = new URLSearchParams(window.location.search);
+  const preselectedLeagueId = qp.get("leagueId");
+  const returnTo = qp.get("returnTo");
+  const returnLeagueId = qp.get("returnLeagueId");
+
+  function handleBack() {
+    if (returnTo === "league" && returnLeagueId) {
+      navigate(ROUTES.LEAGUE_DETAILS(returnLeagueId) + "&tab=standings");
+    } else {
+      navigate(-1);
+    }
+  }
 
   // ── Form state ────────────────────────────────────────────────────────────
   const [selectedLeagueId, setSelectedLeagueId] = useState(preselectedLeagueId || null);
