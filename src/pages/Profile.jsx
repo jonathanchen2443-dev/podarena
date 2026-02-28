@@ -14,6 +14,7 @@ import AvatarUpload from "@/components/profile/AvatarUpload";
 import DisplayNameEdit from "@/components/profile/DisplayNameEdit";
 import StatOrb from "@/components/profile/StatOrb";
 import ProfileInsights from "@/components/profile/ProfileInsights";
+import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
 import { getMyDecksWithStats, invalidateDeckStatsCache } from "@/components/services/deckStatsService";
 import { getProfileStats, invalidateProfileStatsCache } from "@/components/services/profileStatsService";
 import { deleteDeck } from "@/components/services/deckService";
@@ -32,6 +33,7 @@ export default function Profile() {
   const [statsError, setStatsError] = useState(null);
   const [deletingDeck, setDeletingDeck] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [insightsDeck, setInsightsDeck] = useState(null);
   const [profile, setProfile] = useState(null);
   const fetchingRef = useRef(false);
 
