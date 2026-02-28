@@ -71,26 +71,30 @@ export default function DeckForm({ initialValues, onSave, saving }) {
 
       <div className="space-y-1.5">
         <Label className="text-gray-300 text-sm">Commander Name</Label>
-        <Input
+        <CommanderSearch
           value={commanderName}
-          onChange={(e) => setCommanderName(e.target.value)}
-          placeholder="e.g. Atraxa, Praetors' Voice"
-          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-violet-500"
+          onChange={setCommanderName}
+          onSelect={({ name, color_identity, commander_image_url }) => {
+            setCommanderName(name);
+            setColorIdentity(color_identity);
+            setCommanderImageUrl(commander_image_url);
+          }}
         />
       </div>
 
+      {/* Commander image preview + manual URL override */}
       <div className="space-y-1.5">
-        <Label className="text-gray-300 text-sm">Commander Image URL <span className="text-gray-600 font-normal">(optional)</span></Label>
+        <Label className="text-gray-300 text-sm">Commander Image <span className="text-gray-600 font-normal">(auto-filled or override)</span></Label>
         {commanderImageUrl && (
-          <div className="w-20 h-20 rounded-xl overflow-hidden border border-gray-700 bg-gray-800 mb-2">
-            <img src={commanderImageUrl} alt="Commander" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
+          <div className="w-24 rounded-xl overflow-hidden border border-gray-700 bg-gray-800 mb-2">
+            <img src={commanderImageUrl} alt="Commander" className="w-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
           </div>
         )}
         <Input
           value={commanderImageUrl}
           onChange={(e) => setCommanderImageUrl(e.target.value)}
-          placeholder="https://cards.scryfall.io/art_crop/..."
-          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-violet-500"
+          placeholder="https://cards.scryfall.io/normal/..."
+          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-violet-500 text-xs"
         />
       </div>
 
