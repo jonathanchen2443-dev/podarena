@@ -140,13 +140,11 @@ export default function Profile() {
             )}
             <div className="flex-1 min-w-0 pt-1">
               <p className="text-white font-bold text-lg leading-tight truncate">
-                {currentUser?.display_name || "—"}
+                {profile?.display_name || currentUser?.display_name || "—"}
               </p>
               <p className="text-gray-500 text-xs mt-0.5 truncate">{currentUser?.email || ""}</p>
               {profile && (
-                <div className="mt-1.5">
-                  <UsernameEdit profile={profile} onSaved={handleUsernameSaved} />
-                </div>
+                <DisplayNameEdit profile={profile} onSaved={handleDisplayNameSaved} />
               )}
             </div>
           </div>
