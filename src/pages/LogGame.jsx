@@ -232,6 +232,7 @@ export default function LogGame() {
   if (leagues.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-4">
+        {topNav}
         <Swords className="w-12 h-12 text-gray-700" />
         <h2 className="text-white font-semibold text-base">No leagues to log a game in</h2>
         <p className="text-gray-500 text-sm">You must be an active member of a league to log games.</p>
