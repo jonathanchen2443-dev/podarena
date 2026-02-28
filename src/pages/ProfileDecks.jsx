@@ -149,8 +149,13 @@ export default function ProfileDecks() {
     );
   }
 
-  // Client-side filtered list
+  // Client-side filtered + sorted list
   const filteredDecks = useMemo(() => applyFilters(decks, filters), [decks, filters]);
+
+  // Reset pagination when filters change
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filters]);
+
+  const visibleDecks = filteredDecks.slice(0, visibleCount);
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
   if (authLoading || loading) return <LoadingState message="Loading decks…" />;
