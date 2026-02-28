@@ -318,31 +318,35 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
         const result = await getOrCreateInvite(auth, league.id);
         url = result.url;
       }
+      const inviterName = auth.currentUser?.display_name || "A PodArea user";
+      const msg = formatLeagueInviteMessage({ leagueName: league.name, inviterName, inviteUrl: url });
       setInviteUrl(url);
+      setInviteMessage(msg);
+
       // Try Web Share API; fallback to clipboard
       if (navigator.share) {
         try {
-          await navigator.share({ title: league.name, text: `Join "${league.name}" on Nexus`, url });
+          await navigator.share({ title: "PodArea Invite", text: msg, url });
           toast.success("Shared!");
           return;
         } catch (shareErr) {
           if (shareErr.name === "AbortError") return;
-          // Permission denied or other error → fall through to clipboard
+          // Permission denied or other error → fall through to show panel
         }
       }
-      // Clipboard fallback
+      // Clipboard fallback — copy full message
       try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Invite link copied to clipboard");
+        await navigator.clipboard.writeText(msg);
+        toast.success("Invite copied to clipboard");
       } catch {
-        // execCommand last-resort
+        // execCommand last-resort; panel will be visible as fallback
         const el = document.createElement("textarea");
-        el.value = url;
+        el.value = msg;
         document.body.appendChild(el);
         el.select();
         document.execCommand("copy");
         document.body.removeChild(el);
-        toast.success("Invite link copied");
+        toast.success("Invite copied");
       }
     } catch (e) {
       if (e.name !== "AbortError") toast.error(e.message || "Failed to share.");
@@ -351,12 +355,12 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     }
   }
 
-  async function handleCopyInviteUrl(url) {
+  async function handleCopyInviteUrl(msg) {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(msg);
     } catch {
       const el = document.createElement("textarea");
-      el.value = url;
+      el.value = msg;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
@@ -364,7 +368,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast.success("Copied!");
+    toast.success("Invite copied!");
   }
 
   // ── Leave league ─────────────────────────────────────────────────────────────
