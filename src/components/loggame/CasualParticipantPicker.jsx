@@ -6,6 +6,9 @@ import { base44 } from "@/api/base44Client";
  * CasualParticipantPicker — lets the user search all profiles to add participants
  * (no league membership requirement).
  */
+/**
+ * onAdd(id, profileData) — passes id + profile object so parent can cache display names
+ */
 export default function CasualParticipantPicker({
   selectedIds,
   onAdd,
@@ -33,9 +36,15 @@ export default function CasualParticipantPicker({
     );
   });
 
-  function handleSelect(profileId) {
-    onAdd(profileId);
+  function handleSelect(profile) {
+    onAdd(profile.id, { userId: profile.id, display_name: profile.display_name, avatar_url: profile.avatar_url });
     setQuery("");
+  }
+
+  function handleAddSelf() {
+    const self = allProfiles.find((p) => p.id === currentUserId);
+    if (self) onAdd(self.id, { userId: self.id, display_name: self.display_name, avatar_url: self.avatar_url });
+    else onAdd(currentUserId);
   }
 
   const isSelfAdded = selectedIds.includes(currentUserId);
@@ -51,7 +60,7 @@ export default function CasualParticipantPicker({
       {!isSelfAdded && currentUserId && (
         <button
           type="button"
-          onClick={() => onAdd(currentUserId)}
+          onClick={handleAddSelf}
           className="mb-2 flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors"
         >
           <UserPlus className="w-3.5 h-3.5" />
@@ -81,7 +90,7 @@ export default function CasualParticipantPicker({
               <button
                 key={p.id}
                 type="button"
-                onClick={() => handleSelect(p.id)}
+                onClick={() => handleSelect(p)}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-white hover:bg-gray-800 transition-colors text-left"
               >
                 {p.avatar_url ? (
