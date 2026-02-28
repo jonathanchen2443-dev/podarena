@@ -50,19 +50,19 @@ export async function getDashboardData(auth) {
 
   const leagueIds = [...new Set(memberships.map((m) => m.league_id))];
 
-  // 2. Parallel: leagues + recent games across all my leagues
+  // 2. Parallel: leagues + recent participations (league + casual)
   const [allLeagues, recentParticipations] = await Promise.all([
     leagueIds.length > 0 ? base44.entities.League.list("-created_date", 200) : Promise.resolve([]),
     base44.entities.GameParticipant.filter({ user_id: userId }),
   ]);
 
-  // Filter leagues to only my leagues
+  // Build leagueMap from my memberships
   const myLeagueSet = new Set(leagueIds);
   const myLeagues = allLeagues.filter((l) => myLeagueSet.has(l.id));
   const leagueMap = {};
   myLeagues.forEach((l) => { leagueMap[l.id] = l; });
 
-  // 3. Fetch recent games I participated in (up to 5)
+  // 3. Fetch recent games I participated in (up to 8, includes league + casual)
   const gameIds = [...new Set(recentParticipations.map((gp) => gp.game_id))].slice(0, 8);
   let recentGames = [];
 
@@ -73,7 +73,7 @@ export async function getDashboardData(auth) {
 
     // Fetch league names for games not already in leagueMap
     const extraLeagueIds = [...new Set(
-      gameFetches.filter(Boolean).map((g) => g.league_id).filter((id) => !leagueMap[id])
+      gameFetches.filter(Boolean).map((g) => g.league_id).filter((id) => id && !leagueMap[id])
     )];
     if (extraLeagueIds.length > 0) {
       const extraLeagues = await base44.entities.League.list("-created_date", 200);
@@ -85,7 +85,7 @@ export async function getDashboardData(auth) {
       gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }).catch(() => []))
     );
 
-    // Batch-fetch profiles for all participant user ids
+    // Batch-fetch profiles
     const allParticipantUserIds = [...new Set(participantArrays.flat().map((p) => p.user_id))];
     let profileMap = {};
     if (allParticipantUserIds.length > 0) {
@@ -97,16 +97,19 @@ export async function getDashboardData(auth) {
       .filter(Boolean)
       .sort((a, b) => new Date(b.played_at || b.created_date) - new Date(a.played_at || a.created_date))
       .slice(0, 5)
-      .map((game, idx) => {
+      .map((game) => {
         const participants = participantArrays[gameIds.indexOf(game.id)] || [];
         const names = participants.map((p) => profileMap[p.user_id]?.display_name || "?");
         const participantsSummary =
           names.length <= 3 ? names.join(", ") : `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
 
+        const isCasual = game.context_type === "casual" || !game.league_id;
+
         return {
           id: game.id,
-          league_id: game.league_id,
-          leagueName: leagueMap[game.league_id]?.name || "Unknown League",
+          league_id: game.league_id || null,
+          context_type: game.context_type || (game.league_id ? "league" : "casual"),
+          leagueName: isCasual ? "Casual Game" : (leagueMap[game.league_id]?.name || "Unknown League"),
           status: game.status,
           played_at: game.played_at || game.created_date,
           participantsSummary,
