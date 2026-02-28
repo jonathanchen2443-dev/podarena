@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Lock, Swords, Loader2, AlertCircle, CheckCircle, ArrowLeft, User } from "lucide-react";
+import { Lock, Swords, Loader2, AlertCircle, User, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth/AuthContext";
 import { LoadingState } from "@/components/shell/PageStates";
@@ -12,27 +12,69 @@ import { createGameWithParticipants } from "@/components/services/gameService";
 import { ROUTES } from "@/components/utils/routes";
 import LeaguePicker from "@/components/loggame/LeaguePicker";
 import ParticipantPicker from "@/components/loggame/ParticipantPicker";
+import CasualParticipantPicker from "@/components/loggame/CasualParticipantPicker";
 import PlacementInput from "@/components/loggame/PlacementInput";
+
+// Context toggle pill
+function ContextToggle({ value, onChange }) {
+  return (
+    <div className="flex bg-gray-900 border border-gray-700 rounded-xl p-1 gap-1">
+      {["league", "casual"].map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
+            value === opt
+              ? "bg-violet-600 text-white"
+              : "text-gray-400 hover:text-gray-200"
+          }`}
+        >
+          {opt === "league" ? "⚔️ League Game" : "🎲 Casual Game"}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function LogGame() {
   const auth = useAuth();
   const { isGuest, authLoading, currentUser } = auth;
   const navigate = useNavigate();
 
-  // ── Data ──────────────────────────────────────────────────────────────────
-  const [leagues, setLeagues] = useState([]);
-  const [leaguesLoading, setLeaguesLoading] = useState(true);
-
-  const [members, setMembers] = useState([]);
-  const [membersLoading, setMembersLoading] = useState(false);
-
-  const [myDecks, setMyDecks] = useState([]);
-
-  // Read query params
   const qp = new URLSearchParams(window.location.search);
   const preselectedLeagueId = qp.get("leagueId");
   const returnTo = qp.get("returnTo");
   const returnLeagueId = qp.get("returnLeagueId");
+
+  // ── Context mode ──────────────────────────────────────────────────────────
+  const [contextType, setContextType] = useState(preselectedLeagueId ? "league" : "league");
+
+  // ── League mode data ──────────────────────────────────────────────────────
+  const [leagues, setLeagues] = useState([]);
+  const [leaguesLoading, setLeaguesLoading] = useState(true);
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+
+  // ── Shared ────────────────────────────────────────────────────────────────
+  const [myDecks, setMyDecks] = useState([]);
+  const [selectedLeagueId, setSelectedLeagueId] = useState(preselectedLeagueId || null);
+  const [participantIds, setParticipantIds] = useState([]);
+  const [placements, setPlacements] = useState({});
+  const [deckSelections, setDeckSelections] = useState({});
+  const [playedAt, setPlayedAt] = useState(todayISO());
+  const [notes, setNotes] = useState("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+  const leaguesFetchRef = useRef(false);
+  const membersFetchRef = useRef(false);
+  const lastMembersLeagueRef = useRef(null);
+
+  function todayISO() {
+    return new Date().toISOString().slice(0, 16);
+  }
 
   function handleBack() {
     if (returnTo === "league" && returnLeagueId) {
@@ -42,34 +84,14 @@ export default function LogGame() {
     }
   }
 
-  // ── Form state ────────────────────────────────────────────────────────────
-  const [selectedLeagueId, setSelectedLeagueId] = useState(preselectedLeagueId || null);
-  const [participantIds, setParticipantIds] = useState([]);
-  const [placements, setPlacements] = useState({}); // { userId: number }
-  const [deckSelections, setDeckSelections] = useState({}); // { userId: deckId|null }
-  const [playedAt, setPlayedAt] = useState(todayISO());
-  const [notes, setNotes] = useState("");
-
-  // ── Submission state ──────────────────────────────────────────────────────
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
-
-  // ── Fetch guards ──────────────────────────────────────────────────────────
-  const leaguesFetchRef = useRef(false);
-  const membersFetchRef = useRef(false);
-  const lastMembersLeagueRef = useRef(null);
-
-  // ── Load leagues on mount ─────────────────────────────────────────────────
+  // ── Load leagues + decks ──────────────────────────────────────────────────
   useEffect(() => {
     if (authLoading || isGuest) return;
     if (leaguesFetchRef.current) return;
     leaguesFetchRef.current = true;
     setLeaguesLoading(true);
 
-    Promise.all([
-      listLeaguesForGameLogging(auth),
-      listMyDecks(auth),
-    ])
+    Promise.all([listLeaguesForGameLogging(auth), listMyDecks(auth)])
       .then(([ls, decks]) => {
         setLeagues(ls);
         setMyDecks(decks.filter((d) => d.is_active !== false));
@@ -79,9 +101,9 @@ export default function LogGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isGuest]);
 
-  // ── Load members when league changes ──────────────────────────────────────
+  // ── Load league members when league changes ───────────────────────────────
   useEffect(() => {
-    if (!selectedLeagueId) { setMembers([]); return; }
+    if (!selectedLeagueId || contextType !== "league") { setMembers([]); return; }
     if (membersFetchRef.current && lastMembersLeagueRef.current === selectedLeagueId) return;
     membersFetchRef.current = true;
     lastMembersLeagueRef.current = selectedLeagueId;
@@ -94,11 +116,18 @@ export default function LogGame() {
         membersFetchRef.current = false;
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLeagueId]);
+  }, [selectedLeagueId, contextType]);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function todayISO() {
-    return new Date().toISOString().slice(0, 16);
+  // ── Reset participants when context changes ───────────────────────────────
+  function handleContextChange(type) {
+    setContextType(type);
+    setParticipantIds([]);
+    setPlacements({});
+    setDeckSelections({});
+    setSubmitError(null);
+    if (type === "casual") {
+      setSelectedLeagueId(null);
+    }
   }
 
   function handleLeagueChange(id) {
@@ -107,7 +136,7 @@ export default function LogGame() {
     setPlacements({});
     setDeckSelections({});
     setSubmitError(null);
-    membersFetchRef.current = false; // allow re-fetch for new league
+    membersFetchRef.current = false;
     lastMembersLeagueRef.current = null;
   }
 
@@ -122,17 +151,12 @@ export default function LogGame() {
     setDeckSelections((prev) => { const n = { ...prev }; delete n[uid]; return n; });
   }
 
-  function setPlacement(uid, val) {
-    setPlacements((prev) => ({ ...prev, [uid]: val }));
-  }
-
-  function setDeck(uid, deckId) {
-    setDeckSelections((prev) => ({ ...prev, [uid]: deckId }));
-  }
+  function setPlacement(uid, val) { setPlacements((prev) => ({ ...prev, [uid]: val })); }
+  function setDeck(uid, deckId) { setDeckSelections((prev) => ({ ...prev, [uid]: deckId })); }
 
   // ── Validation ────────────────────────────────────────────────────────────
   function validate() {
-    if (!selectedLeagueId) return "Please select a league.";
+    if (contextType === "league" && !selectedLeagueId) return "Please select a league.";
     if (participantIds.length < 2) return "Please add at least 2 participants.";
     const dupCheck = new Set(participantIds);
     if (dupCheck.size !== participantIds.length) return "Duplicate participants detected.";
@@ -160,7 +184,8 @@ export default function LogGame() {
       }));
 
       const game = await createGameWithParticipants({
-        leagueId: selectedLeagueId,
+        leagueId: contextType === "league" ? selectedLeagueId : null,
+        contextType,
         creatorProfileId: currentUser.id,
         playedAt: playedAt ? new Date(playedAt).toISOString() : new Date().toISOString(),
         notes,
@@ -168,9 +193,13 @@ export default function LogGame() {
       });
 
       toast.success("Game logged! Waiting for participant approvals.");
-      // Navigate to LeagueDetails Games tab, open the new game's modal
-      const dest = `${ROUTES.LEAGUE_DETAILS(selectedLeagueId)}&tab=games&gameId=${game.id}`;
-      navigate(dest);
+
+      if (contextType === "league") {
+        navigate(`${ROUTES.LEAGUE_DETAILS(selectedLeagueId)}&tab=games&gameId=${game.id}`);
+      } else {
+        // Casual game — go to Inbox so they can see approvals
+        navigate(`${ROUTES.INBOX}?gameId=${game.id}`);
+      }
     } catch (e) {
       const isRateLimit = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
       setSubmitError(isRateLimit
@@ -182,10 +211,9 @@ export default function LogGame() {
     }
   }
 
-  // ── Guest gate ────────────────────────────────────────────────────────────
+  // ── Guards ────────────────────────────────────────────────────────────────
   if (authLoading) return <LoadingState message="Loading…" />;
 
-  // ── Top nav bar ───────────────────────────────────────────────────────────
   const topNav = (
     <div className="flex items-center justify-between mb-5">
       <button
@@ -213,70 +241,89 @@ export default function LogGame() {
         </div>
         <div>
           <h2 className="text-white font-semibold text-lg">Sign in to Log a Game</h2>
-          <p className="text-gray-400 text-sm mt-1">
-            Sign in to log a game and submit it for approval.
-          </p>
+          <p className="text-gray-400 text-sm mt-1">Sign in to log a game and submit it for approval.</p>
         </div>
-        <Button
-          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11 px-6"
-          onClick={() => base44.auth.redirectToLogin()}
-        >
+        <Button className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11 px-6" onClick={() => base44.auth.redirectToLogin()}>
           Sign In
         </Button>
       </div>
     );
   }
 
-  if (leaguesLoading) return <LoadingState message="Loading your leagues…" />;
+  if (leaguesLoading) return <LoadingState message="Loading…" />;
 
-  if (leagues.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-4">
-        {topNav}
-        <Swords className="w-12 h-12 text-gray-700" />
-        <h2 className="text-white font-semibold text-base">No leagues to log a game in</h2>
-        <p className="text-gray-500 text-sm">You must be an active member of a league to log games.</p>
-      </div>
-    );
-  }
+  const allPlacementsFilled = participantIds.length >= 2 && participantIds.every((uid) => placements[uid]);
 
-  const allPlacementsFilled =
-    participantIds.length >= 2 &&
-    participantIds.every((uid) => placements[uid]);
+  // For casual PlacementInput we pass an empty members array but use allProfiles via CasualParticipantPicker
+  // PlacementInput only needs the list to look up display_name; for casual we build a synthetic list
+  const casualMembersForPlacement = participantIds.map((uid) => ({ userId: uid, display_name: uid }));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {topNav}
+
       <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
         <p className="text-sm text-violet-300 leading-relaxed">
-          Log a completed game. All participants will be asked to approve the result before it counts in the standings.
+          Log a completed game. All participants will be asked to approve the result.
         </p>
       </div>
 
-      {/* League */}
-      <LeaguePicker
-        leagues={leagues}
-        value={selectedLeagueId}
-        onChange={handleLeagueChange}
-      />
+      {/* Context toggle */}
+      <ContextToggle value={contextType} onChange={handleContextChange} />
 
-      {/* Participants — only show after league selected */}
-      {selectedLeagueId && (
-        <ParticipantPicker
-          members={members}
-          selectedIds={participantIds}
-          onAdd={addParticipant}
-          onRemove={removeParticipant}
-          currentUserId={currentUser?.id}
-          membersLoading={membersLoading}
-        />
+      {/* League mode */}
+      {contextType === "league" && (
+        <>
+          <LeaguePicker leagues={leagues} value={selectedLeagueId} onChange={handleLeagueChange} />
+          {selectedLeagueId && (
+            <ParticipantPicker
+              members={members}
+              selectedIds={participantIds}
+              onAdd={addParticipant}
+              onRemove={removeParticipant}
+              currentUserId={currentUser?.id}
+              membersLoading={membersLoading}
+            />
+          )}
+        </>
       )}
 
-      {/* Placements + decks — only show after 2+ participants */}
+      {/* Casual mode */}
+      {contextType === "casual" && (
+        <div className="space-y-3">
+          {/* 1v1 quick preset */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Quick preset:</span>
+            <button
+              type="button"
+              onClick={() => {
+                // Auto-add self if not added; keeps existing selections
+                if (!participantIds.includes(currentUser?.id) && currentUser?.id) {
+                  setParticipantIds([currentUser.id]);
+                  setPlacements({});
+                  setDeckSelections({});
+                }
+              }}
+              className="px-3 py-1 rounded-lg text-xs font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            >
+              ⚔️ 1v1
+            </button>
+          </div>
+
+          <CasualParticipantPicker
+            selectedIds={participantIds}
+            onAdd={addParticipant}
+            onRemove={removeParticipant}
+            currentUserId={currentUser?.id}
+          />
+        </div>
+      )}
+
+      {/* Placements + decks */}
       {participantIds.length >= 2 && (
         <PlacementInput
           participants={participantIds}
-          members={members}
+          members={contextType === "league" ? members : casualMembersForPlacement}
           placements={placements}
           onPlacementChange={setPlacement}
           myDecks={myDecks}
@@ -286,13 +333,11 @@ export default function LogGame() {
         />
       )}
 
-      {/* Optional metadata */}
+      {/* Metadata */}
       {participantIds.length >= 2 && (
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">
-              Date Played
-            </label>
+            <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">Date Played</label>
             <input
               type="datetime-local"
               value={playedAt}

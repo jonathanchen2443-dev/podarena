@@ -55,6 +55,7 @@ export async function getMyDecksWithStats(auth) {
     const gameIds = [...new Set(relevantParticipations.map((p) => p.game_id))];
     let approvedGameIds = new Set();
     if (gameIds.length > 0) {
+      // Include league + casual approved games
       const games = await base44.entities.Game.list("-created_date", 500);
       for (const g of games) {
         if (g.status === "approved" && gameIds.includes(g.id)) {

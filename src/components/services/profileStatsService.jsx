@@ -48,7 +48,7 @@ export async function getProfileStats(auth) {
     const gameIds = [...new Set(participations.map((p) => p.game_id))];
     let approvedGameIds = new Set();
     if (gameIds.length > 0) {
-      // Batch fetch games — filter approved client-side
+      // Batch fetch games — filter approved client-side (includes league + casual)
       const games = await base44.entities.Game.list("-created_date", 500);
       for (const g of games) {
         if (g.status === "approved" && gameIds.includes(g.id)) {
