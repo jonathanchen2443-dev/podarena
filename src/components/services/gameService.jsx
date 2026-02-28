@@ -172,7 +172,9 @@ async function recalculateGameStatus(gameId) {
 
 /**
  * Get the current user's profile, creating one if it doesn't exist.
+ * On creation, sets display_name_lc and avatar_url if available.
  */
+let _provisioningInFlight = false;
 export async function getOrCreateProfile() {
   const user = await base44.auth.me();
   if (!user) return null;
@@ -183,13 +185,28 @@ export async function getOrCreateProfile() {
     return profiles[0];
   }
 
-  // Create a new profile
-  const newProfile = await base44.entities.Profile.create({
-    display_name: user.full_name || user.email.split("@")[0],
-    email: user.email,
-  });
+  if (_provisioningInFlight) {
+    // Wait a beat and retry once to avoid race on double mount
+    await new Promise((r) => setTimeout(r, 800));
+    const retry = await base44.entities.Profile.filter({ email: user.email });
+    if (retry.length > 0) return retry[0];
+  }
 
-  return newProfile;
+  _provisioningInFlight = true;
+  try {
+    const displayName = (user.full_name || user.email.split("@")[0]).trim();
+    const payload = {
+      display_name: displayName,
+      display_name_lc: displayName.toLowerCase(),
+      email: user.email,
+    };
+    if (user.avatar_url) payload.avatar_url = user.avatar_url;
+
+    const newProfile = await base44.entities.Profile.create(payload);
+    return newProfile;
+  } finally {
+    _provisioningInFlight = false;
+  }
 }
 
 /**
