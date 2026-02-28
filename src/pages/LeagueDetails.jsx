@@ -314,18 +314,53 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
         const result = await getOrCreateInvite(auth, league.id);
         url = result.url;
       }
+      setInviteUrl(url);
+      // Try Web Share API; fallback to clipboard
       if (navigator.share) {
-        await navigator.share({ title: league.name, text: `Join "${league.name}" on Nexus`, url });
-        toast.success("Shared!");
-      } else {
+        try {
+          await navigator.share({ title: league.name, text: `Join "${league.name}" on Nexus`, url });
+          toast.success("Shared!");
+          return;
+        } catch (shareErr) {
+          if (shareErr.name === "AbortError") return;
+          // Permission denied or other error → fall through to clipboard
+        }
+      }
+      // Clipboard fallback
+      try {
         await navigator.clipboard.writeText(url);
         toast.success("Invite link copied to clipboard");
+      } catch {
+        // execCommand last-resort
+        const el = document.createElement("textarea");
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+        toast.success("Invite link copied");
       }
     } catch (e) {
       if (e.name !== "AbortError") toast.error(e.message || "Failed to share.");
     } finally {
       setSharing(false);
     }
+  }
+
+  async function handleCopyInviteUrl(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success("Copied!");
   }
 
   // ── Leave league ─────────────────────────────────────────────────────────────
