@@ -29,6 +29,7 @@ export default function DeckForm({ initialValues, onSave, saving }) {
   const navigate = useNavigate();
   const [name, setName] = useState(initialValues?.name || "");
   const [commanderName, setCommanderName] = useState(initialValues?.commander_name || "");
+  const [commanderImageUrl, setCommanderImageUrl] = useState(initialValues?.commander_image_url || "");
   const [colorIdentity, setColorIdentity] = useState(initialValues?.color_identity || []);
   const [isActive, setIsActive] = useState(initialValues?.is_active !== undefined ? initialValues.is_active : true);
   const [error, setError] = useState("");
@@ -46,7 +47,13 @@ export default function DeckForm({ initialValues, onSave, saving }) {
       return;
     }
     setError("");
-    onSave({ name: name.trim(), commander_name: commanderName.trim(), color_identity: colorIdentity, is_active: isActive });
+    onSave({
+      name: name.trim(),
+      commander_name: commanderName.trim(),
+      commander_image_url: commanderImageUrl.trim(),
+      color_identity: colorIdentity,
+      is_active: isActive,
+    });
   }
 
   return (
