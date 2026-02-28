@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { Lock, Swords, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Lock, Swords, Loader2, AlertCircle, CheckCircle, ArrowLeft, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth/AuthContext";
 import { LoadingState } from "@/components/shell/PageStates";
