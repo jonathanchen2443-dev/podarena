@@ -35,12 +35,20 @@ export default function DeckTile({ deck, onDelete }) {
           </div>
         )}
 
-        {/* Inactive badge */}
-        {!deck.is_active && (
-          <div className="absolute top-2 left-2 bg-gray-900/80 border border-gray-700 rounded-md px-1.5 py-0.5 text-[9px] font-medium text-gray-400 backdrop-blur-sm">
-            Inactive
-          </div>
-        )}
+        {/* Active / Retired badge */}
+        <div className="absolute top-2 left-2">
+          {deck.is_active !== false ? (
+            <span className="flex items-center gap-1 bg-gray-900/80 border border-green-700/60 rounded-md px-1.5 py-0.5 text-[9px] font-medium text-green-400 backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+              Active
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 bg-gray-900/80 border border-gray-600/60 rounded-md px-1.5 py-0.5 text-[9px] font-medium text-gray-500 backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-500 inline-block" />
+              Retired
+            </span>
+          )}
+        </div>
 
         {/* Action buttons overlay */}
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
