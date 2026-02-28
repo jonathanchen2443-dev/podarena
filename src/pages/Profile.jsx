@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { User, LogOut, Plus, ChevronRight, Trophy, Swords, Lock } from "lucide-react";
+import { LogOut, Plus, ChevronRight, Trophy, Swords, Lock, AlertCircle, RefreshCw } from "lucide-react";
 import { LoadingState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
 import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
-import DeckCard from "@/components/decks/DeckCard";
+import DeckTile from "@/components/decks/DeckTile";
 import DeleteDeckModal from "@/components/decks/DeleteDeckModal";
-import { listMyDecks, deleteDeck } from "@/components/services/deckService";
-import { toast } from "sonner";
+import AvatarUpload from "@/components/profile/AvatarUpload";
+import UsernameEdit from "@/components/profile/UsernameEdit";
+import StatOrb from "@/components/profile/StatOrb";
+import { getMyDecksWithStats, invalidateDeckStatsCache } from "@/components/services/deckStatsService";
+import { getProfileStats, invalidateProfileStatsCache } from "@/components/services/profileStatsService";
+import { deleteDeck } from "@/components/services/deckService";
 import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 export default function Profile() {
   const auth = useAuth();
@@ -20,20 +25,46 @@ export default function Profile() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [decks, setDecks] = useState([]);
   const [decksLoading, setDecksLoading] = useState(false);
+  const [decksError, setDecksError] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [statsError, setStatsError] = useState(null);
   const [deletingDeck, setDeletingDeck] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !isGuest) {
-      loadDecks();
+      loadAll();
     }
   }, [authLoading, isGuest]);
 
-  async function loadDecks() {
+  async function loadAll() {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setDecksLoading(true);
-    const data = await listMyDecks(auth);
-    setDecks(data);
-    setDecksLoading(false);
+    setDecksError(null);
+    setStatsError(null);
+    try {
+      // Load profile record for avatar + username
+      const profiles = await base44.entities.Profile.filter({ created_by: currentUser?.email });
+      setProfile(profiles[0] || null);
+
+      const [decksData, statsData] = await Promise.all([
+        getMyDecksWithStats(auth),
+        getProfileStats(auth),
+      ]);
+      setDecks(decksData);
+      setStats(statsData);
+    } catch (e) {
+      const isRate = e?.message?.toLowerCase().includes("rate") || e?.message?.toLowerCase().includes("429");
+      const msg = isRate ? "Too many requests right now. Please wait a few seconds and try again." : (e.message || "Failed to load profile.");
+      setDecksError(msg);
+      setStatsError(msg);
+    } finally {
+      setDecksLoading(false);
+      fetchingRef.current = false;
+    }
   }
 
   async function handleDeleteConfirm() {
@@ -42,7 +73,18 @@ export default function Profile() {
     toast.success("Deck deleted.");
     setDeletingDeck(null);
     setDeleteLoading(false);
-    await loadDecks();
+    invalidateDeckStatsCache(currentUser?.id);
+    invalidateProfileStatsCache(currentUser?.id);
+    fetchingRef.current = false;
+    await loadAll();
+  }
+
+  function handleAvatarSaved(newUrl) {
+    setProfile((p) => p ? { ...p, avatar_url: newUrl } : p);
+  }
+
+  function handleUsernameSaved(newUsername) {
+    setProfile((p) => p ? { ...p, username: newUsername, username_lc: newUsername.toLowerCase() } : p);
   }
 
   if (authLoading) return <LoadingState message="Loading profile…" />;
@@ -72,37 +114,63 @@ export default function Profile() {
   }
 
   // ── Authenticated view ───────────────────────────────────────────────────────
-  const stats = [
-    { label: "Games", value: "—" },
-    { label: "Wins", value: "—" },
-    { label: "Decks", value: decksLoading ? "…" : decks.length },
-    { label: "Leagues", value: "—" },
-  ];
+  const previewDecks = decks.slice(0, 4);
 
-  const previewDecks = decks.slice(0, 3);
+  const orbStats = [
+    { label: "Games", value: stats ? stats.gamesPlayed : (decksLoading ? "…" : "—"), color: "violet" },
+    { label: "Wins", value: stats ? stats.wins : (decksLoading ? "…" : "—"), color: "emerald" },
+    { label: "Decks", value: stats ? stats.decksCount : (decksLoading ? "…" : decks.length), color: "amber" },
+    { label: "Leagues", value: stats ? stats.leaguesCount : (decksLoading ? "…" : "—"), color: "sky" },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Profile card */}
       <Card className="bg-gray-900/60 border-gray-800/50">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-              <User className="w-8 h-8 text-violet-400" />
-            </div>
-            <div>
-              <p className="text-white font-semibold text-lg">{currentUser?.display_name || "—"}</p>
-              <p className="text-gray-500 text-sm">{currentUser?.email || ""}</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-4 gap-2 mt-6 pt-5 border-t border-gray-800/60">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-white font-bold text-lg">{stat.value}</p>
-                <p className="text-gray-600 text-[10px] mt-0.5 leading-tight">{stat.label}</p>
+        <CardContent className="p-5">
+          {/* Avatar + identity */}
+          <div className="flex items-start gap-4">
+            {profile ? (
+              <AvatarUpload profile={profile} onSaved={handleAvatarSaved} />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-violet-500/10 border-2 border-violet-500/30 flex items-center justify-center flex-shrink-0">
+                <Lock className="w-8 h-8 text-violet-400" />
               </div>
-            ))}
+            )}
+            <div className="flex-1 min-w-0 pt-1">
+              <p className="text-white font-bold text-lg leading-tight truncate">
+                {currentUser?.display_name || "—"}
+              </p>
+              <p className="text-gray-500 text-xs mt-0.5 truncate">{currentUser?.email || ""}</p>
+              {profile && (
+                <div className="mt-1.5">
+                  <UsernameEdit profile={profile} onSaved={handleUsernameSaved} />
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Stat orbs */}
+          {statsError ? (
+            <div className="mt-5 pt-4 border-t border-gray-800/60 flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                <p className="text-red-400 text-xs">{statsError}</p>
+              </div>
+              <button
+                onClick={() => { fetchingRef.current = false; loadAll(); }}
+                className="flex items-center gap-1.5 text-violet-400 text-xs hover:text-violet-300 transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" /> Retry
+              </button>
+            </div>
+          ) : (
+            <div className="mt-5 pt-4 border-t border-gray-800/60 grid grid-cols-4 gap-2">
+              {orbStats.map((s) => (
+                <StatOrb key={s.label} value={s.value} label={s.label} color={s.color} />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -121,6 +189,14 @@ export default function Profile() {
 
         {decksLoading ? (
           <p className="text-gray-500 text-sm px-1">Loading…</p>
+        ) : decksError ? (
+          <div className="flex flex-col items-center gap-2 py-4">
+            <AlertCircle className="w-6 h-6 text-red-400/70" />
+            <p className="text-red-400 text-xs">{decksError}</p>
+            <button onClick={() => { fetchingRef.current = false; loadAll(); }} className="text-violet-400 text-xs hover:text-violet-300 flex items-center gap-1">
+              <RefreshCw className="w-3 h-3" /> Retry
+            </button>
+          </div>
         ) : previewDecks.length === 0 ? (
           <Card className="bg-gray-900/40 border-gray-800/40 border-dashed">
             <CardContent className="p-6 text-center">
@@ -135,12 +211,12 @@ export default function Profile() {
           </Card>
         ) : (
           <>
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               {previewDecks.map((deck) => (
-                <DeckCard key={deck.id} deck={deck} onDelete={setDeletingDeck} />
+                <DeckTile key={deck.id} deck={deck} onDelete={setDeletingDeck} />
               ))}
             </div>
-            {decks.length > 3 && (
+            {decks.length > 4 && (
               <button
                 className="w-full flex items-center justify-center gap-1 text-violet-400 text-sm hover:text-violet-300 py-2 transition-colors"
                 onClick={() => navigate(ROUTES.PROFILE_DECKS)}
