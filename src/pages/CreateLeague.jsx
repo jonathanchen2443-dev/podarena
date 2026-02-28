@@ -152,6 +152,26 @@ export default function CreateLeague() {
           </p>
         </div>
 
+        {/* Max members */}
+        <div className="space-y-1.5">
+          <label className="block text-xs text-gray-400 font-medium">
+            Max members <span className="text-gray-600">(2–10)</span>
+          </label>
+          <div className="flex items-center gap-4">
+            <input
+              type="range"
+              min={2}
+              max={10}
+              step={1}
+              value={maxMembers}
+              onChange={(e) => setMaxMembers(Number(e.target.value))}
+              className="flex-1 accent-violet-500"
+            />
+            <span className="text-white font-semibold text-sm w-6 text-center">{maxMembers}</span>
+          </div>
+          <p className="text-xs text-gray-600">League will stop accepting new members when full.</p>
+        </div>
+
         {/* Error */}
         {error && (
           <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
