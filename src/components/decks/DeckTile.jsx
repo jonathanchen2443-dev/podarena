@@ -1,14 +1,26 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { Pencil, Trash2, Swords } from "lucide-react";
+import { Pencil, Trash2, Swords, Star, Info } from "lucide-react";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
+import { base44 } from "@/api/base44Client";
+import { invalidateDeckStatsCache } from "@/components/services/deckStatsService";
+import { invalidateDeckInsightsCache } from "@/components/services/deckInsightsService";
 
 /**
  * DeckTile — square 2-column tile.
- * Props: deck (with optional gamesWithDeck, winsWithDeck, winRatePercent), onDelete, editHref (optional override for edit link)
+ * Props:
+ *   deck         – deck with optional gamesWithDeck/winsWithDeck/winRatePercent
+ *   onDelete     – (deck) => void
+ *   editHref     – optional override for edit link
+ *   onFavoriteToggle – (deck, newIsFavorite) => void  (for optimistic update in parent)
+ *   onInsights   – (deck) => void  (opens insights modal in parent)
+ *   isGuest      – boolean
  */
-export default function DeckTile({ deck, onDelete, editHref }) {
+export default function DeckTile({ deck, onDelete, editHref, onFavoriteToggle, onInsights, isGuest }) {
+  const [localFav, setLocalFav] = useState(deck.is_favorite ?? false);
+  const [favSaving, setFavSaving] = useState(false);
+
   const winRate = deck.winRatePercent ?? (
     deck.gamesWithDeck > 0
       ? Math.round((deck.winsWithDeck / deck.gamesWithDeck) * 100)
@@ -19,10 +31,39 @@ export default function DeckTile({ deck, onDelete, editHref }) {
   const imageUrl = deck.commander_image_url || null;
   const commanderName = deck.commander_name || deck.name;
 
+  async function handleFavoriteClick(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (favSaving) return;
+    const next = !localFav;
+    setLocalFav(next); // optimistic
+    setFavSaving(true);
+    try {
+      await base44.entities.Deck.update(deck.id, { is_favorite: next });
+      onFavoriteToggle?.(deck, next);
+      if (deck.owner_id) {
+        invalidateDeckStatsCache(deck.owner_id);
+        invalidateDeckInsightsCache(deck.owner_id);
+      }
+    } catch {
+      setLocalFav(!next); // revert
+    } finally {
+      setFavSaving(false);
+    }
+  }
+
+  function handleImageClick(e) {
+    e.stopPropagation();
+    onInsights?.(deck);
+  }
+
   return (
     <div className="relative flex flex-col rounded-2xl bg-gray-900/70 border border-gray-800/50 overflow-hidden group">
-      {/* Commander image (square aspect) */}
-      <div className="relative w-full aspect-square bg-gray-800/60 overflow-hidden">
+      {/* Commander image (square aspect) — click opens insights */}
+      <div
+        className="relative w-full aspect-square bg-gray-800/60 overflow-hidden cursor-pointer"
+        onClick={handleImageClick}
+      >
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -50,16 +91,24 @@ export default function DeckTile({ deck, onDelete, editHref }) {
           )}
         </div>
 
-        {/* Action buttons overlay */}
+        {/* Info icon (visible on hover) */}
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="w-6 h-6 rounded-md bg-gray-900/80 border border-gray-700 flex items-center justify-center backdrop-blur-sm">
+            <Info className="w-3 h-3 text-gray-300" />
+          </div>
+        </div>
+
+        {/* Edit + Delete overlay */}
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Link
             to={editHref || ROUTES.PROFILE_DECK_EDIT(deck.id)}
+            onClick={(e) => e.stopPropagation()}
             className="w-7 h-7 rounded-lg bg-gray-900/80 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-violet-400 hover:border-violet-500/50 transition-colors backdrop-blur-sm"
           >
             <Pencil className="w-3 h-3" />
           </Link>
           <button
-            onClick={() => onDelete?.(deck)}
+            onClick={(e) => { e.stopPropagation(); onDelete?.(deck); }}
             className="w-7 h-7 rounded-lg bg-gray-900/80 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-red-400 hover:border-red-500/50 transition-colors backdrop-blur-sm"
           >
             <Trash2 className="w-3 h-3" />
@@ -74,8 +123,24 @@ export default function DeckTile({ deck, onDelete, editHref }) {
           <p className="text-gray-600 text-[9px] truncate leading-none">{deck.name}</p>
         )}
 
-        {/* Commander name */}
-        <p className="text-white text-xs font-semibold truncate leading-tight">{commanderName}</p>
+        {/* Commander name + star */}
+        <div className="flex items-center gap-1.5">
+          {!isGuest && (
+            <button
+              onClick={handleFavoriteClick}
+              disabled={favSaving}
+              className="flex-shrink-0 transition-opacity disabled:opacity-50"
+              title={localFav ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Star
+                className={`w-3.5 h-3.5 transition-colors ${
+                  localFav ? "fill-amber-400 text-amber-400" : "text-gray-600 hover:text-amber-400"
+                }`}
+              />
+            </button>
+          )}
+          <p className="text-white text-xs font-semibold truncate leading-tight flex-1">{commanderName}</p>
+        </div>
 
         {/* Mana pips */}
         <ManaPipRow colors={colors} size={14} gap={2} />

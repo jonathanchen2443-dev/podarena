@@ -27,6 +27,7 @@ export async function createDeck(auth, payload) {
     commander_image_url: payload.commander_image_url || "",
     color_identity: payload.color_identity || [],
     is_active: payload.is_active !== undefined ? payload.is_active : true,
+    is_favorite: payload.is_favorite ?? false,
   });
 }
 
@@ -39,6 +40,7 @@ export async function updateDeck(auth, deckId, payload) {
     commander_image_url: payload.commander_image_url || "",
     color_identity: payload.color_identity || [],
     is_active: payload.is_active !== undefined ? payload.is_active : true,
+    is_favorite: payload.is_favorite ?? deck.is_favorite ?? false,
   });
 }
 
