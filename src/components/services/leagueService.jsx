@@ -534,6 +534,7 @@ export async function getOrCreateInvite(auth, leagueId) {
 
 /**
  * Join a public league (authed non-member).
+ * Checks capacity and notifies admins.
  */
 export async function joinPublicLeague(auth, leagueId) {
   if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in to join.");
@@ -542,6 +543,11 @@ export async function joinPublicLeague(auth, leagueId) {
   const league = results[0];
   if (!league) throw new Error("League not found.");
   if (!league.is_public) throw new Error("This league is private. Use an invite link to join.");
+
+  // Capacity check
+  const activeMembers = await base44.entities.LeagueMember.filter({ league_id: leagueId, status: "active" });
+  const maxMembers = league.max_members || 10;
+  if (activeMembers.length >= maxMembers) throw new Error("This league is full.");
 
   // Idempotency: check if already member
   const existing = await base44.entities.LeagueMember.filter({
@@ -566,6 +572,22 @@ export async function joinPublicLeague(auth, leagueId) {
   }
   invalidateLeagueCache(leagueId);
   invalidateLeaguesListCache();
+
+  // Notify all active admins (fire & forget, don't block join on failure)
+  try {
+    const admins = activeMembers.filter((m) => m.role === "admin");
+    if (admins.length > 0) {
+      const notifications = admins.map((admin) => ({
+        type: "league_join",
+        league_id: leagueId,
+        actor_user_id: auth.currentUser.id,
+        recipient_user_id: admin.user_id,
+        message: `${auth.currentUser.display_name || "Someone"} joined ${league.name}`,
+      }));
+      await base44.entities.Notification.bulkCreate(notifications);
+    }
+  } catch (_) { /* non-critical */ }
+
   return membership;
 }
 
