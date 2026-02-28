@@ -28,7 +28,8 @@ export async function isLeagueAdmin(leagueId, userId) {
  * Create a game with participants and approval records.
  *
  * @param {object} params
- * @param {string} params.leagueId - The league ID
+ * @param {string|null} params.leagueId - The league ID (null for casual)
+ * @param {string} params.contextType - "league" or "casual"
  * @param {string} params.creatorProfileId - The profile ID of the creator
  * @param {string} params.playedAt - ISO date string of when the game was played
  * @param {string} params.notes - Optional notes
@@ -37,28 +38,33 @@ export async function isLeagueAdmin(leagueId, userId) {
  */
 export async function createGameWithParticipants({
   leagueId,
+  contextType = "league",
   creatorProfileId,
   playedAt,
   notes,
   participants,
 }) {
-  // 1. Validate creator is active member
-  const creatorMembership = await validateLeagueMembership(leagueId, creatorProfileId);
-  if (!creatorMembership) {
-    throw new Error("You must be an active member of this league to create a game.");
-  }
+  if (contextType === "league") {
+    // 1. Validate creator is active member
+    const creatorMembership = await validateLeagueMembership(leagueId, creatorProfileId);
+    if (!creatorMembership) {
+      throw new Error("You must be an active member of this league to create a game.");
+    }
 
-  // 2. Validate all participants are active members
-  for (const p of participants) {
-    const membership = await validateLeagueMembership(leagueId, p.user_id);
-    if (!membership) {
-      throw new Error(`Participant ${p.user_id} is not an active member of this league.`);
+    // 2. Validate all participants are active members
+    for (const p of participants) {
+      const membership = await validateLeagueMembership(leagueId, p.user_id);
+      if (!membership) {
+        throw new Error(`Participant ${p.user_id} is not an active member of this league.`);
+      }
     }
   }
+  // Casual games: no league membership validation needed
 
   // 3. Create the game record
   const game = await base44.entities.Game.create({
-    league_id: leagueId,
+    league_id: leagueId || null,
+    context_type: contextType,
     played_at: playedAt || new Date().toISOString(),
     status: "pending",
     notes: notes || "",
@@ -238,12 +244,12 @@ export async function listMyPendingApprovals(auth) {
   const validGameIds = new Set(validGames.map((g) => g.id));
 
   // 3. Batch fetch leagues + profiles
-  const leagueIds = [...new Set(validGames.map((g) => g.league_id))];
+  const leagueIds = [...new Set(validGames.map((g) => g.league_id).filter(Boolean))];
   const allParticipants = participantArrays.flat();
   const participantUserIds = [...new Set(allParticipants.map((p) => p.user_id))];
 
   const [allLeagues, allProfiles] = await Promise.all([
-    base44.entities.League.list("-created_date", 200),
+    leagueIds.length > 0 ? base44.entities.League.list("-created_date", 200) : Promise.resolve([]),
     base44.entities.Profile.list("-created_date", 200),
   ]);
 
@@ -259,7 +265,7 @@ export async function listMyPendingApprovals(auth) {
       if (!game || !validGameIds.has(gid)) return null;
 
       const approval = myApprovals.find((a) => a.game_id === gid);
-      const league = leagueMap[game.league_id];
+      const league = game.league_id ? leagueMap[game.league_id] : null;
       const participants = participantArrays[i].map((p) => ({
         userId: p.user_id,
         display_name: profileMap[p.user_id]?.display_name || "Unknown",
@@ -294,8 +300,9 @@ export async function listMyPendingApprovals(auth) {
           participants,
           approvalSummary,
         },
-        leagueId: game.league_id,
-        leagueName: league?.name || "Unknown League",
+        leagueId: game.league_id || null,
+        leagueName: game.context_type === "casual" ? "Casual Game" : (league?.name || "Unknown League"),
+        contextType: game.context_type || "league",
         submittedByName: submittedByProfile?.display_name || null,
       };
     })
