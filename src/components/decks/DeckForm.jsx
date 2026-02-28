@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import CommanderSearch from "@/components/decks/CommanderSearch";
+import ManaPipRow from "@/components/mtg/ManaPipRow";
 
 const COLORS = [
   { code: "W", name: "White" },
