@@ -207,14 +207,16 @@ export default function ProfileDecks() {
           description="Create your first Commander deck to get started."
         />
       ) : (
-        <div className="space-y-3">
-          {decks.slice(0, visibleCount).map((deck) => (
-            <DeckCard key={deck.id} deck={deck} onDelete={setDeletingDeck} />
-          ))}
+        <div>
+          <div className="grid grid-cols-2 gap-3">
+            {decks.slice(0, visibleCount).map((deck) => (
+              <DeckTile key={deck.id} deck={deck} onDelete={setDeletingDeck} />
+            ))}
+          </div>
           {decks.length > visibleCount && (
             <button
               onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              className="w-full py-2.5 text-xs text-violet-400 hover:text-violet-300 hover:bg-gray-800/40 rounded-xl border border-gray-800/50 transition-colors"
+              className="w-full mt-3 py-2.5 text-xs text-violet-400 hover:text-violet-300 hover:bg-gray-800/40 rounded-xl border border-gray-800/50 transition-colors"
             >
               Load more ({decks.length - visibleCount} remaining)
             </button>
