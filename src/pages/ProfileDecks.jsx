@@ -84,6 +84,7 @@ export default function ProfileDecks() {
     setSaving(true);
     await createDeck(auth, payload);
     toast.success("Deck created!");
+    if (auth.currentUser?.id) invalidateDeckStatsCache(auth.currentUser.id);
     navigate(ROUTES.PROFILE_DECKS);
     setSaving(false);
   }
@@ -92,6 +93,7 @@ export default function ProfileDecks() {
     setSaving(true);
     await updateDeck(auth, subRoute.deckId, payload);
     toast.success("Deck updated!");
+    if (auth.currentUser?.id) invalidateDeckStatsCache(auth.currentUser.id);
     navigate(ROUTES.PROFILE_DECKS);
     setSaving(false);
   }
