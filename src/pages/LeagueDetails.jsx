@@ -769,8 +769,18 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                             Admin
                           </Badge>
                         )}
+                        {/* Promote icon (admin edit mode, only for non-admin members) */}
+                        {showPromoteBtn && !isConfirming && !isPromoting && (
+                          <button
+                            onClick={() => setPromotingUserId(member.userId)}
+                            className="ml-1 p-1 rounded-md text-gray-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors flex-shrink-0"
+                            title="Promote to admin"
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* Remove icon (admin edit mode) */}
-                        {showRemoveBtn && !isConfirming && (
+                        {showRemoveBtn && !isConfirming && !isPromoting && (
                           <button
                             onClick={() => setConfirmRemoveUserId(member.userId)}
                             className="ml-1 p-1 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
