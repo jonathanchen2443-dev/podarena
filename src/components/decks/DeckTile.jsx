@@ -53,7 +53,7 @@ export default function DeckTile({ deck, onDelete, editHref }) {
         {/* Action buttons overlay */}
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Link
-            to={ROUTES.PROFILE_DECK_EDIT(deck.id)}
+            to={editHref || ROUTES.PROFILE_DECK_EDIT(deck.id)}
             className="w-7 h-7 rounded-lg bg-gray-900/80 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-violet-400 hover:border-violet-500/50 transition-colors backdrop-blur-sm"
           >
             <Pencil className="w-3 h-3" />
