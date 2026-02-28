@@ -27,7 +27,7 @@ const COLOR_STYLES = {
   C: { active: "bg-slate-500 text-white border-slate-400", inactive: "bg-gray-800 text-gray-400 border-gray-700" },
 };
 
-export default function DeckForm({ initialValues, onSave, saving }) {
+export default function DeckForm({ initialValues, onSave, saving, onCancel }) {
   const navigate = useNavigate();
   const [name, setName] = useState(initialValues?.name || "");
   const [commanderName, setCommanderName] = useState(initialValues?.commander_name || "");
