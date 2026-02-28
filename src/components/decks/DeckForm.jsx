@@ -78,6 +78,21 @@ export default function DeckForm({ initialValues, onSave, saving }) {
         />
       </div>
 
+      <div className="space-y-1.5">
+        <Label className="text-gray-300 text-sm">Commander Image URL <span className="text-gray-600 font-normal">(optional)</span></Label>
+        {commanderImageUrl && (
+          <div className="w-20 h-20 rounded-xl overflow-hidden border border-gray-700 bg-gray-800 mb-2">
+            <img src={commanderImageUrl} alt="Commander" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
+          </div>
+        )}
+        <Input
+          value={commanderImageUrl}
+          onChange={(e) => setCommanderImageUrl(e.target.value)}
+          placeholder="https://cards.scryfall.io/art_crop/..."
+          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-violet-500"
+        />
+      </div>
+
       <div className="space-y-2">
         <Label className="text-gray-300 text-sm">Color Identity</Label>
         <div className="flex gap-2 flex-wrap">
