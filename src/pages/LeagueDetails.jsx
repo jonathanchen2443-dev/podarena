@@ -814,6 +814,26 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                           </button>
                         </div>
                       )}
+                      {/* Inline promote confirmation */}
+                      {isPromoting && (
+                        <div className="px-4 pb-3 flex items-center gap-2 bg-amber-900/10 border-t border-amber-800/30">
+                          <p className="text-xs text-amber-400 flex-1">Promote {member.display_name} to admin?</p>
+                          <button
+                            disabled={promoting}
+                            onClick={() => handlePromoteMember(member.userId)}
+                            className="h-7 px-3 rounded-md bg-amber-600 text-white text-xs font-medium hover:bg-amber-700 disabled:opacity-60"
+                          >
+                            {promoting ? "…" : "Promote"}
+                          </button>
+                          <button
+                            disabled={promoting}
+                            onClick={() => setPromotingUserId(null)}
+                            className="h-7 px-3 rounded-md bg-gray-700 text-gray-200 text-xs font-medium hover:bg-gray-600"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
