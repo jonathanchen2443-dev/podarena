@@ -1,6 +1,7 @@
 /**
  * Founder Service — controls who has access to the Founder Console.
  */
+import { base44 } from "@/api/base44Client";
 import { getSettings, upsertSettings, invalidateSettingsCache } from "./appSettingsService";
 
 export async function isFounder(auth) {
@@ -16,6 +17,13 @@ export async function requireFounder(auth) {
   return true;
 }
 
+/** Resolve a profile by email — searches Profile entity by email field */
+export async function lookupProfileByEmail(email) {
+  const trimmed = email.trim().toLowerCase();
+  const profiles = await base44.entities.Profile.list("-created_date", 200);
+  return profiles.find((p) => (p.email || "").toLowerCase() === trimmed) || null;
+}
+
 export async function addFounder(auth, userId) {
   await requireFounder(auth);
   const trimmed = userId.trim();
@@ -25,6 +33,13 @@ export async function addFounder(auth, userId) {
   if (current.includes(trimmed)) throw new Error("This user is already a founder.");
   invalidateSettingsCache();
   return upsertSettings({ founder_user_ids: [...current, trimmed] });
+}
+
+export async function addFounderByEmail(auth, email) {
+  await requireFounder(auth);
+  const profile = await lookupProfileByEmail(email);
+  if (!profile) throw new Error(`No user found with email "${email.trim()}".`);
+  return addFounder(auth, profile.id);
 }
 
 export async function removeFounder(auth, userId) {
