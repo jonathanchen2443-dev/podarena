@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, Lock, AlertCircle, RefreshCw, ChevronRight } from "lucide-react";
+import { Bell, Lock, AlertCircle, RefreshCw, ChevronRight, Users } from "lucide-react";
 import { LoadingState, EmptyState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { invalidateLeagueCache } from "@/components/services/leagueService";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 import { formatDistanceToNow } from "date-fns";
 
+// ── Approval row (clickable, opens modal) ─────────────────────────────────────
 function ApprovalRow({ row, onClick }) {
   const { game, leagueName, submittedByName } = row;
   const names = game.participants.map((p) => p.display_name);
@@ -48,37 +49,94 @@ function ApprovalRow({ row, onClick }) {
   );
 }
 
+// ── Notification row (info-only, no actions) ──────────────────────────────────
+function NotificationRow({ notif }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-800/50 last:border-0">
+      <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+        <Users className="w-4 h-4 text-violet-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-white text-sm font-medium truncate">{notif.leagueName}</span>
+          <span className="text-gray-500 text-xs shrink-0">
+            {formatDistanceToNow(new Date(notif.created_date), { addSuffix: true })}
+          </span>
+        </div>
+        <p className="text-gray-400 text-xs">
+          <span className="text-violet-300">{notif.actorName}</span> joined the league
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function Inbox() {
   const auth = useAuth();
   const { isGuest, authLoading, currentUser } = auth;
 
   const [approvals, setApprovals] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const fetchingRef = useRef(false);
 
-  // Modal state — driven by query params
+  // Modal state
   const [selectedRow, setSelectedRow] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    const gameId = params.get("gameId");
-    return gameId ? gameId : null;
+    return params.get("gameId") || null;
   });
 
-  async function loadApprovals() {
+  async function loadAll() {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      const rows = await listMyPendingApprovals(auth);
+      // Fetch approvals and notifications in parallel
+      const [rows, rawNotifs] = await Promise.all([
+        listMyPendingApprovals(auth),
+        currentUser
+          ? base44.entities.Notification.filter(
+              { recipient_user_id: currentUser.id },
+              "-created_date",
+              50
+            )
+          : Promise.resolve([]),
+      ]);
       setApprovals(rows);
+
+      // Enrich notifications (batch fetch leagues + profiles to avoid N+1)
+      if (rawNotifs.length > 0) {
+        const actorIds = [...new Set(rawNotifs.map((n) => n.actor_user_id))];
+        const leagueIds = [...new Set(rawNotifs.map((n) => n.league_id))];
+
+        const [allProfiles, allLeagues] = await Promise.all([
+          base44.entities.Profile.list("-created_date", 200),
+          base44.entities.League.list("-created_date", 200),
+        ]);
+
+        const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
+        const leagueMap = Object.fromEntries(allLeagues.map((l) => [l.id, l]));
+
+        setNotifications(
+          rawNotifs.map((n) => ({
+            ...n,
+            actorName: profileMap[n.actor_user_id]?.display_name || "Someone",
+            leagueName: leagueMap[n.league_id]?.name || "Unknown League",
+          }))
+        );
+      } else {
+        setNotifications([]);
+      }
     } catch (e) {
       const isRateLimit =
         e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
       setError(
         isRateLimit
           ? "Too many requests right now. Please wait a few seconds and try again."
-          : e.message || "Failed to load approvals."
+          : e.message || "Failed to load inbox."
       );
     } finally {
       setLoading(false);
@@ -88,7 +146,7 @@ export default function Inbox() {
 
   useEffect(() => {
     if (authLoading || isGuest) return;
-    loadApprovals();
+    loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isGuest]);
 
@@ -110,7 +168,7 @@ export default function Inbox() {
     if (leagueId) invalidateLeagueCache(leagueId);
     closeModal();
     fetchingRef.current = false;
-    await loadApprovals();
+    await loadAll();
   }
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
@@ -138,7 +196,7 @@ export default function Inbox() {
     );
   }
 
-  if (loading) return <LoadingState message="Loading approvals…" />;
+  if (loading) return <LoadingState message="Loading inbox…" />;
 
   if (error) {
     return (
@@ -149,7 +207,7 @@ export default function Inbox() {
           variant="outline"
           size="sm"
           className="border-gray-700 text-gray-300 hover:bg-gray-800"
-          onClick={() => { fetchingRef.current = false; loadApprovals(); }}
+          onClick={() => { fetchingRef.current = false; loadAll(); }}
         >
           <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
           Retry
@@ -158,11 +216,14 @@ export default function Inbox() {
     );
   }
 
-  if (approvals.length === 0) {
+  const hasApprovals = approvals.length > 0;
+  const hasNotifications = notifications.length > 0;
+
+  if (!hasApprovals && !hasNotifications) {
     return (
       <EmptyState
         title="No pending approvals"
-        description="You're all caught up. New game submissions that need your approval will appear here."
+        description="You're all caught up. Game approvals and league join notifications will appear here."
       />
     );
   }
@@ -172,16 +233,35 @@ export default function Inbox() {
   return (
     <>
       <div className="space-y-4">
-        <p className="text-xs text-gray-500 px-1">
-          {approvals.length} pending {approvals.length === 1 ? "approval" : "approvals"}
-        </p>
-        <Card className="bg-gray-900/60 border-gray-800/50">
-          <CardContent className="p-0">
-            {approvals.map((row) => (
-              <ApprovalRow key={row.game.id} row={row} onClick={() => openModal(row.game.id)} />
-            ))}
-          </CardContent>
-        </Card>
+        {/* Pending approvals */}
+        {hasApprovals && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 px-1">
+              {approvals.length} pending {approvals.length === 1 ? "approval" : "approvals"}
+            </p>
+            <Card className="bg-gray-900/60 border-gray-800/50">
+              <CardContent className="p-0">
+                {approvals.map((row) => (
+                  <ApprovalRow key={row.game.id} row={row} onClick={() => openModal(row.game.id)} />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* League join notifications */}
+        {hasNotifications && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 px-1">League activity</p>
+            <Card className="bg-gray-900/60 border-gray-800/50">
+              <CardContent className="p-0">
+                {notifications.map((n) => (
+                  <NotificationRow key={n.id} notif={n} />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       {modalRow && (
