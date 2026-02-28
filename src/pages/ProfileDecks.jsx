@@ -70,6 +70,8 @@ export default function ProfileDecks() {
   const [editLoading, setEditLoading] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [insightsDeck, setInsightsDeck] = useState(null);
+  const PAGE_SIZE = 20;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const fetchingRef = useRef(false);
 
   const subRoute = getSubRoute();

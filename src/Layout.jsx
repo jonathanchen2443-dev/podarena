@@ -13,7 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 const SHELL_PAGES = ["home", "dashboard", "leagueslist", "loggame", "inbox", "profile"];
 // Sub-pages that belong to a shell tab and should also show the nav
 // Note: approvals and decks are redirect shims — kept so they render inside the shell cleanly
-const SHELL_SUB_PAGES = ["leagues", "dashboard", "approvals", "decks", "profiledecks", "leaguedetails", "userprofile", "createleague"];
+const SHELL_SUB_PAGES = ["leagues", "dashboard", "approvals", "decks", "profiledecks", "leaguedetails", "userprofile", "createleague", "founder"];
 // Pages that render without the shell (standalone) — /login is system-managed, not listed here
 const NO_SHELL_PAGES = ["register"];
 
