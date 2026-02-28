@@ -185,6 +185,25 @@ export default function LogGame() {
   // ── Guest gate ────────────────────────────────────────────────────────────
   if (authLoading) return <LoadingState message="Loading…" />;
 
+  // ── Top nav bar ───────────────────────────────────────────────────────────
+  const topNav = (
+    <div className="flex items-center justify-between mb-5">
+      <button
+        onClick={handleBack}
+        className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
+      <Link
+        to={ROUTES.PROFILE}
+        className="w-8 h-8 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center hover:bg-violet-500/20 transition-colors"
+      >
+        <User className="w-4 h-4 text-violet-400" />
+      </Link>
+    </div>
+  );
+
   if (isGuest) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-6">
