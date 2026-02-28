@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import {
   ArrowLeft, Globe, Lock, Info, Users, User, ChevronRight, Trophy, Swords,
-  AlertCircle, RefreshCw, Pencil, Loader2, Share2, LogOut, UserX, X
+  AlertCircle, RefreshCw, Pencil, Loader2, Share2, LogOut, UserX, X,
+  ShieldCheck, MessageCircle, Copy, Check
 } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingState } from "@/components/shell/PageStates";
