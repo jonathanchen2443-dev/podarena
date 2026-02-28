@@ -723,6 +723,7 @@ export async function listLeagueMembers(auth, leagueId, inviteToken = null) {
   const result = members.map((m) => {
     const profile = profileMap[m.user_id];
     return {
+      membershipId: m.id, // exposed so promote/remove can use it
       userId: m.user_id,
       display_name: profile?.display_name || "Unknown",
       avatar_url: profile?.avatar_url || null,
@@ -734,4 +735,27 @@ export async function listLeagueMembers(auth, leagueId, inviteToken = null) {
   _inflight.set(cKey, membersPromise);
   membersPromise.finally(() => _inflight.delete(cKey));
   return cacheSet(cKey, result);
+}
+
+/**
+ * Promote a member to admin. Admin-only.
+ * Does not allow demoting last admin.
+ */
+export async function promoteMemberToAdmin(auth, leagueId, memberUserId) {
+  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
+
+  const allMembers = await base44.entities.LeagueMember.filter({
+    league_id: leagueId,
+    status: "active",
+  });
+
+  const myMembership = allMembers.find((m) => m.user_id === auth.currentUser.id);
+  if (!myMembership || myMembership.role !== "admin") throw new Error("Only admins can promote members.");
+
+  const targetMembership = allMembers.find((m) => m.user_id === memberUserId);
+  if (!targetMembership) throw new Error("Member not found.");
+  if (targetMembership.role === "admin") throw new Error("This member is already an admin.");
+
+  await base44.entities.LeagueMember.update(targetMembership.id, { role: "admin" });
+  invalidateLeagueCache(leagueId);
 }
