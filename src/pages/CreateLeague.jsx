@@ -66,6 +66,7 @@ export default function CreateLeague() {
         name: trimmed,
         description,
         is_public: isPublic,
+        max_members: maxMembers,
       });
       toast.success("League created!");
       navigate(ROUTES.LEAGUE_DETAILS(league.id) + "&tab=info");
