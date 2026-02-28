@@ -641,26 +641,59 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
 
       {/* ── Member actions (share + leave) ──────────────────────────────────── */}
       {isMember && (
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={sharing}
-            onClick={handleShare}
-            className="border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg h-10"
-          >
-            {sharing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Share2 className="w-3.5 h-3.5 mr-1.5" />}
-            Invite
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setConfirmLeave(true)}
-            className="border-red-800/50 text-red-400 hover:bg-red-900/20 rounded-lg h-10"
-          >
-            <LogOut className="w-3.5 h-3.5 mr-1.5" />
-            Leave League
-          </Button>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            {/* Only show Invite button if: public league OR (private league AND admin) */}
+            {(league.is_public || isAdmin) && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={sharing}
+                onClick={handleShare}
+                className="border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg h-10"
+              >
+                {sharing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Share2 className="w-3.5 h-3.5 mr-1.5" />}
+                {league.is_public ? "Share" : "Invite"}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmLeave(true)}
+              className={`border-red-800/50 text-red-400 hover:bg-red-900/20 rounded-lg h-10 ${(league.is_public || isAdmin) ? "" : "col-span-2"}`}
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1.5" />
+              Leave League
+            </Button>
+          </div>
+          {/* Invite URL panel: show after share pressed */}
+          {inviteUrl && (
+            <div className="bg-gray-900/80 border border-gray-700 rounded-xl p-3 space-y-2">
+              <p className="text-xs text-gray-500 font-medium">Invite link</p>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={inviteUrl}
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none truncate"
+                />
+                <button
+                  onClick={() => handleCopyInviteUrl(inviteUrl)}
+                  className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-700 border border-gray-600 flex items-center justify-center text-gray-300 hover:text-white transition-colors"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Join "${league.name}" on Nexus: ${inviteUrl}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 h-8 px-3 rounded-lg bg-green-700/20 border border-green-700/40 text-green-400 text-xs font-medium hover:bg-green-700/30 transition-colors w-full justify-center"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                Share on WhatsApp
+              </a>
+            </div>
+          )}
         </div>
       )}
 
