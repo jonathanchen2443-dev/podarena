@@ -243,7 +243,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     setEditError(null);
     setEditing(true);
   }
-  function cancelEdit() { setEditing(false); setEditError(null); setConfirmRemoveUserId(null); }
+  function cancelEdit() { setEditing(false); setEditError(null); setConfirmRemoveUserId(null); setPromotingUserId(null); }
 
   async function handleSave() {
     if (savingRef.current) return;
