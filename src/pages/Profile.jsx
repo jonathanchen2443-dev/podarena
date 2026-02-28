@@ -225,7 +225,12 @@ export default function Profile() {
           <>
             <div className="grid grid-cols-2 gap-3">
               {previewDecks.map((deck) => (
-                <DeckTile key={deck.id} deck={deck} onDelete={setDeletingDeck} />
+                <DeckTile
+                  key={deck.id}
+                  deck={deck}
+                  onDelete={setDeletingDeck}
+                  editHref={`${ROUTES.PROFILE_DECK_EDIT(deck.id)}&returnTo=profile`}
+                />
               ))}
             </div>
             {decks.length > 4 && (
