@@ -100,7 +100,13 @@ export default function DeckForm({ initialValues, onSave, saving }) {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-gray-300 text-sm">Color Identity</Label>
+        <Label className="text-gray-300 text-sm">Color Identity <span className="text-gray-600 font-normal text-xs">(auto-filled or pick manually)</span></Label>
+        {/* Mana pip preview of selected colors */}
+        {colorIdentity.length > 0 && (
+          <div className="mb-1">
+            <ManaPipRow colors={colorIdentity} size={20} gap={4} />
+          </div>
+        )}
         <div className="flex gap-2 flex-wrap">
           {COLORS.map(({ code, name: colorName }) => {
             const active = colorIdentity.includes(code);
