@@ -213,6 +213,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
   const [editName, setEditName] = useState(league.name);
   const [editDesc, setEditDesc] = useState(league.description || "");
   const [editPublic, setEditPublic] = useState(league.is_public !== false);
+  const [editMaxMembers, setEditMaxMembers] = useState(league.max_members || 10);
   const [editError, setEditError] = useState(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
