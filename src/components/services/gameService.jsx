@@ -303,6 +303,19 @@ export async function listMyPendingApprovals(auth) {
 }
 
 /**
+ * Set the current user's deck for a game (updates their GameParticipant row).
+ */
+export async function setMyDeckForGame(auth, gameId, deckId) {
+  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
+  const participants = await base44.entities.GameParticipant.filter({
+    game_id: gameId,
+    user_id: auth.currentUser.id,
+  });
+  if (participants.length === 0) throw new Error("You are not a participant in this game.");
+  await base44.entities.GameParticipant.update(participants[0].id, { deck_id: deckId });
+}
+
+/**
  * Permission helper: Can the current user read this league?
  */
 export function canReadLeague(league, membership) {
