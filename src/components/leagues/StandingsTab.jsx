@@ -180,7 +180,7 @@ export default function StandingsTab({ auth, leagueId, inviteToken = null, isMem
         </button>
       ) : isMember ? (
         <button
-          onClick={() => navigate(`${ROUTES.LOG_GAME}?leagueId=${leagueId}`)}
+          onClick={() => navigate(`${ROUTES.LOG_GAME}?leagueId=${leagueId}&returnTo=league&returnLeagueId=${leagueId}`)}
           className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white transition-colors text-sm font-medium"
         >
           <Swords className="w-4 h-4" />
