@@ -183,7 +183,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
       await setMyDeckForGame(auth, game.id, selectedDeckId);
       await approveGame(game.id, currentUserId);
       toast.success("Game approved!");
-      await onActionComplete();
+      if (onActionComplete) await onActionComplete();
       onClose();
     } catch (e) {
       const isRate = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
@@ -202,7 +202,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
     try {
       await rejectGame(game.id, currentUserId, "");
       toast.success("Game rejected.");
-      await onActionComplete();
+      if (onActionComplete) await onActionComplete();
       onClose();
     } catch (e) {
       const isRate = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
