@@ -4,6 +4,14 @@
  */
 import { base44 } from "@/api/base44Client";
 
+/**
+ * LOCKDOWN: Only these profile IDs can ever become the initial founder.
+ * Hardcoded — cannot be changed by any runtime user action.
+ */
+export const INITIAL_FOUNDER_USER_IDS = [
+  "6995f34996fa8caac23c9a13", // Jonathan Chen (jonathanchen2443@gmail.com)
+];
+
 export const DEFAULT_FEATURE_FLAGS = {
   enableCasualGames: true,
   enableDeckInsightsModal: true,
@@ -67,19 +75,26 @@ export async function upsertSettings(partial) {
 }
 
 /**
- * Called on app boot: if no settings row exists, create one with the
- * current user as the first founder. Safe to call multiple times.
+ * LOCKDOWN bootstrap: only creates the settings row if the current user
+ * is in INITIAL_FOUNDER_USER_IDS. No first-visitor takeover possible.
+ * Returns null (not throws) for non-founders so callers can handle gracefully.
  */
 export async function ensureSettings(auth) {
   if (auth.isGuest || !auth.currentUser) return null;
   const existing = await getSettings();
   if (existing) return existing;
 
+  // Only allow bootstrap if the current user is a pre-approved initial founder
+  if (!INITIAL_FOUNDER_USER_IDS.includes(auth.currentUser.id)) return null;
+
   const created = await base44.entities.AppSettings.create({
     singleton_key: "global",
-    founder_user_ids: [auth.currentUser.id],
+    founder_user_ids: INITIAL_FOUNDER_USER_IDS,
     bottom_nav_config: DEFAULT_NAV_CONFIG,
     feature_flags: DEFAULT_FEATURE_FLAGS,
+    templates: {
+      invite_message: `You're invited to join "{{leagueName}}" on PodArea.\nInvited by: {{inviterName}}\n\nTap to join:\n{{inviteUrl}}`,
+    },
   });
   _cache = created;
   _cacheTs = Date.now();
