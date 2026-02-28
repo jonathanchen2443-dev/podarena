@@ -260,21 +260,53 @@ export default function MatchDetailsModal({ game, auth, leagueId, onClose, onAct
 
         {/* Action footer */}
         {canAct && (
-          <div className="px-5 py-4 border-t border-gray-800/60 flex gap-3">
-            <Button
-              className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
-              disabled={actionLoading !== null}
-              onClick={handleReject}
-            >
-              {actionLoading === "reject" ? "Rejecting…" : "Reject"}
-            </Button>
-            <Button
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11"
-              disabled={actionLoading !== null}
-              onClick={handleApprove}
-            >
-              {actionLoading === "approve" ? "Approving…" : "Approve"}
-            </Button>
+          <div className="px-5 py-4 border-t border-gray-800/60 space-y-3">
+            {/* Deck selector */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5">
+                Your deck <span className="text-red-400">(required to approve)</span>
+              </label>
+              {decksLoading ? (
+                <div className="h-10 rounded-lg bg-gray-800/50 animate-pulse" />
+              ) : myDecks.length === 0 ? (
+                <p className="text-xs text-gray-500 bg-gray-800/50 rounded-lg px-3 py-2.5">
+                  No active decks found. Create one in your profile first.
+                </p>
+              ) : (
+                <div className="relative">
+                  <select
+                    value={selectedDeckId || ""}
+                    onChange={(e) => setSelectedDeckId(e.target.value || null)}
+                    disabled={actionLoading !== null}
+                    className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 pr-8 text-sm text-white focus:outline-none focus:border-violet-500 appearance-none disabled:opacity-50"
+                  >
+                    <option value="">— Select your deck —</option>
+                    {myDecks.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}{d.commander_name ? ` · ${d.commander_name}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button
+                className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
+                disabled={actionLoading !== null}
+                onClick={handleReject}
+              >
+                {actionLoading === "reject" ? "Rejecting…" : "Reject"}
+              </Button>
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11"
+                disabled={actionLoading !== null || !selectedDeckId || decksLoading}
+                onClick={handleApprove}
+              >
+                {actionLoading === "approve" ? "Approving…" : "Approve"}
+              </Button>
+            </div>
           </div>
         )}
 
