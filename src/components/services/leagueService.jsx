@@ -593,12 +593,22 @@ export async function joinPublicLeague(auth, leagueId) {
 
 /**
  * Accept an invite and join the league.
+ * Checks capacity.
  */
 export async function acceptInviteJoinLeague(auth, leagueId, token) {
   if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in to join.");
 
   const { valid } = await validateInvite(leagueId, token);
   if (!valid) throw new Error("This invite link is invalid or expired.");
+
+  // Capacity check
+  const [leagueResults, activeMembers] = await Promise.all([
+    base44.entities.League.filter({ id: leagueId }),
+    base44.entities.LeagueMember.filter({ league_id: leagueId, status: "active" }),
+  ]);
+  const league = leagueResults[0];
+  const maxMembers = league?.max_members || 10;
+  if (activeMembers.length >= maxMembers) throw new Error("This league is full.");
 
   // Idempotency
   const existing = await base44.entities.LeagueMember.filter({
