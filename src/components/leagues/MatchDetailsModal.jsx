@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Trophy, User, CheckCircle, XCircle, Clock } from "lucide-react";
+import { X, Trophy, User, CheckCircle, XCircle, Clock, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
-import { approveGame, rejectGame } from "@/components/services/gameService";
+import { approveGame, rejectGame, setMyDeckForGame } from "@/components/services/gameService";
+import { listMyDecks } from "@/components/services/deckService";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
 import { toast } from "sonner";
 
