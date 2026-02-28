@@ -6,9 +6,9 @@ import ManaPipRow from "@/components/mtg/ManaPipRow";
 
 /**
  * DeckTile — square 2-column tile.
- * Props: deck (with optional gamesWithDeck, winsWithDeck, winRatePercent), onDelete
+ * Props: deck (with optional gamesWithDeck, winsWithDeck, winRatePercent), onDelete, editHref (optional override for edit link)
  */
-export default function DeckTile({ deck, onDelete }) {
+export default function DeckTile({ deck, onDelete, editHref }) {
   const winRate = deck.winRatePercent ?? (
     deck.gamesWithDeck > 0
       ? Math.round((deck.winsWithDeck / deck.gamesWithDeck) * 100)
