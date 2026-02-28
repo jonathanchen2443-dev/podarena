@@ -627,6 +627,10 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                       <p className="text-gray-300 text-sm">{league.is_public ? "Public" : "Private"}</p>
                     </div>
                   </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Capacity</p>
+                    <p className="text-gray-300 text-sm">{members.length} / {league.max_members || 10} members</p>
+                  </div>
                 </div>
                 {isAdmin && (
                   <button onClick={enterEdit} className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 text-xs font-medium transition-colors flex-shrink-0">
