@@ -741,6 +741,8 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                   const isCurrentUser = auth.currentUser?.id === member.userId;
                   const showRemoveBtn = editing && isAdmin && !isCurrentUser;
                   const isConfirming = confirmRemoveUserId === member.userId;
+                  const isPromoting = promotingUserId === member.userId;
+                  const showPromoteBtn = editing && isAdmin && !isCurrentUser && member.role === "member";
 
                   return (
                     <div key={member.userId}>
