@@ -102,6 +102,8 @@ export default function ProfileDecks() {
     toast.success("Deck deleted.");
     setDeletingDeck(null);
     setDeleteLoading(false);
+    if (auth.currentUser?.id) invalidateDeckStatsCache(auth.currentUser.id);
+    fetchingRef.current = false;
     await loadDecks();
   }
 
