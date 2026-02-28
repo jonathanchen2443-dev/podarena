@@ -35,13 +35,16 @@ export default function StatOrb({ value, label, color = "violet" }) {
   const s = GLOW_STYLES[color] || GLOW_STYLES.violet;
   return (
     <div className="flex flex-col items-center gap-2">
-      {/* Outer glow ring */}
-      <div className={`relative w-16 h-16 rounded-full flex items-center justify-center`}>
+      {/* Outer glow ring using inline style for radial gradient */}
+      <div className="relative w-16 h-16 rounded-full flex items-center justify-center">
         {/* Blurred glow backdrop */}
-        <div className={`absolute inset-0 rounded-full bg-gradient-radial ${s.ring} blur-[6px] opacity-70`} />
+        <div
+          className="absolute inset-0 rounded-full blur-md opacity-60"
+          style={{ background: `radial-gradient(circle, var(--orb-color, rgba(139,92,246,0.5)) 0%, transparent 70%)` }}
+        />
         {/* Inner circle */}
-        <div className={`relative w-14 h-14 rounded-full border ${s.inner} ${s.glow} flex items-center justify-center backdrop-blur-sm`}>
-          <span className={`font-bold text-lg leading-none ${s.text}`}>{value}</span>
+        <div className={`relative w-14 h-14 rounded-full border ${s.inner} ${s.glow} flex items-center justify-center`}>
+          <span className={`font-bold text-base leading-none ${s.text}`}>{value}</span>
         </div>
       </div>
       <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wider leading-none">{label}</span>
