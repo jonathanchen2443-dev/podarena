@@ -14,7 +14,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import {
   getLeagueById, listLeagueMembers, isLeagueAdmin, updateLeague,
   validateInvite, getOrCreateInvite, joinPublicLeague, acceptInviteJoinLeague,
-  leaveLeague, removeMember, invalidateLeagueCache
+  leaveLeague, removeMember, promoteMemberToAdmin, invalidateLeagueCache
 } from "@/components/services/leagueService";
 import StandingsTab from "@/components/leagues/StandingsTab";
 import GamesTab from "@/components/leagues/GamesTab";
