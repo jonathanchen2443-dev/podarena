@@ -489,13 +489,26 @@ export async function validateInvite(leagueId, token) {
 
 /**
  * getOrCreateInvite: Get or create an active invite for a league.
- * Requires the caller to be an active member.
+ * For PRIVATE leagues: only admins can generate invite links.
+ * For PUBLIC leagues: any active member can share.
  * Returns { token, url }
  */
 export async function getOrCreateInvite(auth, leagueId) {
   if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
-  const isMember = await _checkMembership(auth.currentUser.id, leagueId);
-  if (!isMember) throw new Error("Only members can create invite links.");
+
+  // Determine league visibility
+  const leagueResults = await base44.entities.League.filter({ id: leagueId });
+  const league = leagueResults[0];
+
+  if (league && !league.is_public) {
+    // Private league: admin-only
+    const admin = await isLeagueAdmin(auth, leagueId);
+    if (!admin) throw new Error("Only admins can share invite links for private leagues.");
+  } else {
+    // Public league: any member
+    const isMember = await _checkMembership(auth.currentUser.id, leagueId);
+    if (!isMember) throw new Error("Only members can create invite links.");
+  }
 
   // Check cache first
   const cKey = cacheKey("invite_get", leagueId);
