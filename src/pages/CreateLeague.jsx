@@ -42,6 +42,7 @@ export default function CreateLeague() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const [maxMembers, setMaxMembers] = useState(10);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const submitRef = useRef(false);
