@@ -175,17 +175,28 @@ export default function Profile() {
         </CardContent>
       </Card>
 
+      {/* Insights section */}
+      <ProfileInsights auth={auth} />
+
       {/* My Decks section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-white font-semibold text-base">My Decks</h2>
-          <Button
-            size="sm"
-            className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-8 text-xs px-3"
-            onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Add Deck
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              className="text-violet-400 text-xs hover:text-violet-300 transition-colors"
+              onClick={() => navigate(ROUTES.PROFILE_DECKS)}
+            >
+              All Decks
+            </button>
+            <Button
+              size="sm"
+              className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-8 text-xs px-3"
+              onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add Deck
+            </Button>
+          </div>
         </div>
 
         {decksLoading ? (
