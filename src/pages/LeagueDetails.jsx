@@ -511,25 +511,30 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
       )}
 
       {/* ── Join public league CTA ──────────────────────────────────────────── */}
-      {!isMember && accessMode === "public" && (
-        <Card className="bg-gray-900/60 border-gray-800/50">
-          <CardContent className="p-4 space-y-2">
-            <p className="text-white text-sm font-medium">Want to participate?</p>
-            <p className="text-gray-400 text-xs">Join this public league to log games and appear in the standings.</p>
-            <Button
-              size="sm"
-              disabled={joining}
-              onClick={handleJoinPublic}
-              className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg w-full mt-1"
-            >
-              {joining
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : auth.isGuest ? "Sign in to join" : "Request to Join"
-              }
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {!isMember && accessMode === "public" && (() => {
+        const maxM = league.max_members || 10;
+        const isFull = members.length >= maxM && !membersLoading;
+        return (
+          <Card className="bg-gray-900/60 border-gray-800/50">
+            <CardContent className="p-4 space-y-2">
+              <p className="text-white text-sm font-medium">Want to participate?</p>
+              <p className="text-gray-400 text-xs">Join this public league to log games and appear in the standings.</p>
+              {isFull ? (
+                <p className="text-amber-400 text-xs bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">League is full ({members.length}/{maxM} members)</p>
+              ) : (
+                <Button
+                  size="sm"
+                  disabled={joining}
+                  onClick={handleJoinPublic}
+                  className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg w-full mt-1"
+                >
+                  {joining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : auth.isGuest ? "Sign in to join" : "Request to Join"}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* ── League info card ────────────────────────────────────────────────── */}
       <Card className="bg-gray-900/60 border-gray-800/50">
