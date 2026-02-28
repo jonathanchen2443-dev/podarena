@@ -676,27 +676,29 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
               Leave League
             </Button>
           </div>
-          {/* Invite URL panel: show after share pressed */}
-          {inviteUrl && (
+          {/* Invite panel: show after share pressed */}
+          {inviteUrl && inviteMessage && (
             <div className="bg-gray-900/80 border border-gray-700 rounded-xl p-3 space-y-2">
-              <p className="text-xs text-gray-500 font-medium">Invite link</p>
-              <div className="flex items-center gap-2">
-                <input
+              <p className="text-xs text-gray-500 font-medium">Invite message</p>
+              <div className="relative">
+                <textarea
                   readOnly
-                  value={inviteUrl}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none truncate"
+                  value={inviteMessage}
+                  rows={5}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none resize-none"
                 />
                 <button
-                  onClick={() => handleCopyInviteUrl(inviteUrl)}
-                  className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-700 border border-gray-600 flex items-center justify-center text-gray-300 hover:text-white transition-colors"
+                  onClick={() => handleCopyInviteUrl(inviteMessage)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-md bg-gray-700 border border-gray-600 flex items-center justify-center text-gray-300 hover:text-white transition-colors"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                 </button>
               </div>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`Join "${league.name}" on Nexus: ${inviteUrl}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(inviteMessage)}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => toast.success("Opening WhatsApp…")}
                 className="flex items-center gap-2 h-8 px-3 rounded-lg bg-green-700/20 border border-green-700/40 text-green-400 text-xs font-medium hover:bg-green-700/30 transition-colors w-full justify-center"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
