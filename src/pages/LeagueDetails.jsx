@@ -452,6 +452,22 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     }
   }
 
+  // ── Promote member ────────────────────────────────────────────────────────────
+  async function handlePromoteMember(memberUserId) {
+    if (promoting) return;
+    setPromoting(true);
+    try {
+      await promoteMemberToAdmin(auth, league.id, memberUserId);
+      toast.success("Member promoted to admin");
+      setPromotingUserId(null);
+      setMembers((prev) => prev.map((m) => m.userId === memberUserId ? { ...m, role: "admin" } : m));
+    } catch (e) {
+      toast.error(e.message || "Failed to promote member.");
+    } finally {
+      setPromoting(false);
+    }
+  }
+
   return (
     <div className="space-y-3">
 
