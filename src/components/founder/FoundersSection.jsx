@@ -1,22 +1,27 @@
 import React, { useState } from "react";
 import { Plus, Trash2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { addFounder, removeFounder } from "@/components/services/founderService";
+import { addFounder, addFounderByEmail, removeFounder } from "@/components/services/founderService";
 import { toast } from "sonner";
 
 export default function FoundersSection({ settings, auth, onRefresh }) {
-  const [newId, setNewId] = useState("");
+  const [mode, setMode] = useState("id"); // "id" | "email"
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(null);
 
   const founders = settings?.founder_user_ids || [];
 
   async function handleAdd() {
-    if (!newId.trim()) return;
+    if (!input.trim()) return;
     setLoading("add");
     try {
-      await addFounder(auth, newId.trim());
+      if (mode === "email") {
+        await addFounderByEmail(auth, input.trim());
+      } else {
+        await addFounder(auth, input.trim());
+      }
       toast.success("Founder added.");
-      setNewId("");
+      setInput("");
       onRefresh();
     } catch (e) {
       toast.error(e.message);
@@ -60,11 +65,24 @@ export default function FoundersSection({ settings, auth, onRefresh }) {
         ))}
       </div>
 
+      {/* Mode selector */}
+      <div className="flex gap-1.5 bg-gray-800 p-1 rounded-xl">
+        {["id", "email"].map((m) => (
+          <button
+            key={m}
+            onClick={() => { setMode(m); setInput(""); }}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${mode === m ? "bg-violet-600 text-white" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            {m === "id" ? "By User ID" : "By Email"}
+          </button>
+        ))}
+      </div>
+
       <div className="flex gap-2">
         <input
-          value={newId}
-          onChange={(e) => setNewId(e.target.value)}
-          placeholder="User ID to add as founder…"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={mode === "email" ? "user@example.com" : "Profile ID…"}
           className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-violet-500"
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         />
@@ -72,7 +90,7 @@ export default function FoundersSection({ settings, auth, onRefresh }) {
           size="sm"
           className="bg-violet-600 hover:bg-violet-700 rounded-xl"
           onClick={handleAdd}
-          disabled={loading === "add" || !newId.trim()}
+          disabled={loading === "add" || !input.trim()}
         >
           <Plus className="w-4 h-4" />
         </Button>
