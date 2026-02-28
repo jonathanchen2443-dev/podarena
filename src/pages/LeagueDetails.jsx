@@ -254,8 +254,8 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     savingRef.current = true;
     setSaving(true);
     try {
-      await updateLeague(auth, league.id, { name: trimmed, description: editDesc, is_public: editPublic });
-      const updated = { ...league, name: trimmed, description: editDesc, is_public: editPublic };
+      await updateLeague(auth, league.id, { name: trimmed, description: editDesc, is_public: editPublic, max_members: editMaxMembers });
+      const updated = { ...league, name: trimmed, description: editDesc, is_public: editPublic, max_members: editMaxMembers };
       setLeague(updated);
       onLeagueUpdated?.(updated);
       setEditing(false);
