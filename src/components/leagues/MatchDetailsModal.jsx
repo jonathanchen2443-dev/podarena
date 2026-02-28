@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Trophy, User, CheckCircle, XCircle, Clock, ChevronDown } from "lucide-react";
+import { X, Trophy, User, CheckCircle, XCircle, Clock, ChevronDown, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { approveGame, rejectGame, setMyDeckForGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
 import { toast } from "sonner";
+import { base44 } from "@/api/base44Client";
 
 function statusBadge(status) {
   if (status === "approved") return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Approved</Badge>;
@@ -63,33 +64,90 @@ function ParticipantRow({ p }) {
   );
 }
 
-export default function MatchDetailsModal({ game, auth, leagueId, onClose, onActionComplete }) {
-  const [actionLoading, setActionLoading] = useState(null); // "approve" | "reject"
+/**
+ * MatchDetailsModal can be used in two ways:
+ * 1. With a pre-loaded `game` object (from Inbox/GamesTab)
+ * 2. With just a `gameId` prop — the modal fetches its own data (from Dashboard casual games)
+ */
+export default function MatchDetailsModal({ game: gameProp, gameId, auth, leagueId, onClose, onActionComplete }) {
+  const [actionLoading, setActionLoading] = useState(null);
   const [actionError, setActionError] = useState(null);
-
-  // Deck selection state
   const [myDecks, setMyDecks] = useState([]);
   const [decksLoading, setDecksLoading] = useState(false);
   const [selectedDeckId, setSelectedDeckId] = useState(null);
 
-  const currentUserId = auth.currentUser?.id;
+  // Self-fetch mode: when only gameId is provided (no pre-loaded game)
+  const [fetchedGame, setFetchedGame] = useState(null);
+  const [fetchLoading, setFetchLoading] = useState(!gameProp && !!gameId);
 
-  // Determine if current user is an eligible pending approver
-  const myApproval = currentUserId
+  useEffect(() => {
+    if (gameProp || !gameId) return;
+    setFetchLoading(true);
+    (async () => {
+      try {
+        const [gameArr, approvalArr, participantArr] = await Promise.all([
+          base44.entities.Game.filter({ id: gameId }),
+          base44.entities.GameApproval.filter({ game_id: gameId }),
+          base44.entities.GameParticipant.filter({ game_id: gameId }),
+        ]);
+        const g = gameArr[0];
+        if (!g) { onClose(); return; }
+        // Fetch profiles for participants
+        const profiles = await base44.entities.Profile.list("-created_date", 200);
+        const profileMap = {};
+        profiles.forEach((p) => { profileMap[p.id] = p; });
+        const participants = participantArr.map((p) => ({
+          userId: p.user_id,
+          display_name: profileMap[p.user_id]?.display_name || "Unknown",
+          avatar_url: profileMap[p.user_id]?.avatar_url || null,
+          result: p.result,
+          placement: p.placement,
+          deck_id: p.deck_id,
+          deck: null,
+        }));
+        const approvedCount = approvalArr.filter((a) => a.status === "approved").length;
+        const assembled = {
+          id: g.id,
+          status: g.status,
+          played_at: g.played_at || g.created_date,
+          notes: g.notes || "",
+          context_type: g.context_type || "casual",
+          participants,
+          approvalSummary: {
+            total: approvalArr.length,
+            approved: approvedCount,
+            rejected: approvalArr.filter((a) => a.status === "rejected").length,
+            pending: approvalArr.filter((a) => a.status === "pending").length,
+            records: approvalArr,
+          },
+        };
+        setFetchedGame(assembled);
+      } catch (e) {
+        toast.error("Could not load game details.");
+        onClose();
+      } finally {
+        setFetchLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId]);
+
+  const game = gameProp || fetchedGame;
+
+  const currentUserId = auth.currentUser?.id;
+  const myApproval = currentUserId && game
     ? game.approvalSummary.records.find(
         (a) => a.approver_user_id === currentUserId && a.status === "pending"
       )
     : null;
-  const canAct = !auth.isGuest && !!myApproval && game.status === "pending";
+  const canAct = !auth.isGuest && !!myApproval && game?.status === "pending";
 
-  // Preselect deck if participant already has one recorded
   useEffect(() => {
-    if (!canAct) return;
+    if (!canAct || !game) return;
     const myParticipant = game.participants.find((p) => p.userId === currentUserId);
     if (myParticipant?.deck_id) setSelectedDeckId(myParticipant.deck_id);
-  }, [canAct, currentUserId]);
+  }, [canAct, currentUserId, game]);
 
-  // Load active decks when user can act
   useEffect(() => {
     if (!canAct || auth.isGuest) return;
     setDecksLoading(true);
@@ -99,6 +157,19 @@ export default function MatchDetailsModal({ game, auth, leagueId, onClose, onAct
       .finally(() => setDecksLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canAct]);
+
+  if (fetchLoading || !game) {
+    const loadingModal = (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+        <div className="relative z-10 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+        </div>
+      </div>
+    );
+    const root = document.getElementById("modal-root");
+    return root ? ReactDOM.createPortal(loadingModal, root) : loadingModal;
+  }
 
   async function handleApprove() {
     if (actionLoading) return;
