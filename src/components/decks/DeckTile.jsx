@@ -2,15 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { Pencil, Trash2, Swords } from "lucide-react";
-
-const COLOR_STYLES = {
-  W: "bg-amber-100 text-amber-800 border-amber-300",
-  U: "bg-blue-100 text-blue-800 border-blue-300",
-  B: "bg-gray-700 text-gray-100 border-gray-600",
-  R: "bg-red-100 text-red-800 border-red-300",
-  G: "bg-green-100 text-green-800 border-green-300",
-  C: "bg-slate-700 text-slate-200 border-slate-600",
-};
+import ManaPipRow from "@/components/mtg/ManaPipRow";
 
 /**
  * DeckTile — square 2-column tile.

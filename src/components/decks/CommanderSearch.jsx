@@ -16,25 +16,29 @@ function cacheSet(key, value) { _cache.set(key, { ts: Date.now(), value }); retu
 
 // ── Scryfall helpers ─────────────────────────────────────────────────────────
 
-async function fetchSuggestions(query) {
-  const cached = cacheGet(`ac::${query}`);
+/**
+ * Search commander-only cards via Scryfall search API.
+ * Returns array of card objects (not just names).
+ */
+async function searchCommanders(query) {
+  const cKey = `cmd::${query}`;
+  const cached = cacheGet(cKey);
   if (cached) return cached;
-  const res = await fetch(`https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(query)}`);
-  if (!res.ok) throw new Error("Autocomplete failed");
+
+  const q = encodeURIComponent(`is:commander ${query}`);
+  const res = await fetch(
+    `https://api.scryfall.com/cards/search?q=${q}&order=name&unique=cards`
+  );
+  if (res.status === 404) return cacheSet(cKey, []); // no results
+  if (!res.ok) throw new Error("Search failed");
   const data = await res.json();
-  return cacheSet(`ac::${query}`, data.data || []);
+  return cacheSet(cKey, data.data || []);
 }
 
-async function fetchCardDetails(name) {
-  const cached = cacheGet(`card::${name}`);
-  if (cached) return cached;
-  const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);
-  if (!res.ok) throw new Error("Card not found");
-  const card = await res.json();
-  return cacheSet(`card::${name}`, card);
-}
-
-function extractImageUrl(card) {
+function extractArtCrop(card) {
+  if (card.image_uris?.art_crop) return card.image_uris.art_crop;
+  if (card.card_faces?.[0]?.image_uris?.art_crop) return card.card_faces[0].image_uris.art_crop;
+  // fallback to normal if art_crop somehow missing
   if (card.image_uris?.normal) return card.image_uris.normal;
   if (card.card_faces?.[0]?.image_uris?.normal) return card.card_faces[0].image_uris.normal;
   return "";
@@ -49,13 +53,13 @@ function extractImageUrl(card) {
  *   inputClassName – extra classes for the input
  */
 export default function CommanderSearch({ value, onChange, onSelect, inputClassName = "" }) {
+  // suggestions are card objects now, not just strings
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const debounceRef = useRef(null);
   const inflightAc = useRef(false);
-  const inflightCard = useRef(false);
   const containerRef = useRef(null);
 
   // Close dropdown on outside click
@@ -69,7 +73,7 @@ export default function CommanderSearch({ value, onChange, onSelect, inputClassN
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const triggerAutocomplete = useCallback((text) => {
+  const triggerSearch = useCallback((text) => {
     clearTimeout(debounceRef.current);
     if (text.length < 2) { setSuggestions([]); setOpen(false); return; }
 
@@ -79,9 +83,10 @@ export default function CommanderSearch({ value, onChange, onSelect, inputClassN
       setLoading(true);
       setFetchError("");
       try {
-        const results = await fetchSuggestions(text);
-        setSuggestions(results.slice(0, 8));
-        setOpen(results.length > 0);
+        const cards = await searchCommanders(text);
+        const top8 = cards.slice(0, 8);
+        setSuggestions(top8);
+        setOpen(top8.length > 0);
       } catch {
         setFetchError("Could not load suggestions.");
         setOpen(false);
@@ -95,28 +100,16 @@ export default function CommanderSearch({ value, onChange, onSelect, inputClassN
   function handleInputChange(e) {
     const text = e.target.value;
     onChange(text);
-    triggerAutocomplete(text);
+    triggerSearch(text);
   }
 
-  async function handleSelect(name) {
+  function handleSelect(card) {
     setOpen(false);
     setSuggestions([]);
-    onChange(name);
-    if (inflightCard.current) return;
-    inflightCard.current = true;
-    setLoading(true);
-    setFetchError("");
-    try {
-      const card = await fetchCardDetails(name);
-      const imageUrl = extractImageUrl(card);
-      const colorIdentity = card.color_identity || card.colors || [];
-      onSelect({ name: card.name, color_identity: colorIdentity, commander_image_url: imageUrl });
-    } catch {
-      setFetchError("Could not fetch card details. You can fill the fields manually.");
-    } finally {
-      setLoading(false);
-      inflightCard.current = false;
-    }
+    const imageUrl = extractArtCrop(card);
+    const colorIdentity = card.color_identity || card.colors || [];
+    onChange(card.name);
+    onSelect({ name: card.name, color_identity: colorIdentity, commander_image_url: imageUrl });
   }
 
   return (
@@ -140,16 +133,28 @@ export default function CommanderSearch({ value, onChange, onSelect, inputClassN
       )}
 
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 w-full mt-1 bg-gray-850 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
-          style={{ background: "#111827" }}>
-          {suggestions.map((s) => (
-            <li key={s}>
+        <ul
+          className="absolute z-50 w-full mt-1 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+          style={{ background: "#111827" }}
+        >
+          {suggestions.map((card) => (
+            <li key={card.id}>
               <button
                 type="button"
-                onMouseDown={() => handleSelect(s)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-violet-600/20 hover:text-white transition-colors"
+                onMouseDown={() => handleSelect(card)}
+                className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 hover:bg-violet-600/20 transition-colors"
               >
-                {s}
+                {/* tiny art thumbnail */}
+                {card.image_uris?.art_crop || card.card_faces?.[0]?.image_uris?.art_crop ? (
+                  <img
+                    src={card.image_uris?.art_crop || card.card_faces?.[0]?.image_uris?.art_crop}
+                    alt=""
+                    className="w-8 h-8 rounded object-cover flex-shrink-0 opacity-90"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded bg-gray-800 flex-shrink-0" />
+                )}
+                <span className="text-sm text-gray-200">{card.name}</span>
               </button>
             </li>
           ))}
