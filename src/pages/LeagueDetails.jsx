@@ -239,6 +239,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     setEditName(league.name);
     setEditDesc(league.description || "");
     setEditPublic(league.is_public !== false);
+    setEditMaxMembers(league.max_members || 10);
     setEditError(null);
     setEditing(true);
   }
