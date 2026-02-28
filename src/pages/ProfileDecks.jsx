@@ -5,10 +5,12 @@ import { Plus, Lock, ArrowLeft, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
 import { LoadingState, EmptyState } from "@/components/shell/PageStates";
+import DeckTile from "@/components/decks/DeckTile";
 import DeckCard from "@/components/decks/DeckCard";
 import DeckForm from "@/components/decks/DeckForm";
 import DeleteDeckModal from "@/components/decks/DeleteDeckModal";
-import { listMyDecks, getMyDeckById, createDeck, updateDeck, deleteDeck } from "@/components/services/deckService";
+import { getMyDeckById, createDeck, updateDeck, deleteDeck } from "@/components/services/deckService";
+import { getMyDecksWithStats, invalidateDeckStatsCache } from "@/components/services/deckStatsService";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 
