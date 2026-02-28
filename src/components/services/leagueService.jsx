@@ -535,12 +535,10 @@ export async function getOrCreateInvite(auth, leagueId) {
     });
   }
 
-  // Build invite URL directly (avoids circular import; ROUTES format is stable)
+  // Build short invite URL using the /invite page
   const base = window.location.origin;
-  const path = window.location.pathname.includes("league-details")
-    ? window.location.pathname
-    : "/league-details"; // fallback, Base44 router always uses this path
-  const url = `${base}${path}?leagueId=${leagueId}&invite=${token}`;
+  const invitePath = "/invite"; // Base44 registers Invite page at /invite
+  const url = `${base}${invitePath}?token=${encodeURIComponent(token)}`;
   const result = { token, url };
   return cacheSet(cKey, result);
 }
