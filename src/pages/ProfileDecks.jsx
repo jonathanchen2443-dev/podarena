@@ -60,7 +60,7 @@ export default function ProfileDecks() {
     setLoading(true);
     setError(null);
     try {
-      const data = await listMyDecks(auth);
+      const data = await getMyDecksWithStats(auth);
       setDecks(data);
     } catch (e) {
       const isRate = e?.message?.toLowerCase().includes("rate") || e?.message?.toLowerCase().includes("429");
