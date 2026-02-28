@@ -376,7 +376,7 @@ export async function isLeagueAdmin(auth, leagueId) {
 }
 
 /**
- * Update league details (name, description, is_public).
+ * Update league details (name, description, is_public, max_members).
  * Only active admins may call this.
  */
 export async function updateLeague(auth, leagueId, updates) {
@@ -395,6 +395,9 @@ export async function updateLeague(auth, leagueId, updates) {
     description: (updates.description || "").trim(),
     is_public: updates.is_public !== false,
   };
+  if (updates.max_members != null) {
+    payload.max_members = Math.min(10, Math.max(2, Number(updates.max_members)));
+  }
 
   const updated = await base44.entities.League.update(leagueId, payload);
   invalidateLeagueCache(leagueId);
@@ -408,7 +411,7 @@ export async function updateLeague(auth, leagueId, updates) {
  * Create a new league and add the creator as admin member.
  * Returns { league, membership }.
  */
-export async function createLeague(auth, { name, description, is_public }) {
+export async function createLeague(auth, { name, description, is_public, max_members }) {
   if (auth.isGuest || !auth.currentUser) {
     throw new Error("You must be signed in to create a league.");
   }
@@ -416,10 +419,13 @@ export async function createLeague(auth, { name, description, is_public }) {
   if (!trimmedName) throw new Error("League name is required.");
   if (trimmedName.length > 100) throw new Error("League name is too long (max 100 characters).");
 
+  const clampedMax = Math.min(10, Math.max(2, Number(max_members) || 10));
+
   const league = await base44.entities.League.create({
     name: trimmedName,
     description: (description || "").trim(),
-    is_public: is_public !== false, // default true
+    is_public: is_public !== false,
+    max_members: clampedMax,
   });
 
   const membership = await base44.entities.LeagueMember.create({
