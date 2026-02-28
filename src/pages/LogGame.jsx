@@ -207,6 +207,7 @@ export default function LogGame() {
   if (isGuest) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-6">
+        {topNav}
         <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
           <Lock className="w-8 h-8 text-violet-400" />
         </div>
