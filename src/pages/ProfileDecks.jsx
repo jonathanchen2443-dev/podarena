@@ -14,13 +14,14 @@ import { getMyDecksWithStats, invalidateDeckStatsCache } from "@/components/serv
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 
-// Determine sub-route from query params: ?mode=new | ?mode=edit&deckId=xxx
+// Determine sub-route from query params: ?mode=new | ?mode=edit&deckId=xxx&returnTo=profile
 function getSubRoute() {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode");
-  if (mode === "edit") return { mode: "edit", deckId: params.get("deckId") };
-  if (mode === "new") return { mode: "new" };
-  return { mode: "list" };
+  const returnTo = params.get("returnTo"); // "profile" or null
+  if (mode === "edit") return { mode: "edit", deckId: params.get("deckId"), returnTo };
+  if (mode === "new") return { mode: "new", returnTo };
+  return { mode: "list", returnTo: null };
 }
 
 const PAGE_SIZE = 20;
