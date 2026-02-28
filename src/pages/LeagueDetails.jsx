@@ -200,6 +200,14 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     isLeagueAdmin(auth, league.id).then(setIsAdmin);
   }, [auth, league.id]);
 
+  // Promote member state
+  const [promotingUserId, setPromotingUserId] = useState(null);
+  const [promoting, setPromoting] = useState(false);
+
+  // Invite / share panel state
+  const [inviteUrl, setInviteUrl] = useState(null);
+  const [copied, setCopied] = useState(false);
+
   // ── Inline edit state ───────────────────────────────────────────────────────
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(league.name);
