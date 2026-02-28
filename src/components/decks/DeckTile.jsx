@@ -69,19 +69,8 @@ export default function DeckTile({ deck, onDelete }) {
         {/* Commander name */}
         <p className="text-white text-xs font-semibold truncate leading-tight">{commanderName}</p>
 
-        {/* Color chips */}
-        {colors.length > 0 && (
-          <div className="flex gap-0.5 flex-wrap">
-            {colors.map((c) => (
-              <span
-                key={c}
-                className={`inline-flex items-center px-1 py-0 rounded text-[9px] font-bold border ${COLOR_STYLES[c] || "bg-gray-700 text-gray-300 border-gray-600"}`}
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Mana pips */}
+        <ManaPipRow colors={colors} size={14} gap={2} />
 
         {/* Winrate bar */}
         <div className="mt-auto pt-1.5">
