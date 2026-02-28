@@ -330,5 +330,5 @@ export default function Dashboard() {
 
   if (!data) return null;
 
-  return <AuthDashboard data={data} displayName={displayName} />;
+  return <AuthDashboard data={data} displayName={displayName} auth={auth} />;
 }

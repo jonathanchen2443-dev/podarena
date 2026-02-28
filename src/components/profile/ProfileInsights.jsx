@@ -11,25 +11,25 @@ function InsightCard({ icon: Icon, color, label, value, sub, imageUrl }) {
   const iconCls = colorMap[color] || colorMap.violet;
 
   return (
-    <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4 flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <div className={`w-7 h-7 rounded-lg border flex items-center justify-center ${iconCls}`}>
-          <Icon className="w-3.5 h-3.5" />
+    <div className="bg-gray-900/60 border border-gray-800/50 rounded-xl p-3 flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 ${iconCls}`}>
+          <Icon className="w-3 h-3" />
         </div>
-        <span className="text-gray-500 text-xs font-medium uppercase tracking-wide">{label}</span>
+        <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wide leading-none">{label}</span>
       </div>
-      <div className="flex items-center gap-2 min-h-[32px]">
+      <div className="flex items-center gap-1.5">
         {imageUrl && (
           <img
             src={imageUrl}
             alt=""
-            className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-gray-700"
+            className="w-6 h-6 rounded-md object-cover flex-shrink-0 border border-gray-700"
             onError={(e) => { e.target.style.display = "none"; }}
           />
         )}
         <div>
-          <p className="text-white font-bold text-base leading-tight">{value}</p>
-          {sub && <p className="text-gray-500 text-xs">{sub}</p>}
+          <p className="text-white font-semibold text-sm leading-tight">{value}</p>
+          {sub && <p className="text-gray-500 text-[10px] leading-snug">{sub}</p>}
         </div>
       </div>
     </div>
@@ -96,7 +96,7 @@ export default function ProfileInsights({ auth }) {
   return (
     <div className="space-y-3">
       <h2 className="text-white font-semibold text-base px-1">Insights</h2>
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <InsightCard
           icon={Trophy}
           color="amber"
