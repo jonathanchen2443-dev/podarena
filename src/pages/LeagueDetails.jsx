@@ -584,6 +584,18 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                   </button>
                 </div>
               </div>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500 uppercase tracking-wider">Max Members <span className="text-gray-600 normal-case">(2–10)</span></label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range" min={2} max={10} step={1}
+                    value={editMaxMembers}
+                    onChange={(e) => setEditMaxMembers(Number(e.target.value))}
+                    className="flex-1 accent-violet-500"
+                  />
+                  <span className="text-white text-sm font-medium w-5 text-center">{editMaxMembers}</span>
+                </div>
+              </div>
               {editError && <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{editError}</p>}
               <div className="flex gap-2 pt-1">
                 <Button size="sm" disabled={saving} onClick={handleSave} className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex-1">
