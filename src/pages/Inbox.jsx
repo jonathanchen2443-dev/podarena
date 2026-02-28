@@ -107,10 +107,8 @@ export default function Inbox() {
   }
 
   async function handleActionComplete(leagueId) {
-    // Invalidate relevant caches
     if (leagueId) invalidateLeagueCache(leagueId);
     closeModal();
-    // Reload inbox — force a fresh fetch
     fetchingRef.current = false;
     await loadApprovals();
   }
@@ -140,7 +138,6 @@ export default function Inbox() {
     );
   }
 
-  // ── Loading / Error ─────────────────────────────────────────────────────────
   if (loading) return <LoadingState message="Loading approvals…" />;
 
   if (error) {
@@ -161,7 +158,6 @@ export default function Inbox() {
     );
   }
 
-  // ── Empty ───────────────────────────────────────────────────────────────────
   if (approvals.length === 0) {
     return (
       <EmptyState
@@ -171,7 +167,6 @@ export default function Inbox() {
     );
   }
 
-  // ── Pending modal row ────────────────────────────────────────────────────────
   const modalRow = selectedRow ? approvals.find((r) => r.game.id === selectedRow) : null;
 
   return (
