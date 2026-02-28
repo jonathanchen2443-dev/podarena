@@ -275,6 +275,12 @@ export default function Profile() {
         onCancel={() => setDeletingDeck(null)}
         loading={deleteLoading}
       />
+
+      <DeckInsightsModal
+        deck={insightsDeck}
+        auth={auth}
+        onClose={() => setInsightsDeck(null)}
+      />
     </div>
   );
 }
