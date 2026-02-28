@@ -95,7 +95,7 @@ export default function ProfileDecks() {
     await updateDeck(auth, subRoute.deckId, payload);
     toast.success("Deck updated!");
     if (auth.currentUser?.id) invalidateDeckStatsCache(auth.currentUser.id);
-    navigate(ROUTES.PROFILE_DECKS);
+    navigate(subRoute.returnTo === "profile" ? ROUTES.PROFILE : ROUTES.PROFILE_DECKS);
     setSaving(false);
   }
 
