@@ -207,6 +207,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
 
   // Invite / share panel state
   const [inviteUrl, setInviteUrl] = useState(null);
+  const [inviteMessage, setInviteMessage] = useState(null);
   const [copied, setCopied] = useState(false);
 
   // ── Inline edit state ───────────────────────────────────────────────────────
