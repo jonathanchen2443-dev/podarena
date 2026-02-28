@@ -116,9 +116,16 @@ export default function Profile() {
   }
 
   // ── Authenticated view ───────────────────────────────────────────────────────
-  // Sort by most-played desc, take top 4
-  const sortedDecks = [...decks].sort((a, b) => (b.gamesWithDeck || 0) - (a.gamesWithDeck || 0));
-  const previewDecks = sortedDecks.slice(0, 4);
+  // Top-4: favorites first (up to 4), then fill with most-played non-favorites
+  const favorites = decks.filter((d) => d.is_favorite);
+  const favIds = new Set(favorites.map((d) => d.id));
+  const nonFavsSorted = decks
+    .filter((d) => !favIds.has(d.id))
+    .sort((a, b) => (b.gamesWithDeck || 0) - (a.gamesWithDeck || 0));
+  const previewDecks = [
+    ...favorites.slice(0, 4),
+    ...nonFavsSorted.slice(0, 4 - Math.min(favorites.length, 4)),
+  ];
 
   const orbStats = [
     { label: "Games", value: stats ? stats.gamesPlayed : (decksLoading ? "…" : "—"), color: "violet" },
