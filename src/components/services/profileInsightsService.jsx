@@ -79,9 +79,6 @@ export async function getProfileInsights(auth) {
       }
       const topOpponentId = Object.keys(opponentCounts).sort((a, b) => opponentCounts[b] - opponentCounts[a])[0];
       if (topOpponentId) {
-        // Resolve display name from Profile
-        const oppProfiles = await base44.entities.Profile.filter({ created_by: undefined });
-        // We can't filter Profile by user_id directly. Fetch all profiles and find by id.
         const allProfiles = await base44.entities.Profile.list("-created_date", 200);
         const oppProfile = allProfiles.find((pr) => pr.id === topOpponentId);
         mostDefeatedOpponent = {
