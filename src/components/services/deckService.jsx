@@ -24,6 +24,7 @@ export async function createDeck(auth, payload) {
     owner_id: auth.currentUser.id,
     name: payload.name,
     commander_name: payload.commander_name || "",
+    commander_image_url: payload.commander_image_url || "",
     color_identity: payload.color_identity || [],
     is_active: payload.is_active !== undefined ? payload.is_active : true,
   });
@@ -35,6 +36,7 @@ export async function updateDeck(auth, deckId, payload) {
   return base44.entities.Deck.update(deckId, {
     name: payload.name,
     commander_name: payload.commander_name || "",
+    commander_image_url: payload.commander_image_url || "",
     color_identity: payload.color_identity || [],
     is_active: payload.is_active !== undefined ? payload.is_active : true,
   });
