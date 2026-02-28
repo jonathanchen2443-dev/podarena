@@ -152,16 +152,23 @@ export default function ProfileDecks() {
   // ── Edit form ────────────────────────────────────────────────────────────────
   if (subRoute.mode === "edit") {
     if (editLoading || !editDeck) return <LoadingState message="Loading deck…" />;
+    const backTarget = subRoute.returnTo === "profile" ? ROUTES.PROFILE : ROUTES.PROFILE_DECKS;
+    const backLabel = subRoute.returnTo === "profile" ? "Back to Profile" : "Back to Decks";
     return (
       <div className="space-y-5">
         <button
-          onClick={() => navigate(ROUTES.PROFILE_DECKS)}
+          onClick={() => navigate(backTarget)}
           className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Decks
+          <ArrowLeft className="w-4 h-4" /> {backLabel}
         </button>
         <h1 className="text-xl font-bold text-white">Edit Deck</h1>
-        <DeckForm initialValues={editDeck} onSave={handleUpdate} saving={saving} />
+        <DeckForm
+          initialValues={editDeck}
+          onSave={handleUpdate}
+          saving={saving}
+          onCancel={() => navigate(backTarget)}
+        />
       </div>
     );
   }
