@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { Plus, Lock, ArrowLeft, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
 import { LoadingState, EmptyState } from "@/components/shell/PageStates";
 import DeckTile from "@/components/decks/DeckTile";
-import DeckCard from "@/components/decks/DeckCard";
 import DeckForm from "@/components/decks/DeckForm";
 import DeleteDeckModal from "@/components/decks/DeleteDeckModal";
+import DeckFilters from "@/components/decks/DeckFilters";
+import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
 import { getMyDeckById, createDeck, updateDeck, deleteDeck } from "@/components/services/deckService";
 import { getMyDecksWithStats, invalidateDeckStatsCache } from "@/components/services/deckStatsService";
 import { toast } from "sonner";
@@ -18,20 +19,48 @@ import { base44 } from "@/api/base44Client";
 function getSubRoute() {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode");
-  const returnTo = params.get("returnTo"); // "profile" or null
+  const returnTo = params.get("returnTo");
   if (mode === "edit") return { mode: "edit", deckId: params.get("deckId"), returnTo };
   if (mode === "new") return { mode: "new", returnTo };
   return { mode: "list", returnTo: null };
 }
 
-const PAGE_SIZE = 20;
+const DEFAULT_FILTERS = { favOnly: false, status: "all", colors: [] };
+
+function applyFilters(decks, filters) {
+  return decks.filter((d) => {
+    if (filters.favOnly && !d.is_favorite) return false;
+    if (filters.status === "active" && d.is_active === false) return false;
+    if (filters.status === "retired" && d.is_active !== false) return false;
+    if (filters.colors.length > 0) {
+      const dc = d.color_identity || [];
+      // ANY match: deck must include at least one selected color
+      if (!filters.colors.some((c) => dc.includes(c))) return false;
+    }
+    return true;
+  });
+}
+
+function sortDecks(decks) {
+  return [...decks].sort((a, b) => {
+    // favorites first
+    const af = a.is_favorite ? 1 : 0;
+    const bf = b.is_favorite ? 1 : 0;
+    if (bf !== af) return bf - af;
+    // then most played
+    const ag = a.gamesWithDeck || 0;
+    const bg = b.gamesWithDeck || 0;
+    if (bg !== ag) return bg - ag;
+    // then A-Z by commander name
+    return (a.commander_name || a.name || "").localeCompare(b.commander_name || b.name || "");
+  });
+}
 
 export default function ProfileDecks() {
   const auth = useAuth();
   const navigate = useNavigate();
   const { isGuest, authLoading } = auth;
   const [decks, setDecks] = useState([]);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deletingDeck, setDeletingDeck] = useState(null);
@@ -39,6 +68,8 @@ export default function ProfileDecks() {
   const [saving, setSaving] = useState(false);
   const [editDeck, setEditDeck] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [insightsDeck, setInsightsDeck] = useState(null);
   const fetchingRef = useRef(false);
 
   const subRoute = getSubRoute();
@@ -62,7 +93,7 @@ export default function ProfileDecks() {
     setError(null);
     try {
       const data = await getMyDecksWithStats(auth);
-      setDecks(data);
+      setDecks(sortDecks(data));
     } catch (e) {
       const isRate = e?.message?.toLowerCase().includes("rate") || e?.message?.toLowerCase().includes("429");
       setError(isRate ? "Too many requests right now. Please wait a few seconds and try again." : e.message || "Failed to load decks.");
@@ -109,6 +140,15 @@ export default function ProfileDecks() {
     fetchingRef.current = false;
     await loadDecks();
   }
+
+  function handleFavoriteToggle(deck, newFav) {
+    setDecks((prev) =>
+      sortDecks(prev.map((d) => d.id === deck.id ? { ...d, is_favorite: newFav } : d))
+    );
+  }
+
+  // Client-side filtered list
+  const filteredDecks = useMemo(() => applyFilters(decks, filters), [decks, filters]);
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
   if (authLoading || loading) return <LoadingState message="Loading decks…" />;
@@ -211,26 +251,31 @@ export default function ProfileDecks() {
 
       <h1 className="text-xl font-bold text-white">My Decks</h1>
 
-      {decks.length === 0 ? (
-        <EmptyState
-          title="No decks yet"
-          description="Create your first Commander deck to get started."
+      {/* Filters */}
+      {decks.length > 0 && (
+        <DeckFilters
+          filters={filters}
+          onChange={setFilters}
+          totalCount={filteredDecks.length}
         />
+      )}
+
+      {filteredDecks.length === 0 && decks.length > 0 ? (
+        <EmptyState title="No decks match filters" description="Try clearing some filters." />
+      ) : filteredDecks.length === 0 ? (
+        <EmptyState title="No decks yet" description="Create your first Commander deck to get started." />
       ) : (
-        <div>
-          <div className="grid grid-cols-2 gap-3">
-            {decks.slice(0, visibleCount).map((deck) => (
-              <DeckTile key={deck.id} deck={deck} onDelete={setDeletingDeck} />
-            ))}
-          </div>
-          {decks.length > visibleCount && (
-            <button
-              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              className="w-full mt-3 py-2.5 text-xs text-violet-400 hover:text-violet-300 hover:bg-gray-800/40 rounded-xl border border-gray-800/50 transition-colors"
-            >
-              Load more ({decks.length - visibleCount} remaining)
-            </button>
-          )}
+        <div className="grid grid-cols-2 gap-3">
+          {filteredDecks.map((deck) => (
+            <DeckTile
+              key={deck.id}
+              deck={deck}
+              onDelete={setDeletingDeck}
+              isGuest={isGuest}
+              onFavoriteToggle={handleFavoriteToggle}
+              onInsights={setInsightsDeck}
+            />
+          ))}
         </div>
       )}
 
@@ -239,6 +284,12 @@ export default function ProfileDecks() {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeletingDeck(null)}
         loading={deleteLoading}
+      />
+
+      <DeckInsightsModal
+        deck={insightsDeck}
+        auth={auth}
+        onClose={() => setInsightsDeck(null)}
       />
     </div>
   );
