@@ -32,7 +32,7 @@ export default function PlacementInput({ participants, members, placements, onPl
                 <select
                   value={currentPlacement}
                   onChange={(e) => onPlacementChange(uid, e.target.value ? Number(e.target.value) : null)}
-                  className="bg-gray-900 border border-gray-700 text-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 w-24"
+                  className="bg-gray-900 border border-gray-700 text-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[rgb(var(--ds-primary-rgb))] w-24"
                 >
                   <option value="">Place…</option>
                   {participants.map((_, i) => {
