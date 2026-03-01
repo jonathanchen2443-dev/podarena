@@ -53,7 +53,6 @@ import Dashboard from './pages/Dashboard';
 import Decks from './pages/Decks';
 import Founder from './pages/Founder';
 import Home from './pages/Home';
-import Inbox from './pages/Inbox';
 import Invite from './pages/Invite';
 import LeagueDetails from './pages/LeagueDetails';
 import Leagues from './pages/Leagues';
@@ -73,7 +72,6 @@ export const PAGES = {
     "Decks": Decks,
     "Founder": Founder,
     "Home": Home,
-    "Inbox": Inbox,
     "Invite": Invite,
     "LeagueDetails": LeagueDetails,
     "Leagues": Leagues,
