@@ -245,7 +245,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800/60">
           <div className="flex items-center gap-2.5">
-            <Trophy className="w-4 h-4 text-violet-400" />
+            <Trophy className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
             <span className="text-white font-semibold text-sm">Match Details</span>
           </div>
           <div className="flex items-center gap-2">
