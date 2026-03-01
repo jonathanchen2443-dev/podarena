@@ -95,7 +95,7 @@ export default function LeagueDetails() {
     return (
       <GateView icon={Lock} title="Private league" description="You need to sign in to view this league.">
         <Button
-          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11 px-6"
+          className="ds-btn-primary text-white rounded-xl h-11 px-6"
           onClick={() => base44.auth.redirectToLogin(window.location.href)}
         >Sign In</Button>
       </GateView>
