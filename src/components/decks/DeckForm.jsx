@@ -66,7 +66,7 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Atraxa Superfriends"
-          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-violet-500"
+          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-[rgb(var(--ds-primary-rgb))]"
         />
       </div>
 
