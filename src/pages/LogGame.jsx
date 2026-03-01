@@ -364,7 +364,7 @@ export default function LogGame() {
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               placeholder="Any notes about this game…"
-              className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none placeholder-gray-600"
+              className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))] resize-none placeholder-gray-600"
             />
           </div>
         </div>
