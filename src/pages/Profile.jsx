@@ -217,7 +217,7 @@ export default function Profile() {
           <div className="flex flex-col items-center gap-2 py-4">
             <AlertCircle className="w-6 h-6 text-red-400/70" />
             <p className="text-red-400 text-xs">{decksError}</p>
-            <button onClick={() => { fetchingRef.current = false; loadAll(); }} className="text-violet-400 text-xs hover:text-violet-300 flex items-center gap-1">
+            <button onClick={() => { fetchingRef.current = false; loadAll(); }} className="text-xs flex items-center gap-1 hover:opacity-80" style={{ color: "var(--ds-primary-text)" }}>
               <RefreshCw className="w-3 h-3" /> Retry
             </button>
           </div>
