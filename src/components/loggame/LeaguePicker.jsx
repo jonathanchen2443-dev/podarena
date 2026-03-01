@@ -12,7 +12,7 @@ export default function LeaguePicker({ leagues, value, onChange, disabled }) {
           disabled={disabled}
           value={value || ""}
           onChange={(e) => onChange(e.target.value || null)}
-          className="w-full appearance-none bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full appearance-none bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <option value="">Select a league…</option>
           {leagues.map((l) => (
