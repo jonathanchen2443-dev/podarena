@@ -201,7 +201,7 @@ function AuthDashboard({ data, displayName, auth }) {
               <Swords className="w-8 h-8 text-gray-700 mx-auto mb-2" />
               <p className="text-gray-500 text-sm">No games yet.</p>
               <Link to={ROUTES.LOG_GAME}>
-                <Button variant="ghost" size="sm" className="text-violet-400 hover:text-violet-300 mt-2">
+                <Button variant="ghost" size="sm" className="mt-2 hover:opacity-80" style={{ color: "var(--ds-primary-text)" }}>
                   Log your first game
                 </Button>
               </Link>
