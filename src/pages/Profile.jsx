@@ -253,7 +253,8 @@ export default function Profile() {
             </div>
             {decks.length > 4 && (
               <button
-                className="w-full flex items-center justify-center gap-1 text-violet-400 text-sm hover:text-violet-300 py-2 transition-colors"
+                className="w-full flex items-center justify-center gap-1 text-sm py-2 transition-colors hover:opacity-80"
+                style={{ color: "var(--ds-primary-text)" }}
                 onClick={() => navigate(ROUTES.PROFILE_DECKS)}
               >
                 View all {decks.length} decks <ChevronRight className="w-4 h-4" />
