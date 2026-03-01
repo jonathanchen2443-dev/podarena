@@ -120,11 +120,11 @@ export default function CommanderSearch({ value, onChange, onSelect, inputClassN
           onChange={handleInputChange}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="e.g. Atraxa, Praetors' Voice"
-          className={`bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-violet-500 pr-8 ${inputClassName}`}
+          className={`bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-[rgb(var(--ds-primary-rgb))] pr-8 ${inputClassName}`}
           autoComplete="off"
         />
         {loading && (
-          <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-400 animate-spin" />
+          <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin" style={{ color: "var(--ds-primary-text)" }} />
         )}
       </div>
 
@@ -142,7 +142,7 @@ export default function CommanderSearch({ value, onChange, onSelect, inputClassN
               <button
                 type="button"
                 onMouseDown={() => handleSelect(card)}
-                className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 hover:bg-violet-600/20 transition-colors"
+                className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 hover:bg-gray-800/60 transition-colors"
               >
                 {/* tiny art thumbnail */}
                 {card.image_uris?.art_crop || card.card_faces?.[0]?.image_uris?.art_crop ? (

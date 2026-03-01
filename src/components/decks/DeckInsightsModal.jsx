@@ -75,14 +75,15 @@ function ModalContent({ deck, auth, onClose }) {
 
           {loading ? (
             <div className="flex items-center justify-center py-4">
-              <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "rgb(var(--ds-primary-rgb)) transparent transparent transparent" }} />
             </div>
           ) : error ? (
             <div className="text-center space-y-2 py-2">
               <p className="text-red-400 text-xs">{error}</p>
               <button
                 onClick={load}
-                className="flex items-center gap-1.5 text-violet-400 text-xs hover:text-violet-300 mx-auto"
+                className="flex items-center gap-1.5 text-xs hover:opacity-80 mx-auto"
+                style={{ color: "var(--ds-primary-text)" }}
               >
                 <RefreshCw className="w-3 h-3" /> Retry
               </button>

@@ -47,11 +47,11 @@ export default function AvatarUpload({ profile, onSaved }) {
   return (
     <div className="relative w-20 h-20 flex-shrink-0">
       {/* Avatar circle */}
-      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-violet-500/30 bg-violet-500/10 flex items-center justify-center">
+      <div className="w-20 h-20 rounded-full overflow-hidden ds-accent-bg flex items-center justify-center" style={{ border: "2px solid rgb(var(--ds-primary-muted-bd))" }}>
         {preview ? (
           <img src={preview} alt="Avatar" className="w-full h-full object-cover" />
         ) : (
-          <User className="w-9 h-9 text-violet-400" />
+          <User className="w-9 h-9" style={{ color: "var(--ds-primary-text)" }} />
         )}
       </div>
 

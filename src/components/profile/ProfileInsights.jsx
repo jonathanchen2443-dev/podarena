@@ -4,7 +4,7 @@ import { getProfileInsights } from "@/components/services/profileInsightsService
 
 function InsightCard({ icon: Icon, color, label, value, sub, imageUrl }) {
   const colorMap = {
-    violet: "text-violet-400 bg-violet-500/10 border-violet-500/20",
+    violet: "ds-accent-text ds-accent-bg ds-accent-bd border",
     amber:  "text-amber-400  bg-amber-500/10  border-amber-500/20",
     sky:    "text-sky-400    bg-sky-500/10    border-sky-500/20",
   };
@@ -65,7 +65,7 @@ export default function ProfileInsights({ auth }) {
       <div className="space-y-3">
         <h2 className="text-white font-semibold text-base px-1">Insights</h2>
         <div className="flex justify-center py-4">
-          <Loader2 className="w-5 h-5 text-violet-400 animate-spin" />
+          <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--ds-primary-text)" }} />
         </div>
       </div>
     );
@@ -80,7 +80,8 @@ export default function ProfileInsights({ auth }) {
           <p className="text-red-400 text-xs text-center">{error}</p>
           <button
             onClick={load}
-            className="flex items-center gap-1 text-violet-400 text-xs hover:text-violet-300 transition-colors"
+            className="flex items-center gap-1 text-xs hover:opacity-80 transition-colors"
+            style={{ color: "var(--ds-primary-text)" }}
           >
             <RefreshCw className="w-3 h-3" /> Retry
           </button>

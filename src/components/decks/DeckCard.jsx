@@ -50,7 +50,9 @@ export default function DeckCard({ deck, onDelete }) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-gray-400 hover:text-violet-400 hover:bg-violet-500/10"
+              className="h-8 w-8 text-gray-400 hover:bg-gray-800/50"
+              onMouseEnter={e => e.currentTarget.style.color = "var(--ds-primary-text)"}
+              onMouseLeave={e => e.currentTarget.style.color = ""}
               asChild
             >
               <Link to={ROUTES.PROFILE_DECK_EDIT(deck.id)}>

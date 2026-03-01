@@ -6,10 +6,10 @@ import React from "react";
  */
 const GLOW_STYLES = {
   violet: {
-    ring: "from-violet-500/60 via-violet-400/20 to-transparent",
-    inner: "bg-violet-500/10 border-violet-500/30",
-    text: "text-violet-100",
-    glow: "shadow-[0_0_18px_2px_rgba(139,92,246,0.35)]",
+    ring: "from-[rgb(var(--ds-primary-rgb))]/60 via-[rgb(var(--ds-primary-rgb))]/20 to-transparent",
+    inner: "ds-accent-bg ds-accent-bd",
+    text: "text-white",
+    glow: "",
   },
   emerald: {
     ring: "from-emerald-500/60 via-emerald-400/20 to-transparent",

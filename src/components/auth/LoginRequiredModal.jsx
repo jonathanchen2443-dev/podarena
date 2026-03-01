@@ -30,8 +30,8 @@ export default function LoginRequiredModal({ onClose }) {
         </button>
 
         <div className="flex flex-col items-center text-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-            <Lock className="w-6 h-6 text-violet-400" />
+          <div className="w-14 h-14 rounded-2xl ds-accent-bg ds-accent-bd border flex items-center justify-center">
+            <Lock className="w-6 h-6" style={{ color: "var(--ds-primary-text)" }} />
           </div>
           <div>
             <h2 className="text-white font-semibold text-lg">Login required</h2>
@@ -41,7 +41,7 @@ export default function LoginRequiredModal({ onClose }) {
           </div>
           <div className="flex flex-col gap-2 w-full">
             <Button
-              className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11"
+              className="w-full ds-btn-primary text-white rounded-xl h-11"
               onClick={() => {
                 onClose();
                 base44.auth.redirectToLogin();

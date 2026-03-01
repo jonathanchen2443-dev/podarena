@@ -75,7 +75,7 @@ export default function Founder() {
   if (authLoading || checking) {
     return (
       <div className="flex items-center justify-center py-32">
-        <RefreshCw className="w-6 h-6 text-violet-400 animate-spin" />
+        <RefreshCw className="w-6 h-6 animate-spin" style={{ color: "var(--ds-primary-text)" }} />
       </div>
     );
   }
@@ -83,14 +83,14 @@ export default function Founder() {
   if (isGuest) {
     return (
       <div className="flex flex-col items-center justify-center py-24 px-6 text-center gap-5">
-        <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-          <LogIn className="w-7 h-7 text-violet-400" />
+        <div className="w-14 h-14 rounded-2xl ds-accent-bg ds-accent-bd border flex items-center justify-center">
+          <LogIn className="w-7 h-7" style={{ color: "var(--ds-primary-text)" }} />
         </div>
         <div>
           <h2 className="text-white font-semibold text-lg">Sign in required</h2>
           <p className="text-gray-400 text-sm mt-1">You need to be signed in to access this page.</p>
         </div>
-        <Button className="bg-violet-600 hover:bg-violet-700 rounded-xl" onClick={() => base44.auth.redirectToLogin()}>
+        <Button className="ds-btn-primary text-white rounded-xl" onClick={() => base44.auth.redirectToLogin()}>
           Sign In
         </Button>
       </div>
@@ -129,8 +129,8 @@ export default function Founder() {
     <div className="space-y-4 pb-8">
       {/* Header */}
       <div className="flex items-center gap-3 pt-2">
-        <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-          <ShieldCheck className="w-5 h-5 text-violet-400" />
+        <div className="w-9 h-9 rounded-xl ds-accent-bg ds-accent-bd border flex items-center justify-center">
+          <ShieldCheck className="w-5 h-5" style={{ color: "var(--ds-primary-text)" }} />
         </div>
         <div>
           <h1 className="text-white font-bold text-lg leading-tight">Founder Console</h1>
@@ -146,7 +146,7 @@ export default function Founder() {
             onClick={() => setActiveTab(t.key)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               activeTab === t.key
-                ? "bg-violet-600 text-white"
+                ? "ds-btn-primary text-white"
                 : "bg-gray-800 text-gray-500 hover:text-gray-300"
             }`}
           >

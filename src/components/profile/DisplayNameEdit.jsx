@@ -60,10 +60,13 @@ export default function DisplayNameEdit({ profile, onSaved }) {
     return (
       <button
         onClick={startEdit}
-        className="flex items-center gap-1.5 text-gray-500 hover:text-violet-400 text-xs transition-colors group mt-0.5"
+        className="flex items-center gap-1.5 text-gray-500 hover:opacity-80 text-xs transition-colors group mt-0.5"
+        style={{ "--tw-text-opacity": 1 }}
+        onMouseEnter={e => e.currentTarget.style.color = "var(--ds-primary-text)"}
+        onMouseLeave={e => e.currentTarget.style.color = ""}
         title="Edit display name"
       >
-        <Pencil className="w-3 h-3 group-hover:text-violet-400" />
+        <Pencil className="w-3 h-3" />
         Edit name
       </button>
     );
@@ -77,14 +80,14 @@ export default function DisplayNameEdit({ profile, onSaved }) {
           value={value}
           onChange={(e) => { setValue(e.target.value); setError(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
-          className="flex-1 h-8 px-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-violet-500 min-w-0"
+          className="flex-1 h-8 px-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] min-w-0"
           maxLength={40}
           disabled={saving}
         />
         <button
           onClick={save}
           disabled={saving}
-          className="w-7 h-7 rounded-lg bg-violet-600 hover:bg-violet-500 flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-60"
+          className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-60 ds-btn-primary"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Check className="w-3.5 h-3.5 text-white" />}
         </button>
