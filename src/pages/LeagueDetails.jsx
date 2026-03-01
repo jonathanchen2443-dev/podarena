@@ -581,7 +581,8 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                 <label className="text-xs text-gray-500 uppercase tracking-wider">Visibility</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => setEditPublic(true)}
-                    className={`flex items-center gap-2 h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${editPublic ? "border-violet-500 bg-violet-500/10 text-violet-300" : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"}`}>
+                    className={`flex items-center gap-2 h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${editPublic ? "ds-accent-bg ds-accent-bd" : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600"}`}
+                    style={editPublic ? { color: "var(--ds-primary-text)" } : {}}>
                     <Globe className="w-4 h-4" /> Public
                   </button>
                   <button type="button" onClick={() => setEditPublic(false)}
