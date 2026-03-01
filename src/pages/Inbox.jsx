@@ -69,7 +69,7 @@ function NotificationRow({ notif }) {
           </span>
         </div>
         <p className="text-gray-400 text-xs">
-          {isSystemMsg ? notif.message : <><span className="text-violet-300">{notif.actorName}</span> joined the league</>}
+          {isSystemMsg ? notif.message : <><span style={{ color: "var(--ds-primary-text)" }}>{notif.actorName}</span> joined the league</>}
         </p>
       </div>
     </div>
