@@ -167,7 +167,8 @@ export default function CreateLeague() {
               step={1}
               value={maxMembers}
               onChange={(e) => setMaxMembers(Number(e.target.value))}
-              className="flex-1 accent-violet-500"
+              className="flex-1"
+              style={{ accentColor: "rgb(var(--ds-primary-rgb))" }}
             />
             <span className="text-white font-semibold text-sm w-6 text-center">{maxMembers}</span>
           </div>
