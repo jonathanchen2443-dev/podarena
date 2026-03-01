@@ -55,9 +55,9 @@ function NotificationRow({ notif }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-800/50 last:border-0">
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-        isSystemMsg ? "bg-sky-500/10 border border-sky-500/20" : "bg-violet-500/10 border border-violet-500/20"
+        isSystemMsg ? "bg-sky-500/10 border border-sky-500/20" : "ds-accent-bg ds-accent-bd border"
       }`}>
-        {isSystemMsg ? <Bell className="w-4 h-4 text-sky-400" /> : <Users className="w-4 h-4 text-violet-400" />}
+        {isSystemMsg ? <Bell className="w-4 h-4 text-sky-400" /> : <Users className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
