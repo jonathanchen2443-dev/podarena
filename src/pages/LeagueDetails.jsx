@@ -564,7 +564,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   maxLength={100}
-                  className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors"
+                  className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 text-sm text-white focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] transition-colors"
                 />
               </div>
               <div className="space-y-1">
