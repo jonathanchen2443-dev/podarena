@@ -195,7 +195,8 @@ export default function Profile() {
           <h2 className="text-white font-semibold text-base">My Decks</h2>
           <div className="flex items-center gap-2">
             <button
-              className="text-violet-400 text-xs hover:text-violet-300 transition-colors"
+              className="text-xs transition-colors hover:opacity-80"
+              style={{ color: "var(--ds-primary-text)" }}
               onClick={() => navigate(ROUTES.PROFILE_DECKS)}
             >
               All Decks
