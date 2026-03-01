@@ -103,7 +103,10 @@ export default function DeckTile({ deck, onDelete, editHref, onFavoriteToggle, o
           <Link
             to={editHref || ROUTES.PROFILE_DECK_EDIT(deck.id)}
             onClick={(e) => e.stopPropagation()}
-            className="w-7 h-7 rounded-lg bg-gray-900/80 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-violet-400 hover:border-violet-500/50 transition-colors backdrop-blur-sm"
+            className="w-7 h-7 rounded-lg bg-gray-900/80 border border-gray-700 flex items-center justify-center text-gray-400 hover:border-gray-500 transition-colors backdrop-blur-sm"
+            style={{}}
+            onMouseEnter={e => e.currentTarget.style.color = "var(--ds-primary-text)"}
+            onMouseLeave={e => e.currentTarget.style.color = ""}
           >
             <Pencil className="w-3 h-3" />
           </Link>
