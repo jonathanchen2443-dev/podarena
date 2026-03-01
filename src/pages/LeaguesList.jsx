@@ -134,7 +134,8 @@ export default function LeaguesList() {
           {hasMore && (
             <button
               onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              className="w-full flex items-center justify-center gap-1.5 text-violet-400 text-sm hover:text-violet-300 py-2 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 text-sm py-2 transition-colors hover:opacity-80"
+              style={{ color: "var(--ds-primary-text)" }}
             >
               <Loader2 className="w-3.5 h-3.5" />
               Load more
