@@ -32,7 +32,8 @@ export default function ParticipantPicker({
         <button
           type="button"
           onClick={() => onAdd(currentUserId)}
-          className="mb-2 flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+          className="mb-2 flex items-center gap-1.5 text-xs hover:opacity-80 transition-opacity"
+          style={{ color: "var(--ds-primary-text)" }}
         >
           <UserPlus className="w-3.5 h-3.5" />
           Add me
