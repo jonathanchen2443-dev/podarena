@@ -36,7 +36,7 @@ function StatCard({ icon: Icon, iconClass, label, value, to, badge }) {
   const inner = (
     <CardContent className="p-4 flex items-center gap-3">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconClass}`}>
-        <Icon className="w-5 h-5" />
+        <Icon className="w-5 h-5" style={{ color: undefined }} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-2xl font-bold text-white leading-none">{value}</p>
