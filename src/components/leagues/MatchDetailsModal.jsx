@@ -163,7 +163,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
       <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
         <div className="relative z-10 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--ds-primary-text)" }} />
         </div>
       </div>
     );
