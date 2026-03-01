@@ -108,7 +108,7 @@ export default function Profile() {
         </div>
         <button
           onClick={() => setShowLoginModal(true)}
-          className="h-11 px-6 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
+          className="h-11 px-6 rounded-xl text-white text-sm font-medium transition-colors ds-btn-primary"
         >
           Sign In
         </button>
