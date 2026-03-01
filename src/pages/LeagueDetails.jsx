@@ -766,8 +766,8 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                         {member.avatar_url ? (
                           <img src={member.avatar_url} alt={member.display_name} className="w-8 h-8 rounded-full object-cover border border-gray-700 flex-shrink-0" />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-                            <User className="w-4 h-4 text-violet-400" />
+                          <div className="w-8 h-8 rounded-full ds-accent-bg ds-accent-bd border flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
                           </div>
                         )}
                         {/* Name — clickable if not in edit mode */}
