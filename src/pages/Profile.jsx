@@ -170,7 +170,8 @@ export default function Profile() {
               </div>
               <button
                 onClick={() => { fetchingRef.current = false; loadAll(); }}
-                className="flex items-center gap-1.5 text-violet-400 text-xs hover:text-violet-300 transition-colors"
+                className="flex items-center gap-1.5 text-xs transition-colors hover:opacity-80"
+                style={{ color: "var(--ds-primary-text)" }}
               >
                 <RefreshCw className="w-3 h-3" /> Retry
               </button>
