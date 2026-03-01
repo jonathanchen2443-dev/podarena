@@ -122,6 +122,30 @@ const CSS_VARS = `
 
 function AuthActionSlot() {
   const { isGuest, currentUser, authLoading } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (isGuest || !currentUser) return;
+    let cancelled = false;
+
+    async function fetchUnread() {
+      try {
+        const notifs = await base44.entities.Notification.filter(
+          { recipient_user_id: currentUser.id },
+          "-created_date",
+          100
+        );
+        if (!cancelled) {
+          setUnreadCount(notifs.filter((n) => !n.read_at).length);
+        }
+      } catch (_) {}
+    }
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [isGuest, currentUser]);
+
   if (authLoading) return null;
 
   if (isGuest) {
@@ -137,9 +161,21 @@ function AuthActionSlot() {
   }
 
   return (
-    <Link to={ROUTES.PROFILE} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors ds-accent-bg ds-accent-bd border">
-      <User className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
-    </Link>
+    <div className="flex items-center gap-2">
+      {/* Inbox icon with unread badge */}
+      <Link to={ROUTES.INBOX} className="relative w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-gray-800/60">
+        <Bell className="w-4 h-4 text-gray-400" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center px-0.5 leading-none">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </Link>
+      {/* Profile icon */}
+      <Link to={ROUTES.PROFILE} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors ds-accent-bg ds-accent-bd border">
+        <User className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
+      </Link>
+    </div>
   );
 }
 
