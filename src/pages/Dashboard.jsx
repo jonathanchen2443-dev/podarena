@@ -168,7 +168,7 @@ function AuthDashboard({ data, displayName, auth }) {
       {/* Quick actions */}
       <div className="grid grid-cols-2 gap-3">
         <Link to={ROUTES.LOG_GAME}>
-          <Button className="w-full bg-violet-600 hover:bg-violet-700 h-10 rounded-xl text-sm">
+          <Button className="w-full ds-btn-primary h-10 rounded-xl text-sm">
             <Plus className="w-4 h-4 mr-1.5" />
             Log Game
           </Button>
