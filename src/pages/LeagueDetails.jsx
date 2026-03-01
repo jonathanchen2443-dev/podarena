@@ -607,7 +607,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
               </div>
               {editError && <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{editError}</p>}
               <div className="flex gap-2 pt-1">
-                <Button size="sm" disabled={saving} onClick={handleSave} className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex-1">
+                <Button size="sm" disabled={saving} onClick={handleSave} className="ds-btn-primary text-white rounded-lg flex-1">
                   {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
                 </Button>
                 <Button size="sm" variant="outline" disabled={saving} onClick={cancelEdit} className="border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg flex-1">
