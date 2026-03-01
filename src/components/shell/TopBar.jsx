@@ -21,7 +21,7 @@ export default function TopBar({ currentPageName, actionSlot }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-gray-950/95 backdrop-blur-xl border-b border-gray-800/60 h-14 flex items-center px-4">
       <div className="flex items-center gap-2 flex-1">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgb(var(--ds-primary-rgb)), rgb(var(--ds-primary-hover)))" }}>
           <Sparkles className="w-3.5 h-3.5 text-white" />
         </div>
         <h1 className="text-white font-semibold text-base">{title}</h1>
