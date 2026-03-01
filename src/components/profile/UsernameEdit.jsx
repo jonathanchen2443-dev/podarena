@@ -76,7 +76,9 @@ export default function UsernameEdit({ profile, onSaved }) {
         )}
         <button
           onClick={startEdit}
-          className="p-1 rounded-md text-gray-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+          className="p-1 rounded-md text-gray-600 hover:bg-gray-800/50 transition-colors"
+          onMouseEnter={e => e.currentTarget.style.color = "var(--ds-primary-text)"}
+          onMouseLeave={e => e.currentTarget.style.color = ""}
           title="Edit username"
         >
           <Pencil className="w-3 h-3" />
@@ -96,13 +98,13 @@ export default function UsernameEdit({ profile, onSaved }) {
           onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") cancelEdit(); }}
           maxLength={30}
           autoFocus
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors min-w-0"
+          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] transition-colors min-w-0"
           placeholder="your_username"
         />
         <button
           onClick={handleSave}
           disabled={saving}
-          className="p-1.5 rounded-md bg-violet-600 hover:bg-violet-700 text-white transition-colors disabled:opacity-60"
+          className="p-1.5 rounded-md ds-btn-primary text-white transition-colors disabled:opacity-60"
           title="Save"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
