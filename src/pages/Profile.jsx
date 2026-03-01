@@ -97,8 +97,8 @@ export default function Profile() {
   if (isGuest) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-6">
-        <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-          <Lock className="w-8 h-8 text-violet-400" />
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center ds-accent-bg ds-accent-bd border">
+          <Lock className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
         </div>
         <div>
           <h2 className="text-white font-semibold text-lg">Login to manage your profile</h2>
