@@ -323,7 +323,8 @@ export default function GamesTab({ auth, leagueId, inviteToken = null }) {
           {hasMore && (
             <button
               onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              className="w-full mt-2 py-2.5 text-xs text-violet-400 hover:text-violet-300 hover:bg-gray-800/40 rounded-xl border border-gray-800/50 transition-colors"
+              className="w-full mt-2 py-2.5 text-xs hover:opacity-80 hover:bg-gray-800/40 rounded-xl border border-gray-800/50 transition-colors"
+            style={{ color: "var(--ds-primary-text)" }}
             >
               Load more ({filteredGames.length - visibleCount} remaining)
             </button>
