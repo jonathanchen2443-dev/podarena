@@ -95,7 +95,7 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel }) {
           value={commanderImageUrl}
           onChange={(e) => setCommanderImageUrl(e.target.value)}
           placeholder="https://cards.scryfall.io/normal/..."
-          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-violet-500 text-xs"
+          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-[rgb(var(--ds-primary-rgb))] text-xs"
         />
       </div>
 
