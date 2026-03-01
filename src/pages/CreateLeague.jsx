@@ -23,7 +23,7 @@ function GuestGate() {
         </p>
       </div>
       <Button
-        className="bg-violet-600 hover:bg-violet-700 text-white h-11 rounded-xl px-8"
+        className="ds-btn-primary text-white h-11 rounded-xl px-8"
         onClick={() => base44.auth.redirectToLogin(ROUTES.CREATE_LEAGUE)}
       >
         <LogIn className="w-4 h-4 mr-2" />
