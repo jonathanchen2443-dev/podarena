@@ -137,8 +137,8 @@ function AuthActionSlot() {
   }
 
   return (
-    <Link to={ROUTES.PROFILE} className="w-8 h-8 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center hover:bg-violet-500/20 transition-colors">
-      <User className="w-4 h-4 text-violet-400" />
+    <Link to={ROUTES.PROFILE} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors ds-accent-bg ds-accent-bd border">
+      <User className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
     </Link>
   );
 }
