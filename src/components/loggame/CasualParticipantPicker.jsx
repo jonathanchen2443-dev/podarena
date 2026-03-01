@@ -123,8 +123,8 @@ export default function CasualParticipantPicker({
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover border border-gray-700 flex-shrink-0" />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-                    <User className="w-3 h-3 text-violet-400" />
+                  <div className="w-6 h-6 rounded-full ds-accent-bg ds-accent-bd border flex items-center justify-center flex-shrink-0">
+                    <User className="w-3 h-3" style={{ color: "var(--ds-primary-text)" }} />
                   </div>
                 )}
                 <span className="flex-1 text-sm text-white truncate">
