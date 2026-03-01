@@ -140,7 +140,7 @@ export default function CreateLeague() {
               onClick={() => setIsPublic(false)}
               className={`flex items-center gap-2 h-11 px-4 rounded-xl border text-sm font-medium transition-colors ${
                 !isPublic
-                  ? "border-violet-500 bg-violet-500/10 text-violet-300"
+                  ? "ds-accent-bg ds-accent-bd"
                   : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600"
               }`}
             >
