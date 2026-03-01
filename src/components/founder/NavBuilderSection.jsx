@@ -53,7 +53,7 @@ export default function NavBuilderSection({ settings, onRefresh }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
       <div className="flex items-center gap-2">
-        <Navigation className="w-4 h-4 text-violet-400" />
+        <Navigation className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
         <h2 className="text-white font-semibold text-sm">Navigation Builder</h2>
       </div>
 
@@ -105,7 +105,7 @@ export default function NavBuilderSection({ settings, onRefresh }) {
         </Button>
         <Button
           size="sm"
-          className="flex-1 bg-violet-600 hover:bg-violet-700 rounded-xl"
+          className="flex-1 ds-btn-primary rounded-xl"
           onClick={handleSave}
           disabled={saving}
         >

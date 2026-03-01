@@ -16,7 +16,7 @@ function JsonRow({ row, selected, onSelect }) {
     <div
       onClick={() => onSelect(row)}
       className={`px-3 py-2 rounded-lg cursor-pointer text-xs border transition-colors ${
-        selected ? "border-violet-500 bg-violet-500/10 text-white" : "border-transparent text-gray-400 hover:bg-gray-800/60 hover:text-gray-200"
+        selected ? "ds-accent-bd ds-accent-bg border text-white" : "border-transparent text-gray-400 hover:bg-gray-800/60 hover:text-gray-200"
       }`}
     >
       <span className="font-mono text-[10px] text-gray-600 mr-2">{row.id?.slice(-8)}</span>
@@ -54,7 +54,7 @@ export default function EntityBrowserSection() {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
       <div className="flex items-center gap-2">
-        <Database className="w-4 h-4 text-violet-400" />
+        <Database className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
         <h2 className="text-white font-semibold text-sm">Entity Browser</h2>
         <span className="text-[10px] text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded">read-only</span>
       </div>
@@ -75,7 +75,7 @@ export default function EntityBrowserSection() {
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="bg-gray-800 border border-gray-700 text-white text-xs rounded-xl px-3 py-2 pr-7 appearance-none focus:outline-none focus:border-violet-500"
+            className="bg-gray-800 border border-gray-700 text-white text-xs rounded-xl px-3 py-2 pr-7 appearance-none focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))]"
           >
             {FILTER_OPTS.map((o) => <option key={o} value={o}>{o === "none" ? "No filter" : o}</option>)}
           </select>
@@ -86,11 +86,11 @@ export default function EntityBrowserSection() {
             value={filterValue}
             onChange={(e) => setFilterValue(e.target.value)}
             placeholder="value…"
-            className="flex-1 min-w-28 bg-gray-800 border border-gray-700 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-violet-500"
+            className="flex-1 min-w-28 bg-gray-800 border border-gray-700 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))]"
             onKeyDown={(e) => e.key === "Enter" && handleQuery()}
           />
         )}
-        <Button size="sm" className="bg-violet-600 hover:bg-violet-700 rounded-xl" onClick={handleQuery} disabled={loading}>
+        <Button size="sm" className="ds-btn-primary rounded-xl" onClick={handleQuery} disabled={loading}>
           <Search className="w-3.5 h-3.5 mr-1" />
           {loading ? "Loading…" : "Query"}
         </Button>

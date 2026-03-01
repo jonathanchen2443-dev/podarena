@@ -10,7 +10,7 @@ function ConfirmRow({ label, onConfirm, loading, color = "violet" }) {
     ? "bg-red-600 hover:bg-red-700"
     : color === "amber"
     ? "bg-amber-600 hover:bg-amber-700"
-    : "bg-violet-600 hover:bg-violet-700";
+    : "ds-btn-primary";
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-xs text-gray-300">{label}</span>

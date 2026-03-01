@@ -45,7 +45,7 @@ export default function OverviewSection({ settings }) {
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-violet-400" />
+          <Activity className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
           <h2 className="text-white font-semibold text-sm">Overview</h2>
         </div>
         <button onClick={load} className="text-gray-600 hover:text-gray-400">
@@ -64,7 +64,7 @@ export default function OverviewSection({ settings }) {
           <StatCard label="Games" value={counts.games} />
           <StatCard label="Pending Approvals" value={counts.pendingApprovals} color="text-amber-400" />
           <StatCard label="Unread Notifs" value={counts.unreadNotifications} color="text-sky-400" />
-          <StatCard label="Founders" value={settings?.founder_user_ids?.length || 0} color="text-violet-400" />
+          <StatCard label="Founders" value={settings?.founder_user_ids?.length || 0} color="ds-accent-text" />
         </div>
       )}
 

@@ -122,7 +122,7 @@ export default function QAHealthSection({ auth }) {
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-violet-400" />
+          <Activity className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
           <h2 className="text-white font-semibold text-sm">QA / Health Checks</h2>
         </div>
         {checks && (
@@ -133,7 +133,7 @@ export default function QAHealthSection({ auth }) {
       </div>
 
       <Button
-        className="w-full bg-violet-600 hover:bg-violet-700 rounded-xl"
+        className="w-full ds-btn-primary rounded-xl"
         onClick={handleRun}
         disabled={running}
       >

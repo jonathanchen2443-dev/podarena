@@ -42,7 +42,7 @@ export default function FeatureFlagsSection({ settings, onRefresh }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
       <div className="flex items-center gap-2">
-        <Flag className="w-4 h-4 text-violet-400" />
+        <Flag className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
         <h2 className="text-white font-semibold text-sm">Feature Flags</h2>
       </div>
 
@@ -56,7 +56,7 @@ export default function FeatureFlagsSection({ settings, onRefresh }) {
             <button
               onClick={() => toggle(key)}
               className={`relative w-10 h-5.5 rounded-full transition-colors flex items-center px-0.5 ${
-                flags[key] ? "bg-violet-600" : "bg-gray-700"
+                flags[key] ? "ds-btn-primary" : "bg-gray-700"
               }`}
               style={{ height: "22px", minWidth: "40px" }}
             >
@@ -72,7 +72,7 @@ export default function FeatureFlagsSection({ settings, onRefresh }) {
 
       <Button
         size="sm"
-        className="w-full bg-violet-600 hover:bg-violet-700 rounded-xl"
+        className="w-full ds-btn-primary rounded-xl"
         onClick={handleSave}
         disabled={saving}
       >

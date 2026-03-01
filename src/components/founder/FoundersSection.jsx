@@ -42,7 +42,7 @@ export default function FoundersSection({ settings, auth, onRefresh }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
       <div className="flex items-center gap-2 mb-1">
-        <Shield className="w-4 h-4 text-violet-400" />
+        <Shield className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
         <h2 className="text-white font-semibold text-sm">Founders</h2>
         <span className="text-xs text-gray-600">({founders.length})</span>
       </div>
@@ -52,7 +52,7 @@ export default function FoundersSection({ settings, auth, onRefresh }) {
           <div key={uid} className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2.5">
             <span className="flex-1 text-xs font-mono text-gray-300 truncate">{uid}</span>
             {uid === auth.currentUser?.id && (
-              <span className="text-[10px] text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded-full">you</span>
+              <span className="text-[10px] ds-accent-text ds-accent-bg px-1.5 py-0.5 rounded-full">you</span>
             )}
             <button
               onClick={() => handleRemove(uid)}
@@ -71,7 +71,7 @@ export default function FoundersSection({ settings, auth, onRefresh }) {
           <button
             key={m}
             onClick={() => { setMode(m); setInput(""); }}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${mode === m ? "bg-violet-600 text-white" : "text-gray-500 hover:text-gray-300"}`}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${mode === m ? "ds-btn-primary text-white" : "text-gray-500 hover:text-gray-300"}`}
           >
             {m === "id" ? "By User ID" : "By Email"}
           </button>
@@ -83,12 +83,12 @@ export default function FoundersSection({ settings, auth, onRefresh }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={mode === "email" ? "user@example.com" : "Profile ID…"}
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-violet-500"
+          className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))]"
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         />
         <Button
           size="sm"
-          className="bg-violet-600 hover:bg-violet-700 rounded-xl"
+          className="ds-btn-primary rounded-xl"
           onClick={handleAdd}
           disabled={loading === "add" || !input.trim()}
         >
