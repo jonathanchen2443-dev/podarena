@@ -31,11 +31,11 @@ function ParticipantRow({ p }) {
 
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-gray-800/40 last:border-0">
-      <div className="w-8 h-8 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+      <div className="w-8 h-8 rounded-full ds-accent-bg ds-accent-bd border flex items-center justify-center flex-shrink-0">
         {p.avatar_url ? (
           <img src={p.avatar_url} alt={p.display_name} className="w-8 h-8 rounded-full object-cover" />
         ) : (
-          <User className="w-4 h-4 text-violet-400" />
+          <User className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
         )}
       </div>
       <div className="flex-1 min-w-0">
