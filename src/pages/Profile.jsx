@@ -146,8 +146,8 @@ export default function Profile() {
             {profile ? (
               <AvatarUpload profile={profile} onSaved={handleAvatarSaved} />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-violet-500/10 border-2 border-violet-500/30 flex items-center justify-center flex-shrink-0">
-                <Lock className="w-8 h-8 text-violet-400" />
+              <div className="w-20 h-20 rounded-full flex items-center justify-center flex-shrink-0 ds-accent-bg" style={{ border: "2px solid rgb(var(--ds-primary-muted-bd))" }}>
+                <Lock className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
               </div>
             )}
             <div className="flex-1 min-w-0 pt-1">
