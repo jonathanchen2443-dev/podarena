@@ -54,7 +54,7 @@ export default function PlacementInput({ participants, members, placements, onPl
                   <select
                     value={deckSelections[uid] || ""}
                     onChange={(e) => onDeckChange(uid, e.target.value || null)}
-                    className="flex-1 bg-gray-900 border border-gray-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    className="flex-1 bg-gray-900 border border-gray-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[rgb(var(--ds-primary-rgb))]"
                   >
                     <option value="">No deck / not tracked</option>
                     {myDecks.map((d) => (
