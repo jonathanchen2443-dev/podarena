@@ -352,7 +352,7 @@ export default function LogGame() {
               type="datetime-local"
               value={playedAt}
               onChange={(e) => setPlayedAt(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))]"
             />
           </div>
           <div>
