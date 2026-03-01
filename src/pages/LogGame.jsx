@@ -26,7 +26,7 @@ function ContextToggle({ value, onChange }) {
           onClick={() => onChange(opt)}
           className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
             value === opt
-              ? "bg-violet-600 text-white"
+              ? "ds-btn-primary text-white"
               : "text-gray-400 hover:text-gray-200"
           }`}
         >
