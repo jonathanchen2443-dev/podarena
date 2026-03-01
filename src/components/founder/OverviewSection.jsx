@@ -64,7 +64,7 @@ export default function OverviewSection({ settings }) {
           <StatCard label="Games" value={counts.games} />
           <StatCard label="Pending Approvals" value={counts.pendingApprovals} color="text-amber-400" />
           <StatCard label="Unread Notifs" value={counts.unreadNotifications} color="text-sky-400" />
-          <StatCard label="Founders" value={settings?.founder_user_ids?.length || 0} color="ds-accent-text" />
+          <StatCard label="Founders" value={settings?.founder_user_ids?.length || 0} />
         </div>
       )}
 

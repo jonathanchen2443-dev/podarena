@@ -65,7 +65,7 @@ export default function EntityBrowserSection() {
           <select
             value={entity}
             onChange={(e) => { setEntity(e.target.value); setResults(null); }}
-            className="bg-gray-800 border border-gray-700 text-white text-xs rounded-xl px-3 py-2 pr-7 appearance-none focus:outline-none focus:border-violet-500"
+            className="bg-gray-800 border border-gray-700 text-white text-xs rounded-xl px-3 py-2 pr-7 appearance-none focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))]"
           >
             {ENTITIES.map((e) => <option key={e} value={e}>{e}</option>)}
           </select>
