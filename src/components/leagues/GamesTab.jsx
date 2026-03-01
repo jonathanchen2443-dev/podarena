@@ -113,7 +113,7 @@ function FilterBar({ statusFilter, setStatusFilter, sortOrder, setSortOrder, gam
               onClick={() => setStatusFilter(f.id)}
               className={`flex items-center gap-1 h-7 px-3 rounded-full text-xs font-medium transition-colors ${
                 isActive
-                  ? "bg-violet-600 text-white"
+                  ? "ds-btn-primary text-white"
                   : "bg-gray-800/60 text-gray-400 hover:text-white hover:bg-gray-800"
               }`}
             >
