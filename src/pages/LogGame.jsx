@@ -272,8 +272,8 @@ export default function LogGame() {
     <form onSubmit={handleSubmit} className="space-y-5">
       {topNav}
 
-      <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
-        <p className="text-sm text-violet-300 leading-relaxed">
+      <div className="rounded-xl p-4 ds-accent-bg ds-accent-bd border">
+        <p className="text-sm leading-relaxed" style={{ color: "var(--ds-primary-text)" }}>
           Log a completed game. All participants will be asked to approve the result.
         </p>
       </div>
