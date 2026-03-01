@@ -192,7 +192,7 @@ export default function Inbox() {
           </p>
         </div>
         <Button
-          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11 px-6"
+          className="ds-btn-primary text-white rounded-xl h-11 px-6"
           onClick={() => base44.auth.redirectToLogin()}
         >
           Sign In
