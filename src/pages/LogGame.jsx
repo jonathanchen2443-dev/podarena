@@ -382,7 +382,7 @@ export default function LogGame() {
       <Button
         type="submit"
         disabled={!allPlacementsFilled || submitting}
-        className="w-full h-12 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full h-12 rounded-xl ds-btn-primary text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {submitting ? (
           <span className="flex items-center gap-2 justify-center">
