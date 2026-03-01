@@ -881,8 +881,8 @@ function GateView({ icon: Icon, title, description, children }) {
       >
         <ArrowLeft className="w-4 h-4" /> Leagues
       </button>
-      <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-        <Icon className="w-8 h-8 text-violet-400" />
+      <div className="w-16 h-16 rounded-2xl ds-accent-bg ds-accent-bd border flex items-center justify-center">
+        <Icon className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
       </div>
       <div>
         <h2 className="text-white font-semibold text-lg">{title}</h2>
