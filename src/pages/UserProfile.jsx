@@ -107,7 +107,7 @@ export default function UserProfile() {
                 </div>
               )}
               {isOwnProfile && (
-                <span className="inline-block mt-1.5 text-[10px] bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded-full px-2 py-0.5">
+                <span className="inline-block mt-1.5 text-[10px] ds-accent-bg ds-accent-bd border rounded-full px-2 py-0.5" style={{ color: "var(--ds-primary-text)" }}>
                   This is you
                 </span>
               )}
