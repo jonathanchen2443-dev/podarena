@@ -102,7 +102,7 @@ export default function LeaguesList() {
           {leagues.map((league) => (
             <Card
               key={league.id}
-              className="bg-gray-900/60 border-gray-800/50 hover:border-violet-800/40 transition-all cursor-pointer"
+              className="bg-gray-900/60 border-gray-800/50 hover:border-gray-700/60 transition-all cursor-pointer"
               onClick={() => navigate(ROUTES.LEAGUE_DETAILS(league.id))}
             >
               <CardContent className="p-4 flex items-center justify-between">
