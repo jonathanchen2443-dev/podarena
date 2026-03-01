@@ -160,7 +160,7 @@ export default function StandingsTab({ auth, leagueId, inviteToken = null, isMem
                 </span>
                 <PlayerCell row={row} />
                 <span className="text-xs text-gray-400 text-center tabular-nums">{row.gamesPlayed}</span>
-                <span className="text-xs font-bold text-violet-300 text-center tabular-nums">{row.totalPoints}</span>
+                <span className="text-xs font-bold text-center tabular-nums" style={{ color: "var(--ds-primary-text)" }}>{row.totalPoints}</span>
                 <span className="text-xs text-gray-400 text-center tabular-nums">{row.winRate}%</span>
                 <RecentDecksCell recentDecks={row.recentDecks} />
               </div>
