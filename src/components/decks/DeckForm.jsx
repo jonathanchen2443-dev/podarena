@@ -143,7 +143,7 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel }) {
         <Button
           type="submit"
           disabled={saving}
-          className="flex-1 bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11"
+          className="flex-1 ds-btn-primary text-white rounded-xl h-11"
         >
           {saving ? "Saving…" : "Save Deck"}
         </Button>
