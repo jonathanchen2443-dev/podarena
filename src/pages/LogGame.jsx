@@ -243,14 +243,14 @@ export default function LogGame() {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-6">
         {topNav}
-        <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-          <Lock className="w-8 h-8 text-violet-400" />
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center ds-accent-bg ds-accent-bd border">
+        <Lock className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
         </div>
         <div>
-          <h2 className="text-white font-semibold text-lg">Sign in to Log a Game</h2>
-          <p className="text-gray-400 text-sm mt-1">Sign in to log a game and submit it for approval.</p>
+        <h2 className="text-white font-semibold text-lg">Sign in to Log a Game</h2>
+        <p className="text-gray-400 text-sm mt-1">Sign in to log a game and submit it for approval.</p>
         </div>
-        <Button className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11 px-6" onClick={() => base44.auth.redirectToLogin()}>
+        <Button className="ds-btn-primary text-white rounded-xl h-11 px-6" onClick={() => base44.auth.redirectToLogin()}>
           Sign In
         </Button>
       </div>
