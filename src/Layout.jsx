@@ -24,15 +24,72 @@ function usesShell(pageName) {
   return SHELL_PAGES.includes(lower) || SHELL_SUB_PAGES.includes(lower);
 }
 
+// ── THEME SWITCH ─────────────────────────────────────────────────────────────
+// To revert to legacy violet theme: change THEME_MODE to "legacy"
+// File: Layout.js
+const THEME_MODE = "v2"; // "v2" = Blue primary (#5C7CFA) | "legacy" = Violet primary (#7C3AED)
+
+const THEME_TOKENS = {
+  legacy: {
+    // Primary action: Violet #7C3AED
+    "--ds-primary":          "124 58 237",   // #7C3AED
+    "--ds-primary-h":        "263",
+    "--ds-primary-s":        "70%",
+    "--ds-primary-l":        "50%",
+    "--ds-primary-muted-bg": "124 58 237 / 0.10",
+    "--ds-primary-muted-bd": "124 58 237 / 0.20",
+    "--ds-primary-text":     "167 139 250",  // violet-400
+    "--ds-primary-hover":    "109 40 217",   // violet-700
+  },
+  v2: {
+    // Primary action: Blue #5C7CFA
+    "--ds-primary":          "92 124 250",   // #5C7CFA
+    "--ds-primary-h":        "227",
+    "--ds-primary-s":        "93%",
+    "--ds-primary-l":        "67%",
+    "--ds-primary-muted-bg": "92 124 250 / 0.10",
+    "--ds-primary-muted-bd": "92 124 250 / 0.20",
+    "--ds-primary-text":     "129 158 252",  // blue-400 equivalent
+    "--ds-primary-hover":    "67 103 248",   // slightly darker blue
+  },
+};
+
+const tokens = THEME_TOKENS[THEME_MODE] || THEME_TOKENS.v2;
+
 const CSS_VARS = `
   :root {
+    /* ── Design system tokens ─────────────────────── */
+    /* Background layers */
+    --ds-bg:       #0F1115;
+    --ds-surface:  #161A20;
+    --ds-elevated: #1E232B;
+    --ds-border:   #2A2F38;
+
+    /* Text hierarchy */
+    --ds-text-primary:   #F5F7FA;
+    --ds-text-secondary: #A0A8B4;
+    --ds-text-tertiary:  #7E8794;
+
+    /* Semantic */
+    --ds-success: #2F9E44;
+    --ds-danger:  #E03131;
+
+    /* Primary action — controlled by THEME_MODE above */
+    --ds-primary-rgb:      ${tokens["--ds-primary"]};
+    --ds-primary-muted-bg: ${tokens["--ds-primary-muted-bg"]};
+    --ds-primary-muted-bd: ${tokens["--ds-primary-muted-bd"]};
+    --ds-primary-text:     ${tokens["--ds-primary-text"]};
+    --ds-primary-btn:      rgb(${tokens["--ds-primary"]});
+    --ds-primary-btn-hover:${tokens["--ds-primary-hover"]};
+
+    /* Shadcn/Tailwind overrides */
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
     --card: 0 0% 6%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 6%;
     --popover-foreground: 0 0% 98%;
-    --primary: 263 70% 50%;
+    --primary: ${tokens["--ds-primary-h"]} ${tokens["--ds-primary-s"]} ${tokens["--ds-primary-l"]};
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
@@ -44,8 +101,22 @@ const CSS_VARS = `
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
-    --ring: 263 70% 50%;
+    --ring: ${tokens["--ds-primary-h"]} ${tokens["--ds-primary-s"]} ${tokens["--ds-primary-l"]};
   }
+
+  /* ── Utility classes driven by design tokens ─── */
+  .ds-btn-primary {
+    background-color: var(--ds-primary-btn) !important;
+    color: #fff !important;
+  }
+  .ds-btn-primary:hover {
+    background-color: rgb(${tokens["--ds-primary-hover"]}) !important;
+  }
+  .ds-accent-text  { color: rgb(var(--ds-primary-rgb)) !important; }
+  .ds-accent-bg    { background-color: rgb(var(--ds-primary-muted-bg)) !important; }
+  .ds-accent-bd    { border-color: rgb(var(--ds-primary-muted-bd)) !important; }
+  .ds-nav-active   { color: var(--ds-primary-text) !important; }
+
   .safe-area-pb { padding-bottom: env(safe-area-inset-bottom, 0px); }
 `;
 
