@@ -125,8 +125,8 @@ export default function LeagueDetails() {
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-          <Users className="w-6 h-6 text-violet-400" />
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ds-accent-bg ds-accent-bd border">
+          <Users className="w-6 h-6" style={{ color: "var(--ds-primary-text)" }} />
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-white font-bold text-lg leading-tight truncate">{league.name}</h1>
