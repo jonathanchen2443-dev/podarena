@@ -134,7 +134,7 @@ export default function LeagueDetails() {
             {league.is_public ? <Globe className="w-3.5 h-3.5 text-gray-500" /> : <Lock className="w-3.5 h-3.5 text-gray-500" />}
             <span className="text-xs text-gray-500">{league.is_public ? "Public" : "Private"} league</span>
             {isMember && (
-              <Badge className="bg-violet-500/10 text-violet-400 border-violet-500/20 text-[10px] px-1.5 py-0 ml-1">
+              <Badge className="ds-accent-bg ds-accent-bd text-[10px] px-1.5 py-0 ml-1" style={{ color: "var(--ds-primary-text)" }}>
                 Member
               </Badge>
             )}
