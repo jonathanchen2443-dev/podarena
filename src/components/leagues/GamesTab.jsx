@@ -119,7 +119,7 @@ function FilterBar({ statusFilter, setStatusFilter, sortOrder, setSortOrder, gam
             >
               {f.label}
               {showBadge && (
-                <span className={`ml-0.5 text-[10px] font-semibold ${isActive ? "text-violet-200" : "text-amber-400"}`}>
+                <span className={`ml-0.5 text-[10px] font-semibold ${isActive ? "text-white/80" : "text-amber-400"}`}>
                   {pendingCount}
                 </span>
               )}
