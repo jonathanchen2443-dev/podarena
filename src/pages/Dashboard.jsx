@@ -99,7 +99,7 @@ function GuestView() {
 
       <div className="grid grid-cols-1 gap-3">
         <Button
-          className="bg-violet-600 hover:bg-violet-700 text-white h-11 rounded-xl"
+          className="ds-btn-primary text-white h-11 rounded-xl"
           onClick={() => base44.auth.redirectToLogin()}
         >
           <LogIn className="w-4 h-4 mr-2" />
