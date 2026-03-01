@@ -101,7 +101,7 @@ export default function CreateLeague() {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Friday Night Commander"
             maxLength={100}
-            className="w-full h-11 bg-gray-900 border border-gray-700 rounded-xl px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 transition-colors"
+            className="w-full h-11 bg-gray-900 border border-gray-700 rounded-xl px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] transition-colors"
           />
         </div>
 
