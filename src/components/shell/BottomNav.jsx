@@ -61,12 +61,16 @@ export default function BottomNav() {
               className="flex-1 flex flex-col items-center justify-center gap-0.5 relative group"
             >
               {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-violet-500" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full ds-accent-bg" style={{ backgroundColor: "rgb(var(--ds-primary-rgb))" }} />
               )}
               <Icon
-                className={`w-5 h-5 transition-colors ${active ? "text-violet-400" : "text-gray-500 group-hover:text-gray-300"}`}
+                className={`w-5 h-5 transition-colors ${active ? "ds-nav-active" : "text-gray-500 group-hover:text-gray-300"}`}
+                style={active ? { color: "var(--ds-primary-text)" } : undefined}
               />
-              <span className={`text-[10px] font-medium transition-colors ${active ? "text-violet-400" : "text-gray-500 group-hover:text-gray-300"}`}>
+              <span
+                className={`text-[10px] font-medium transition-colors ${active ? "" : "text-gray-500 group-hover:text-gray-300"}`}
+                style={active ? { color: "var(--ds-primary-text)" } : undefined}
+              >
                 {tab.label}
               </span>
             </Link>
