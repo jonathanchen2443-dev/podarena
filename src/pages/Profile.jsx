@@ -226,7 +226,8 @@ export default function Profile() {
             <CardContent className="p-6 text-center">
               <p className="text-gray-500 text-sm">No decks yet.</p>
               <button
-                className="text-violet-400 text-sm mt-1 hover:underline"
+                className="text-sm mt-1 hover:underline"
+                style={{ color: "var(--ds-primary-text)" }}
                 onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
               >
                 Create your first deck
