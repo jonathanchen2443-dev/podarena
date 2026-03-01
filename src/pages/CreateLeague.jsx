@@ -114,7 +114,7 @@ export default function CreateLeague() {
             placeholder="What is this league about?"
             rows={3}
             maxLength={500}
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 transition-colors resize-none"
+            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] transition-colors resize-none"
           />
         </div>
 
