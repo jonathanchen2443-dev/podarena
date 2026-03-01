@@ -75,8 +75,8 @@ function GameRow({ game, onClick }) {
       onClick={onClick}
       className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-800/40 transition-colors text-left border-b border-gray-800/50 last:border-0"
     >
-      <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-        <Swords className="w-4 h-4 text-violet-400" />
+      <div className="w-9 h-9 rounded-xl ds-accent-bg ds-accent-bd border flex items-center justify-center flex-shrink-0">
+        <Swords className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
