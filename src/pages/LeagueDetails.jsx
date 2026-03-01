@@ -481,7 +481,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
 
       {/* ── Invited-view panel ─────────────────────────────────────────────── */}
       {showInvitePanel && accessMode === "invited_view" && !isMember && (
-        <Card className="bg-violet-900/20 border-violet-500/30">
+        <Card className="ds-accent-bg border" style={{ borderColor: "rgb(var(--ds-primary-muted-bd))" }}>
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div>
