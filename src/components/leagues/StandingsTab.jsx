@@ -64,8 +64,8 @@ function PlayerCell({ row }) {
           className="w-7 h-7 rounded-full object-cover border border-gray-700 flex-shrink-0"
         />
       ) : (
-        <div className="w-7 h-7 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-          <span className="text-[9px] font-bold text-violet-400">{initials}</span>
+        <div className="w-7 h-7 rounded-full ds-accent-bg ds-accent-bd border flex items-center justify-center flex-shrink-0">
+          <span className="text-[9px] font-bold" style={{ color: "var(--ds-primary-text)" }}>{initials}</span>
         </div>
       )}
       <span className="text-xs text-white truncate">{row.display_name}</span>
