@@ -304,7 +304,8 @@ export default function GamesTab({ auth, leagueId, inviteToken = null }) {
           {games.length > 0 && statusFilter !== "all" && (
             <button
               onClick={() => setStatusFilter("all")}
-              className="text-violet-400 text-xs hover:text-violet-300 transition-colors"
+              className="text-xs hover:opacity-80 transition-opacity"
+              style={{ color: "var(--ds-primary-text)" }}
             >
               Show all games
             </button>
