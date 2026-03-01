@@ -574,7 +574,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                   onChange={(e) => setEditDesc(e.target.value)}
                   rows={3}
                   maxLength={500}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors resize-none"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] transition-colors resize-none"
                 />
               </div>
               <div className="space-y-1">
