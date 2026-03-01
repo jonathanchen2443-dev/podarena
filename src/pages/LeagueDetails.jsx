@@ -152,7 +152,7 @@ export default function LeagueDetails() {
               updateQP({ tab: tab.id });
             }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-              activeTab === tab.id ? "bg-violet-600 text-white" : "text-gray-500 hover:text-gray-300"
+              activeTab === tab.id ? "ds-btn-primary text-white" : "text-gray-500 hover:text-gray-300"
             }`}
           >
             <tab.icon className="w-3.5 h-3.5" />
