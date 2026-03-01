@@ -121,7 +121,7 @@ function GuestView() {
             { icon: Trophy, label: "Track standings across multiple leagues" },
           ].map(({ icon: Icon, label }, i) => (
             <div key={i} className="flex items-center gap-3 text-gray-400 text-sm">
-              <Icon className="w-4 h-4 text-violet-400 flex-shrink-0" />
+              <Icon className="w-4 h-4 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
               <span>{label}</span>
             </div>
           ))}
