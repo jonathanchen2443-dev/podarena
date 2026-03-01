@@ -88,8 +88,8 @@ function GuestView() {
   return (
     <div className="space-y-8">
       <div className="text-center pt-6 pb-2">
-        <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">
-          <Trophy className="w-8 h-8 text-violet-400" />
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ds-accent-bg ds-accent-bd border">
+          <Trophy className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
         </div>
         <h1 className="text-2xl font-bold text-white">Commander League Tracker</h1>
         <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto">
