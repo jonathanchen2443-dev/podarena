@@ -349,7 +349,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
                     value={selectedDeckId || ""}
                     onChange={(e) => setSelectedDeckId(e.target.value || null)}
                     disabled={actionLoading !== null}
-                    className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 pr-8 text-sm text-white focus:outline-none focus:border-violet-500 appearance-none disabled:opacity-50"
+                    className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 pr-8 text-sm text-white focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] appearance-none disabled:opacity-50"
                   >
                     <option value="">— Select your deck —</option>
                     {myDecks.map((d) => (
