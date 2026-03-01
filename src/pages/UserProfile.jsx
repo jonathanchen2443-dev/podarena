@@ -93,8 +93,8 @@ export default function UserProfile() {
                 className="w-16 h-16 rounded-2xl object-cover border border-gray-700"
               />
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-                <User className="w-8 h-8 text-violet-400" />
+              <div className="w-16 h-16 rounded-2xl ds-accent-bg ds-accent-bd border flex items-center justify-center flex-shrink-0">
+                <User className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
               </div>
             )}
 
