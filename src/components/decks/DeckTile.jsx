@@ -157,8 +157,7 @@ export default function DeckTile({ deck, onDelete, editHref, onFavoriteToggle, o
           <div className="w-full h-1 rounded-full bg-gray-800">
             <div
               className="h-1 rounded-full transition-all duration-500"
-              style={{ background: "linear-gradient(to right, rgb(var(--ds-primary-rgb)), var(--ds-primary-text))" }}
-              style={{ width: `${Math.min(winRate, 100)}%` }}
+              style={{ width: `${Math.min(winRate, 100)}%`, background: "linear-gradient(to right, rgb(var(--ds-primary-rgb)), var(--ds-primary-text))" }}
             />
           </div>
         </div>
