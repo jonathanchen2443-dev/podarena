@@ -186,7 +186,7 @@ export default function CreateLeague() {
         <Button
           type="submit"
           disabled={submitting}
-          className="w-full h-11 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium"
+          className="w-full h-11 ds-btn-primary text-white rounded-xl font-medium"
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create League"}
         </Button>
