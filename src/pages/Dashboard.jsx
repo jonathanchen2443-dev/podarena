@@ -190,7 +190,7 @@ function AuthDashboard({ data, displayName, auth }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-300">Recent Activity</h2>
-          <Link to={ROUTES.LEAGUES} className="text-xs text-violet-400 hover:text-violet-300">
+          <Link to={ROUTES.LEAGUES} className="text-xs hover:opacity-80" style={{ color: "var(--ds-primary-text)" }}>
             View Leagues →
           </Link>
         </div>
