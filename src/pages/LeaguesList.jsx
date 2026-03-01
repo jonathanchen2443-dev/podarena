@@ -79,7 +79,8 @@ export default function LeaguesList() {
         <p className="text-sm text-gray-400">{allLeagues.length} league{allLeagues.length !== 1 ? "s" : ""}</p>
         {!isGuest && (
           <button
-            className="text-sm text-violet-400 font-medium flex items-center gap-1"
+            className="text-sm font-medium flex items-center gap-1"
+            style={{ color: "var(--ds-primary-text)" }}
             onClick={() => navigate(ROUTES.CREATE_LEAGUE)}
           >
             <Plus className="w-3.5 h-3.5" /> New League
