@@ -143,6 +143,7 @@ export default function CreateLeague() {
                   ? "ds-accent-bg ds-accent-bd"
                   : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600"
               }`}
+              style={!isPublic ? { color: "var(--ds-primary-text)" } : {}}
             >
               <Lock className="w-4 h-4" />
               Private
