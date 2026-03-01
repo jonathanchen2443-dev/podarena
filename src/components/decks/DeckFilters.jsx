@@ -41,7 +41,7 @@ export default function DeckFilters({ filters, onChange, totalCount }) {
               onClick={() => onChange({ ...filters, status: opt.value })}
               className={`h-8 px-3 text-xs font-medium transition-colors ${
                 filters.status === opt.value
-                  ? "ds-accent-bg"
+                  ? "ds-accent-bg ds-accent-text"
                   : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"
               }`}
             >
