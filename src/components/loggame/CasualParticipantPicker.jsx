@@ -77,7 +77,7 @@ export default function CasualParticipantPicker({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name or username…"
-          className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+          className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))]"
         />
       </div>
 
