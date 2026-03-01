@@ -40,7 +40,7 @@ export default function StatOrb({ value, label, color = "violet" }) {
         {/* Blurred glow backdrop */}
         <div
           className="absolute inset-0 rounded-full blur-md opacity-60"
-          style={{ background: `radial-gradient(circle, var(--orb-color, rgba(139,92,246,0.5)) 0%, transparent 70%)` }}
+          style={{ background: `radial-gradient(circle, rgb(var(--ds-primary-rgb), 0.5) 0%, transparent 70%)` }}
         />
         {/* Inner circle */}
         <div className={`relative w-14 h-14 rounded-full border ${s.inner} ${s.glow} flex items-center justify-center`}>
