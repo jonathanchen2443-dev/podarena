@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
-import { LogIn, User } from "lucide-react";
+import { LogIn, User, Bell } from "lucide-react";
 import { ROUTES } from "@/components/utils/routes";
 import TopBar from "@/components/shell/TopBar";
 import BottomNav from "@/components/shell/BottomNav";
