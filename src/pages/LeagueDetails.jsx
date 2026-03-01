@@ -599,7 +599,8 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                     type="range" min={2} max={10} step={1}
                     value={editMaxMembers}
                     onChange={(e) => setEditMaxMembers(Number(e.target.value))}
-                    className="flex-1 accent-violet-500"
+                    className="flex-1"
+                    style={{ accentColor: "rgb(var(--ds-primary-rgb))" }}
                   />
                   <span className="text-white text-sm font-medium w-5 text-center">{editMaxMembers}</span>
                 </div>
