@@ -159,7 +159,7 @@ function AuthDashboard({ data, displayName, auth }) {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Users} iconClass="bg-violet-500/10 text-violet-400" label="My Leagues" value={myLeaguesCount} to={ROUTES.LEAGUES} />
+        <StatCard icon={Users} iconClass="ds-accent-bg ds-accent-bd border" iconStyle={{ color: "var(--ds-primary-text)" }} label="My Leagues" value={myLeaguesCount} to={ROUTES.LEAGUES} />
         <StatCard icon={Bell} iconClass="bg-amber-500/10 text-amber-400" label="Pending Approvals" value={pendingApprovalsCount} to={ROUTES.INBOX} badge={pendingApprovalsCount} />
         <StatCard icon={BookOpen} iconClass="bg-sky-500/10 text-sky-400" label="My Decks" value={myDecksCount} to={ROUTES.PROFILE_DECKS} />
         <StatCard icon={Swords} iconClass="bg-emerald-500/10 text-emerald-400" label="Recent Games" value={recentGames.length} />
