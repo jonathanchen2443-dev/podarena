@@ -542,7 +542,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                   size="sm"
                   disabled={joining}
                   onClick={handleJoinPublic}
-                  className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg w-full mt-1"
+                  className="ds-btn-primary text-white rounded-lg w-full mt-1"
                 >
                   {joining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : auth.isGuest ? "Sign in to join" : "Request to Join"}
                 </Button>
