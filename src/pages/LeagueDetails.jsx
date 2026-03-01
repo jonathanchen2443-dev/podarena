@@ -508,7 +508,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
                 size="sm"
                 disabled={acceptingInvite || (!membersLoading && members.length >= (league.max_members || 10))}
                 onClick={handleAcceptInvite}
-                className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg flex-1"
+                className="ds-btn-primary text-white rounded-lg flex-1"
               >
                 {acceptingInvite ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Accept & Join"}
               </Button>
