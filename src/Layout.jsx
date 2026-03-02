@@ -133,7 +133,9 @@ function AuthActionSlot() {
         "-created_date",
         100
       );
-      setUnreadCount(notifs.filter((n) => !n.read_at).length);
+      const count = notifs.filter((n) => !n.read_at).length;
+      console.log("unreadCount", count, "messages", notifs.length);
+      setUnreadCount(count);
     } catch (_) {}
   }, [isGuest, currentUser]);
 
