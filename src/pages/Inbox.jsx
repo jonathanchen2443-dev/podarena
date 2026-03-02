@@ -247,9 +247,11 @@ export default function Inbox() {
   }, [authLoading, isGuest]);
 
   async function markRead(itemId) {
-    setItems((prev) => prev.map((it) => it.id === itemId ? { ...it, isRead: true } : it));
     const item = items.find((it) => it.id === itemId);
-    if (item?.type === "league_activity" && !item.isRead) {
+    if (!item || item.isRead) return;
+    setItems((prev) => prev.map((it) => it.id === itemId ? { ...it, isRead: true } : it));
+    notifyInboxUpdated();
+    if (item.type === "league_activity") {
       await base44.entities.Notification.update(item.id, { read_at: new Date().toISOString() });
     }
   }
@@ -257,6 +259,7 @@ export default function Inbox() {
   async function deleteItem(itemId) {
     const item = items.find((it) => it.id === itemId);
     setItems((prev) => prev.filter((it) => it.id !== itemId));
+    notifyInboxUpdated();
     if (item?.type === "league_activity") {
       await base44.entities.Notification.delete(item.id);
     }
