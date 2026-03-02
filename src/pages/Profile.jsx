@@ -35,7 +35,16 @@ export default function Profile() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [insightsDeck, setInsightsDeck] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [copied, setCopied] = useState(false);
   const fetchingRef = useRef(false);
+
+  function copyUserId() {
+    if (!profile?.public_user_id) return;
+    navigator.clipboard.writeText(profile.public_user_id).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   useEffect(() => {
     if (!authLoading && !isGuest) {
