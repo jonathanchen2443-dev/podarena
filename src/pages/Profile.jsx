@@ -163,11 +163,19 @@ export default function Profile() {
               <p className="text-white font-bold text-lg leading-tight truncate">
                 {profile?.display_name || currentUser?.display_name || "—"}
               </p>
-              <p className="text-gray-500 text-xs mt-0.5 truncate">{currentUser?.email || ""}</p>
               {profile?.public_user_id && (
-                <p className="text-gray-600 text-xs mt-0.5 font-mono tracking-wide">
-                  #{profile.public_user_id}
-                </p>
+                <button
+                  onClick={copyUserId}
+                  className="mt-1.5 flex items-center gap-1.5 text-left group"
+                  title="Tap to copy"
+                >
+                  <span className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold">User ID</span>
+                  <span className="text-gray-300 text-xs font-mono tracking-wide">{profile.public_user_id}</span>
+                  {copied
+                    ? <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                    : <Copy className="w-3 h-3 text-gray-600 group-hover:text-gray-400 flex-shrink-0 transition-colors" />
+                  }
+                </button>
               )}
               {profile && (
                 <DisplayNameEdit profile={profile} onSaved={handleDisplayNameSaved} />
