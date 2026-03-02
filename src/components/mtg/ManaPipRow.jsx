@@ -10,7 +10,7 @@ const COLOR_ORDER = ["W", "U", "B", "R", "G", "C"];
  *   size    – pip size in px (default 16)
  *   gap     – gap between pips in px (default 3)
  */
-export default function ManaPipRow({ colors, size = 16, gap = 3 }) {
+export default function ManaPipRow({ colors, size = 17, gap = 2 }) {
   // Normalize to array of unique, ordered symbols
   let arr = [];
   if (!colors) {
