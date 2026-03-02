@@ -165,10 +165,17 @@ function AuthActionSlot() {
   return (
     <div className="flex items-center gap-2">
       {/* Inbox icon with unread badge */}
-      <Link to={ROUTES.INBOX} className="relative w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-gray-800/60">
+      <Link
+        to={ROUTES.INBOX}
+        style={{ cursor: "pointer", pointerEvents: "auto" }}
+        className="relative w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-gray-800/60"
+      >
         <Bell className="w-4 h-4 text-gray-400" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center px-0.5 leading-none">
+          <span
+            style={{ pointerEvents: "none" }}
+            className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center px-0.5 leading-none"
+          >
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
