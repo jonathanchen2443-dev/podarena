@@ -104,6 +104,33 @@ export default function Profile() {
     setProfile((p) => p ? { ...p, display_name: newName, display_name_lc: newName.toLowerCase() } : p);
   }
 
+  function startEditName() {
+    setNameValue(profile?.display_name || "");
+    setNameError("");
+    setEditingName(true);
+  }
+
+  function cancelEditName() {
+    setEditingName(false);
+    setNameError("");
+  }
+
+  async function saveEditName() {
+    const trimmed = nameValue.trim();
+    if (trimmed.length < 3) { setNameError("Name must be at least 3 characters."); return; }
+    setNameSaving(true);
+    setNameError("");
+    const lc = trimmed.toLowerCase();
+    const matches = await base44.entities.Profile.filter({ display_name_lc: lc });
+    const conflict = matches.find((p) => p.id !== profile.id);
+    if (conflict) { setNameError("This name is already taken."); setNameSaving(false); return; }
+    await base44.entities.Profile.update(profile.id, { display_name: trimmed, display_name_lc: lc });
+    toast.success("Display name updated!");
+    handleDisplayNameSaved(trimmed);
+    setEditingName(false);
+    setNameSaving(false);
+  }
+
   if (authLoading) return <LoadingState message="Loading profile…" />;
 
   // ── Guest view ───────────────────────────────────────────────────────────────
