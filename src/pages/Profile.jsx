@@ -203,7 +203,7 @@ export default function Profile() {
                       disabled={nameSaving}
                       className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ds-btn-primary disabled:opacity-60"
                     >
-                      {nameSaving ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <CheckIcon className="w-3.5 h-3.5 text-white" />}
+                      {nameSaving ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Check className="w-3.5 h-3.5 text-white" />}
                     </button>
                     <button
                       onClick={cancelEditName}
