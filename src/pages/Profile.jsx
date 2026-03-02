@@ -263,22 +263,14 @@ export default function Profile() {
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-white font-semibold text-base">My Decks</h2>
-          <div className="flex items-center gap-2">
-            <button
-              className="text-xs transition-colors hover:opacity-80"
-              style={{ color: "var(--ds-primary-text)" }}
-              onClick={() => navigate(ROUTES.PROFILE_DECKS)}
-            >
-              All Decks
-            </button>
-            <Button
-              size="sm"
-              className="ds-btn-primary text-white rounded-xl h-8 text-xs px-3"
-              onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Deck
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-xl h-8 text-xs px-3 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+            onClick={() => navigate(ROUTES.PROFILE_DECKS)}
+          >
+            All Decks
+          </Button>
         </div>
 
         {decksLoading ? (
@@ -291,46 +283,33 @@ export default function Profile() {
               <RefreshCw className="w-3 h-3" /> Retry
             </button>
           </div>
-        ) : previewDecks.length === 0 ? (
-          <Card className="bg-gray-900/40 border-gray-800/40 border-dashed">
-            <CardContent className="p-6 text-center">
-              <p className="text-gray-500 text-sm">No decks yet.</p>
-              <button
-                className="text-sm mt-1 hover:underline"
-                style={{ color: "var(--ds-primary-text)" }}
-                onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
-              >
-                Create your first deck
-              </button>
-            </CardContent>
-          </Card>
         ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              {previewDecks.map((deck) => (
-                <DeckTile
-                  key={deck.id}
-                  deck={deck}
-                  onDelete={setDeletingDeck}
-                  editHref={`${ROUTES.PROFILE_DECK_EDIT(deck.id)}&returnTo=profile`}
-                  isGuest={isGuest}
-                  onFavoriteToggle={(d, newFav) => {
-                    setDecks((prev) => prev.map((x) => x.id === d.id ? { ...x, is_favorite: newFav } : x));
-                  }}
-                  onInsights={setInsightsDeck}
-                />
-              ))}
-            </div>
-            {decks.length > 4 && (
+          <div className="grid grid-cols-2 gap-3">
+            {previewDecks.map((deck) => (
+              <DeckTile
+                key={deck.id}
+                deck={deck}
+                onDelete={setDeletingDeck}
+                editHref={`${ROUTES.PROFILE_DECK_EDIT(deck.id)}&returnTo=profile`}
+                isGuest={isGuest}
+                onFavoriteToggle={(d, newFav) => {
+                  setDecks((prev) => prev.map((x) => x.id === d.id ? { ...x, is_favorite: newFav } : x));
+                }}
+                onInsights={setInsightsDeck}
+              />
+            ))}
+            {/* Add Deck tiles to fill up to 4 slots; bottom-right always Add */}
+            {Array.from({ length: Math.max(1, 4 - previewDecks.length) }).map((_, i) => (
               <button
-                className="w-full flex items-center justify-center gap-1 text-sm py-2 transition-colors hover:opacity-80"
-                style={{ color: "var(--ds-primary-text)" }}
-                onClick={() => navigate(ROUTES.PROFILE_DECKS)}
+                key={`add-${i}`}
+                onClick={() => navigate(ROUTES.PROFILE_DECK_NEW)}
+                className="flex flex-col items-center justify-center rounded-2xl bg-gray-900/40 border border-gray-800/40 border-dashed aspect-square gap-2 hover:bg-gray-800/40 transition-colors"
               >
-                View all {decks.length} decks <ChevronRight className="w-4 h-4" />
+                <Plus className="w-6 h-6 text-gray-600" />
+                <span className="text-gray-500 text-xs font-medium">Add Deck</span>
               </button>
-            )}
-          </>
+            ))}
+          </div>
         )}
       </div>
 
