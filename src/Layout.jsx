@@ -129,13 +129,18 @@ function AuthActionSlot() {
   const fetchUnread = useCallback(async () => {
     if (isGuest || !currentUser) return;
     try {
-      const notifs = await base44.entities.Notification.filter(
-        { recipient_user_id: currentUser.id },
-        "-created_date",
-        100
-      );
-      const count = notifs.filter((n) => !n.read_at).length;
-      console.log("unreadCount", count, "messages", notifs.length);
+      const [notifs, approvals] = await Promise.all([
+        base44.entities.Notification.filter(
+          { recipient_user_id: currentUser.id },
+          "-created_date",
+          100
+        ),
+        listMyPendingApprovals({ isGuest, currentUser, isAuthenticated: true }),
+      ]);
+      const unreadNotifs = notifs.filter((n) => !n.read_at).length;
+      // Pending approvals are always "unread" (need action)
+      const count = unreadNotifs + approvals.length;
+      console.log("unreadCount", count, "notifs", notifs.length, "approvals", approvals.length);
       setUnreadCount(count);
     } catch (_) {}
   }, [isGuest, currentUser]);
