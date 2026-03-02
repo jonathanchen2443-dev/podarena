@@ -62,6 +62,7 @@ import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
 import UserProfile from './pages/UserProfile';
+import Inbox from './pages/Inbox';
 import __Layout from './Layout.jsx';
 
 
@@ -81,6 +82,7 @@ export const PAGES = {
     "ProfileDecks": ProfileDecks,
     "Register": Register,
     "UserProfile": UserProfile,
+    "Inbox": Inbox,
 }
 
 export const pagesConfig = {
