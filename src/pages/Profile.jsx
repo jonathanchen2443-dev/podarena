@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@/components/utils/routes";
-import { LogOut, Plus, Lock, AlertCircle, RefreshCw, Copy, Check } from "lucide-react";
+import { LogOut, Plus, Lock, AlertCircle, RefreshCw, Copy, Check, Pencil, X, Loader2 } from "lucide-react";
 import { LoadingState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 import DeckTile from "@/components/decks/DeckTile";
 import DeleteDeckModal from "@/components/decks/DeleteDeckModal";
 import AvatarUpload from "@/components/profile/AvatarUpload";
-import { Pencil, X, Check as CheckIcon, Loader2 } from "lucide-react";
 import StatRingCards from "@/components/profile/StatRingCards";
 import BadgesSection from "@/components/profile/BadgesSection";
 import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
