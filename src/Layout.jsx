@@ -125,27 +125,26 @@ function AuthActionSlot() {
   const { isGuest, currentUser, authLoading } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const fetchUnread = useCallback(async () => {
+    if (isGuest || !currentUser) return;
+    try {
+      const notifs = await base44.entities.Notification.filter(
+        { recipient_user_id: currentUser.id },
+        "-created_date",
+        100
+      );
+      setUnreadCount(notifs.filter((n) => !n.read_at).length);
+    } catch (_) {}
+  }, [isGuest, currentUser]);
+
   useEffect(() => {
     if (isGuest || !currentUser) return;
-    let cancelled = false;
-
-    async function fetchUnread() {
-      try {
-        const notifs = await base44.entities.Notification.filter(
-          { recipient_user_id: currentUser.id },
-          "-created_date",
-          100
-        );
-        if (!cancelled) {
-          setUnreadCount(notifs.filter((n) => !n.read_at).length);
-        }
-      } catch (_) {}
-    }
-
     fetchUnread();
     const interval = setInterval(fetchUnread, 60_000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [isGuest, currentUser]);
+    // Re-fetch whenever Inbox marks read or deletes
+    const unsub = onInboxUpdated(fetchUnread);
+    return () => { clearInterval(interval); unsub(); };
+  }, [isGuest, currentUser, fetchUnread]);
 
   if (authLoading) return null;
 
