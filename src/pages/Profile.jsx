@@ -158,16 +158,16 @@ export default function Profile() {
   }
 
   // ── Authenticated view ───────────────────────────────────────────────────────
-  // Top-4: favorites first (up to 4), then fill with most-played non-favorites
-  const favorites = decks.filter((d) => d.is_favorite);
+  // 2x2 grid: 3 deck slots + 1 always-Add tile (bottom-right)
+  // Ordering: favorites first (ABC within favs), then remaining ABC
+  const favorites = decks.filter((d) => d.is_favorite).sort((a, b) =>
+    (a.commander_name || a.name || "").localeCompare(b.commander_name || b.name || "")
+  );
   const favIds = new Set(favorites.map((d) => d.id));
   const nonFavsSorted = decks
     .filter((d) => !favIds.has(d.id))
-    .sort((a, b) => (b.gamesWithDeck || 0) - (a.gamesWithDeck || 0));
-  const previewDecks = [
-    ...favorites.slice(0, 4),
-    ...nonFavsSorted.slice(0, 4 - Math.min(favorites.length, 4)),
-  ];
+    .sort((a, b) => (a.commander_name || a.name || "").localeCompare(b.commander_name || b.name || ""));
+  const previewDecks = [...favorites, ...nonFavsSorted].slice(0, 3);
 
 
 
