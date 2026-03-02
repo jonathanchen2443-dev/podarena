@@ -178,28 +178,7 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Stat orbs */}
-          {statsError ? (
-            <div className="mt-5 pt-4 border-t border-gray-800/60 flex flex-col items-center gap-2">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                <p className="text-red-400 text-xs">{statsError}</p>
-              </div>
-              <button
-                onClick={() => { fetchingRef.current = false; loadAll(); }}
-                className="flex items-center gap-1.5 text-xs transition-colors hover:opacity-80"
-                style={{ color: "var(--ds-primary-text)" }}
-              >
-                <RefreshCw className="w-3 h-3" /> Retry
-              </button>
-            </div>
-          ) : (
-            <div className="mt-5 pt-4 border-t border-gray-800/60 grid grid-cols-4 gap-2">
-              {orbStats.map((s) => (
-                <StatOrb key={s.label} value={s.value} label={s.label} color={s.color} />
-              ))}
-            </div>
-          )}
+
         </CardContent>
       </Card>
 
