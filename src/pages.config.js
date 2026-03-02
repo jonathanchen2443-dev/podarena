@@ -63,6 +63,7 @@ import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
 import UserProfile from './pages/UserProfile';
+import Badges from './pages/Badges';
 import __Layout from './Layout.jsx';
 
 
@@ -83,6 +84,7 @@ export const PAGES = {
     "ProfileDecks": ProfileDecks,
     "Register": Register,
     "UserProfile": UserProfile,
+    "Badges": Badges,
 }
 
 export const pagesConfig = {
