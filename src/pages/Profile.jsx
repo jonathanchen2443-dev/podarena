@@ -186,10 +186,53 @@ export default function Profile() {
               </div>
             )}
             <div className="flex-1 min-w-0 pt-1">
-              <p className="text-white font-bold text-lg leading-tight truncate">
-                {profile?.display_name || currentUser?.display_name || "—"}
-              </p>
-              {profile?.public_user_id && (
+              {/* Name row with inline edit */}
+              {editingName ? (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      autoFocus
+                      value={nameValue}
+                      onChange={(e) => { setNameValue(e.target.value); setNameError(""); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveEditName(); if (e.key === "Escape") cancelEditName(); }}
+                      className="flex-1 h-8 px-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] min-w-0"
+                      maxLength={40}
+                      disabled={nameSaving}
+                    />
+                    <button
+                      onClick={saveEditName}
+                      disabled={nameSaving}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ds-btn-primary disabled:opacity-60"
+                    >
+                      {nameSaving ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <CheckIcon className="w-3.5 h-3.5 text-white" />}
+                    </button>
+                    <button
+                      onClick={cancelEditName}
+                      disabled={nameSaving}
+                      className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center flex-shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5 text-gray-300" />
+                    </button>
+                  </div>
+                  {nameError && <p className="text-red-400 text-xs">{nameError}</p>}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <p className="text-white font-bold text-lg leading-tight truncate">
+                    {profile?.display_name || currentUser?.display_name || "—"}
+                  </p>
+                  {profile && (
+                    <button
+                      onClick={startEditName}
+                      className="flex-shrink-0 text-gray-500 hover:text-white transition-colors"
+                      title="Edit display name"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+              {profile?.public_user_id && !editingName && (
                 <button
                   onClick={copyUserId}
                   className="mt-1.5 flex items-center gap-1.5 text-left group"
@@ -202,9 +245,6 @@ export default function Profile() {
                     : <Copy className="w-3 h-3 text-gray-600 group-hover:text-gray-400 flex-shrink-0 transition-colors" />
                   }
                 </button>
-              )}
-              {profile && (
-                <DisplayNameEdit profile={profile} onSaved={handleDisplayNameSaved} />
               )}
             </div>
           </div>
