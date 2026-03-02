@@ -36,6 +36,10 @@ export default function Profile() {
   const [insightsDeck, setInsightsDeck] = useState(null);
   const [profile, setProfile] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState("");
   const fetchingRef = useRef(false);
 
   function copyUserId() {
