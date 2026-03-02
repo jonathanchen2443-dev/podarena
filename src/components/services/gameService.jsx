@@ -181,6 +181,22 @@ async function recalculateGameStatus(gameId) {
  * On creation, sets display_name_lc and avatar_url if available.
  */
 let _provisioningInFlight = false;
+// ── public_user_id helpers ────────────────────────────────────────────────────
+
+function _padId(n) {
+  return String(n).padStart(6, "0");
+}
+
+async function _generateUniquePublicUserId() {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = _padId(Math.floor(Math.random() * 1_000_000));
+    const existing = await base44.entities.Profile.filter({ public_user_id: candidate });
+    if (existing.length === 0) return candidate;
+  }
+  // Fallback: timestamp-based suffix (extremely unlikely to collide)
+  return _padId(Date.now() % 1_000_000);
+}
+
 export async function getOrCreateProfile() {
   const user = await base44.auth.me();
   if (!user) return null;
@@ -188,7 +204,14 @@ export async function getOrCreateProfile() {
   const profiles = await base44.entities.Profile.filter({ email: user.email });
 
   if (profiles.length > 0) {
-    return profiles[0];
+    const existing = profiles[0];
+    // Backfill public_user_id for existing profiles that don't have one
+    if (!existing.public_user_id) {
+      const publicId = await _generateUniquePublicUserId();
+      const updated = await base44.entities.Profile.update(existing.id, { public_user_id: publicId });
+      return updated;
+    }
+    return existing;
   }
 
   if (_provisioningInFlight) {
@@ -201,10 +224,12 @@ export async function getOrCreateProfile() {
   _provisioningInFlight = true;
   try {
     const displayName = (user.full_name || user.email.split("@")[0]).trim();
+    const publicId = await _generateUniquePublicUserId();
     const payload = {
       display_name: displayName,
       display_name_lc: displayName.toLowerCase(),
       email: user.email,
+      public_user_id: publicId,
     };
     if (user.avatar_url) payload.avatar_url = user.avatar_url;
 
