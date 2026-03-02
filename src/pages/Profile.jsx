@@ -182,8 +182,11 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Insights section */}
-      <ProfileInsights auth={auth} />
+      {/* Stat ring cards */}
+      <StatRingCards stats={stats} decks={decks} />
+
+      {/* Badges section */}
+      <BadgesSection stats={stats} decks={decks} />
 
       {/* My Decks section */}
       <div className="space-y-3">
