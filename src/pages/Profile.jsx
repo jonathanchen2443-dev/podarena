@@ -138,12 +138,7 @@ export default function Profile() {
     ...nonFavsSorted.slice(0, 4 - Math.min(favorites.length, 4)),
   ];
 
-  const orbStats = [
-    { label: "Games", value: stats ? stats.gamesPlayed : (decksLoading ? "…" : "—"), color: "violet" },
-    { label: "Wins", value: stats ? stats.wins : (decksLoading ? "…" : "—"), color: "emerald" },
-    { label: "Decks", value: stats ? stats.decksCount : (decksLoading ? "…" : decks.length), color: "amber" },
-    { label: "Leagues", value: stats ? stats.leaguesCount : (decksLoading ? "…" : "—"), color: "sky" },
-  ];
+
 
   return (
     <div className="space-y-6">
