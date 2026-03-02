@@ -155,6 +155,11 @@ export default function Profile() {
                 {profile?.display_name || currentUser?.display_name || "—"}
               </p>
               <p className="text-gray-500 text-xs mt-0.5 truncate">{currentUser?.email || ""}</p>
+              {profile?.public_user_id && (
+                <p className="text-gray-600 text-xs mt-0.5 font-mono tracking-wide">
+                  #{profile.public_user_id}
+                </p>
+              )}
               {profile && (
                 <DisplayNameEdit profile={profile} onSaved={handleDisplayNameSaved} />
               )}
