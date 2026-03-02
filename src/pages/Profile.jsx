@@ -11,7 +11,7 @@ import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 import DeckTile from "@/components/decks/DeckTile";
 import DeleteDeckModal from "@/components/decks/DeleteDeckModal";
 import AvatarUpload from "@/components/profile/AvatarUpload";
-import DisplayNameEdit from "@/components/profile/DisplayNameEdit";
+import { Pencil, X, Check as CheckIcon, Loader2 } from "lucide-react";
 import StatRingCards from "@/components/profile/StatRingCards";
 import BadgesSection from "@/components/profile/BadgesSection";
 import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
