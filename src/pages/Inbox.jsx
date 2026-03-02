@@ -9,6 +9,7 @@ import { listMyPendingApprovals } from "@/components/services/gameService";
 import { invalidateLeagueCache } from "@/components/services/leagueService";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 import { formatDistanceToNow } from "date-fns";
+import { notifyInboxUpdated } from "@/components/services/inboxBus";
 
 // ── Approval row (game_logging type) ─────────────────────────────────────────
 function ApprovalRow({ row, isRead, onClick, onDelete }) {
