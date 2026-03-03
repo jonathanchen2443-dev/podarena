@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { Button } from "@/components/ui/button";
