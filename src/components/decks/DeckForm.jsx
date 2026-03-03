@@ -40,18 +40,22 @@ function getColorName(colors) {
   return COLOR_NAME_MAP[norm.join("")] || "";
 }
 
-// Confirmation dialog rendered inline
+// Confirmation dialog rendered via portal to escape overflow/z-index clipping
 function DeleteConfirmDialog({ deckName, onConfirm, onCancel, loading }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm px-4 pb-6">
-      <div className="w-full max-w-sm rounded-2xl bg-gray-900 border border-gray-800 p-6 space-y-4">
-        <div className="space-y-1">
-          <p className="text-white font-semibold text-base">Delete Deck?</p>
-          <p className="text-gray-400 text-sm">
+  const content = (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", padding: "0 16px" }}
+    >
+      <div
+        style={{ width: "100%", maxWidth: 420, borderRadius: 20, background: "#111827", border: "1px solid #1f2937", padding: 24, marginBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ color: "#fff", fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Delete Deck?</p>
+          <p style={{ color: "#9ca3af", fontSize: 14 }}>
             "{deckName}" will be permanently deleted. This cannot be undone.
           </p>
         </div>
-        <div className="flex gap-3 pt-1">
+        <div style={{ display: "flex", gap: 12 }}>
           <Button
             type="button"
             variant="outline"
@@ -73,6 +77,7 @@ function DeleteConfirmDialog({ deckName, onConfirm, onCancel, loading }) {
       </div>
     </div>
   );
+  return ReactDOM.createPortal(content, document.body);
 }
 
 export default function DeckForm({ initialValues, onSave, saving, onCancel, onDelete, isEditMode }) {
