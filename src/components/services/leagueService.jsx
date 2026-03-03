@@ -548,7 +548,7 @@ export async function getOrCreateInvite(auth, leagueId) {
  * Checks capacity and notifies admins.
  */
 export async function joinPublicLeague(auth, leagueId) {
-  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in to join.");
+  if (auth.isGuest || !auth.currentUser) throw new Error("Loading your profile — please try again in a moment.");
 
   const results = await base44.entities.League.filter({ id: leagueId });
   const league = results[0];
@@ -607,7 +607,7 @@ export async function joinPublicLeague(auth, leagueId) {
  * Checks capacity.
  */
 export async function acceptInviteJoinLeague(auth, leagueId, token) {
-  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in to join.");
+  if (auth.isGuest || !auth.currentUser) throw new Error("Loading your profile — please try again in a moment.");
 
   const { valid } = await validateInvite(leagueId, token);
   if (!valid) throw new Error("This invite link is invalid or expired.");

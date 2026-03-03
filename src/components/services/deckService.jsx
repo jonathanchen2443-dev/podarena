@@ -21,6 +21,7 @@ export async function getMyDeckById(auth, deckId) {
 
 export async function createDeck(auth, payload) {
   if (!canCreateDeck(auth)) throw new Error("You must be logged in to create a deck.");
+  if (!auth.currentUser) throw new Error("Loading your profile — please try again in a moment.");
   return base44.entities.Deck.create({
     owner_id: auth.currentUser.id,
     name: payload.name,
