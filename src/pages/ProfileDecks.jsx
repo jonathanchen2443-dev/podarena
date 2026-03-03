@@ -143,6 +143,15 @@ export default function ProfileDecks() {
     await loadDecks();
   }
 
+  // Called from DeckForm's built-in delete flow (edit mode)
+  async function handleFormDelete() {
+    if (!editDeck) return;
+    await deleteDeck(auth, editDeck.id);
+    toast.success("Deck deleted.");
+    if (auth.currentUser?.id) invalidateDeckStatsCache(auth.currentUser.id);
+    navigate(ROUTES.PROFILE_DECKS);
+  }
+
   function handleFavoriteToggle(deck, newFav) {
     setDecks((prev) =>
       sortDecks(prev.map((d) => d.id === deck.id ? { ...d, is_favorite: newFav } : d))
