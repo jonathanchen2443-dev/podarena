@@ -87,7 +87,7 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const guild = getGuild(colorIdentity);
+  const guild = getColorName(colorIdentity);
 
   function handleCommanderSelect({ name, color_identity, commander_image_url }) {
     setCommanderName(name);
