@@ -215,9 +215,24 @@ function _resolveDisplayName(user) {
   for (const c of candidates) {
     if (c && c.trim()) return c.trim();
   }
-  // Fallback to email prefix
   if (user.email) return user.email.split("@")[0].trim() || "Player";
   return "Player";
+}
+
+/**
+ * Ensures a display_name is unique (case-insensitive) across all profiles.
+ * If baseName conflicts with an existing profile (other than excludeProfileId),
+ * appends " 2", " 3", etc. until a free slot is found.
+ */
+async function _uniqueDisplayName(baseName, excludeProfileId = null) {
+  for (let suffix = 0; suffix < 50; suffix++) {
+    const candidate = suffix === 0 ? baseName : `${baseName} ${suffix + 1}`;
+    const candidateLc = candidate.toLowerCase();
+    const conflicts = await base44.entities.Profile.filter({ display_name_lc: candidateLc });
+    const realConflict = conflicts.filter((p) => p.id !== excludeProfileId);
+    if (realConflict.length === 0) return candidate;
+  }
+  return `${baseName} ${Date.now() % 10000}`;
 }
 
 // Promise-based mutex — survives React double-mount
@@ -227,7 +242,6 @@ export async function getOrCreateProfile() {
   const user = await base44.auth.me();
   if (!user) return null;
 
-  // If already provisioning, await that same promise (dedup concurrent calls)
   if (_provisioningPromise) {
     return _provisioningPromise;
   }
@@ -239,11 +253,23 @@ export async function getOrCreateProfile() {
 }
 
 async function _doGetOrCreate(user) {
-  const profiles = await base44.entities.Profile.filter({ email: user.email });
+  // 1. Try to find by user_id (auth UID) — most reliable
+  const byUid = user.id ? await base44.entities.Profile.filter({ user_id: user.id }) : [];
+  let existing = byUid.length > 0 ? byUid[0] : null;
 
-  if (profiles.length > 0) {
-    const existing = profiles[0];
+  // 2. Fallback: find by email (existing profiles before user_id was added)
+  if (!existing && user.email) {
+    const byEmail = await base44.entities.Profile.filter({ email: user.email });
+    existing = byEmail.length > 0 ? byEmail[0] : null;
+  }
+
+  if (existing) {
     const updates = {};
+
+    // Link user_id if missing (backfill for existing profiles)
+    if (!existing.user_id && user.id) {
+      updates.user_id = user.id;
+    }
 
     // Backfill public_user_id
     if (!existing.public_user_id) {
@@ -252,9 +278,10 @@ async function _doGetOrCreate(user) {
 
     // Backfill display_name if empty
     if (!existing.display_name || !existing.display_name.trim()) {
-      const dn = _resolveDisplayName(user);
-      updates.display_name = dn;
-      updates.display_name_lc = dn.toLowerCase();
+      const baseName = _resolveDisplayName(user);
+      const uniqueName = await _uniqueDisplayName(baseName, existing.id);
+      updates.display_name = uniqueName;
+      updates.display_name_lc = uniqueName.toLowerCase();
     }
 
     // Backfill username if empty
@@ -271,12 +298,14 @@ async function _doGetOrCreate(user) {
     return existing;
   }
 
-  // Create new profile
-  const displayName = _resolveDisplayName(user);
+  // 3. Create new profile
+  const baseName = _resolveDisplayName(user);
+  const displayName = await _uniqueDisplayName(baseName);
   const publicId = await _generateUniquePublicUserId();
   const username = await _generateUniqueUsername(`player-${publicId}`);
 
   const payload = {
+    user_id: user.id || null,
     display_name: displayName,
     display_name_lc: displayName.toLowerCase(),
     email: user.email,
