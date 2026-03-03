@@ -178,11 +178,10 @@ async function recalculateGameStatus(gameId) {
 
 /**
  * Get the current user's profile, creating one if it doesn't exist.
- * On creation, sets display_name_lc and avatar_url if available.
+ * Uses a Promise-based mutex to prevent duplicate creation on double-mount.
  */
-let _provisioningInFlight = false;
-// ── public_user_id helpers ────────────────────────────────────────────────────
 
+// ── public_user_id helpers ────────────────────────────────────────────────────
 function _padId(n) {
   return String(n).padStart(6, "0");
 }
@@ -193,51 +192,101 @@ async function _generateUniquePublicUserId() {
     const existing = await base44.entities.Profile.filter({ public_user_id: candidate });
     if (existing.length === 0) return candidate;
   }
-  // Fallback: timestamp-based suffix (extremely unlikely to collide)
   return _padId(Date.now() % 1_000_000);
 }
+
+async function _generateUniqueUsername(base) {
+  const clean = base.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  for (let suffix = 0; suffix < 20; suffix++) {
+    const candidate = suffix === 0 ? clean : `${clean}-${suffix}`;
+    const existing = await base44.entities.Profile.filter({ username_lc: candidate });
+    if (existing.length === 0) return candidate;
+  }
+  return `${clean}-${Date.now() % 10000}`;
+}
+
+function _resolveDisplayName(user) {
+  const candidates = [
+    user.full_name,
+    user.name,
+    user.user_metadata?.name,
+    user.user_metadata?.full_name,
+  ];
+  for (const c of candidates) {
+    if (c && c.trim()) return c.trim();
+  }
+  // Fallback to email prefix
+  if (user.email) return user.email.split("@")[0].trim() || "Player";
+  return "Player";
+}
+
+// Promise-based mutex — survives React double-mount
+let _provisioningPromise = null;
 
 export async function getOrCreateProfile() {
   const user = await base44.auth.me();
   if (!user) return null;
 
+  // If already provisioning, await that same promise (dedup concurrent calls)
+  if (_provisioningPromise) {
+    return _provisioningPromise;
+  }
+
+  _provisioningPromise = _doGetOrCreate(user).finally(() => {
+    _provisioningPromise = null;
+  });
+  return _provisioningPromise;
+}
+
+async function _doGetOrCreate(user) {
   const profiles = await base44.entities.Profile.filter({ email: user.email });
 
   if (profiles.length > 0) {
     const existing = profiles[0];
-    // Backfill public_user_id for existing profiles that don't have one
+    const updates = {};
+
+    // Backfill public_user_id
     if (!existing.public_user_id) {
-      const publicId = await _generateUniquePublicUserId();
-      const updated = await base44.entities.Profile.update(existing.id, { public_user_id: publicId });
-      return updated;
+      updates.public_user_id = await _generateUniquePublicUserId();
+    }
+
+    // Backfill display_name if empty
+    if (!existing.display_name || !existing.display_name.trim()) {
+      const dn = _resolveDisplayName(user);
+      updates.display_name = dn;
+      updates.display_name_lc = dn.toLowerCase();
+    }
+
+    // Backfill username if empty
+    if (!existing.username || !existing.username.trim()) {
+      const publicId = updates.public_user_id || existing.public_user_id || _padId(Math.floor(Math.random() * 1_000_000));
+      const uname = await _generateUniqueUsername(`player-${publicId}`);
+      updates.username = uname;
+      updates.username_lc = uname;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      return base44.entities.Profile.update(existing.id, updates);
     }
     return existing;
   }
 
-  if (_provisioningInFlight) {
-    // Wait a beat and retry once to avoid race on double mount
-    await new Promise((r) => setTimeout(r, 800));
-    const retry = await base44.entities.Profile.filter({ email: user.email });
-    if (retry.length > 0) return retry[0];
-  }
+  // Create new profile
+  const displayName = _resolveDisplayName(user);
+  const publicId = await _generateUniquePublicUserId();
+  const username = await _generateUniqueUsername(`player-${publicId}`);
 
-  _provisioningInFlight = true;
-  try {
-    const displayName = (user.full_name || user.email.split("@")[0]).trim();
-    const publicId = await _generateUniquePublicUserId();
-    const payload = {
-      display_name: displayName,
-      display_name_lc: displayName.toLowerCase(),
-      email: user.email,
-      public_user_id: publicId,
-    };
-    if (user.avatar_url) payload.avatar_url = user.avatar_url;
+  const payload = {
+    display_name: displayName,
+    display_name_lc: displayName.toLowerCase(),
+    email: user.email,
+    public_user_id: publicId,
+    username,
+    username_lc: username,
+  };
+  if (user.avatar_url) payload.avatar_url = user.avatar_url;
 
-    const newProfile = await base44.entities.Profile.create(payload);
-    return newProfile;
-  } finally {
-    _provisioningInFlight = false;
-  }
+  return base44.entities.Profile.create(payload);
 }
 
 /**
