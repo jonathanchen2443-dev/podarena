@@ -8,26 +8,35 @@ import { Switch } from "@/components/ui/switch";
 import CommanderSearch from "@/components/decks/CommanderSearch";
 import ManaPip from "@/components/mtg/ManaPip";
 
-// Two-color guild names keyed by sorted color pair
-const GUILD_MAP = {
-  "UW": "Azorius", "WU": "Azorius",
-  "BU": "Dimir",   "UB": "Dimir",
-  "BR": "Rakdos",  "RB": "Rakdos",
-  "GR": "Gruul",   "RG": "Gruul",
-  "GW": "Selesnya","WG": "Selesnya",
-  "BW": "Orzhov",  "WB": "Orzhov",
-  "RU": "Izzet",   "UR": "Izzet",
-  "BG": "Golgari", "GB": "Golgari",
-  "GU": "Simic",   "UG": "Simic",
-  "RW": "Boros",   "WR": "Boros",
+const COLOR_ORDER = ["W", "U", "B", "R", "G", "C"];
+const WUBRG_ORDER = ["W", "U", "B", "R", "G"];
+
+// Normalize: dedupe, filter to WUBRG only, sort in WUBRG order
+function normalizeColors(colors) {
+  if (!colors) return [];
+  const unique = [...new Set(colors)].filter((c) => WUBRG_ORDER.includes(c));
+  return WUBRG_ORDER.filter((c) => unique.includes(c));
+}
+
+const COLOR_NAME_MAP = {
+  // 2-color Guilds
+  "WU": "Azorius", "UB": "Dimir", "BR": "Rakdos", "RG": "Gruul", "GW": "Selesnya",
+  "WB": "Orzhov",  "UR": "Izzet", "BG": "Golgari", "RW": "Boros", "GU": "Simic",
+  // 3-color Shards
+  "GWU": "Bant", "WUB": "Esper", "UBR": "Grixis", "BRG": "Jund", "RGW": "Naya",
+  // 3-color Wedges
+  "WBG": "Abzan", "URW": "Jeskai", "BGU": "Sultai", "RWB": "Mardu", "GUR": "Temur",
+  // 4-color Nephilim
+  "WUBR": "Glint-Eye", "UBRG": "Dune-Brood", "BRGW": "Ink-Treader",
+  "RGWU": "Witch-Maw", "GWUB": "Yore-Tiller",
+  // 5-color
+  "WUBRG": "WUBRG",
 };
 
-const COLOR_ORDER = ["W", "U", "B", "R", "G", "C"];
-
-function getGuild(colors) {
-  if (!colors || colors.length !== 2) return "";
-  const key = [...colors].sort().join("");
-  return GUILD_MAP[key] || "";
+function getColorName(colors) {
+  const norm = normalizeColors(colors);
+  if (norm.length < 2) return "";
+  return COLOR_NAME_MAP[norm.join("")] || "";
 }
 
 // Confirmation dialog rendered inline
