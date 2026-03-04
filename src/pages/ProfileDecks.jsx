@@ -59,7 +59,7 @@ function sortDecks(decks) {
 export default function ProfileDecks() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const { isGuest, authLoading } = auth;
+  const { isGuest, authLoading, currentUser, refreshAuth } = auth;
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
