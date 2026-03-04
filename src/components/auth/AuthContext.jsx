@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null); // profile record
   const [profileError, setProfileError] = useState(false);
+  const [profileBootstrapError, setProfileBootstrapError] = useState(null);
 
   useEffect(() => {
     initAuth();
