@@ -73,7 +73,7 @@ function PlayerCell({ row }) {
   );
 }
 
-export default function StandingsTab({ auth, leagueId, inviteToken = null, isMember = false }) {
+export default function StandingsTab({ auth, leagueId, inviteToken = null, isMember = false, league = null, onJoined = null }) {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
