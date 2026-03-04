@@ -7,6 +7,28 @@
  * - invalidateLeagueCache(leagueId) wipes all keys containing leagueId
  */
 import { base44 } from "@/api/base44Client";
+import { getOrCreateProfile } from "@/components/services/gameService";
+
+/**
+ * Verify that currentUser.id maps to a real Profile row.
+ * If not, attempt getOrCreateProfile() once more.
+ * Throws if still missing — never write a LeagueMember with a phantom id.
+ */
+async function _requireValidProfile(auth) {
+  if (!auth.currentUser?.id) throw new Error("Not signed in.");
+  const rows = await base44.entities.Profile.filter({ id: auth.currentUser.id });
+  if (rows.length > 0) return; // already good
+
+  // One retry
+  console.warn("[leagueService] Profile not found for id", auth.currentUser.id, "— retrying getOrCreateProfile");
+  const profile = await getOrCreateProfile();
+  if (!profile?.id) throw new Error("Your profile could not be initialized. Please refresh and try again.");
+  // If the retry produced a different id, auth.currentUser is stale — surface a clear error
+  const recheck = await base44.entities.Profile.filter({ id: profile.id });
+  if (recheck.length === 0) {
+    throw new Error("Profile initialization failed. Please log out and log in again.");
+  }
+}
 
 // ── Simple in-memory cache ────────────────────────────────────────────────────
 const CACHE_TTL_MS = 60_000; // 60 seconds
