@@ -78,7 +78,12 @@ export default function Profile() {
       setStats(statsData);
     } catch (e) {
       const isRate = e?.message?.toLowerCase().includes("rate") || e?.message?.toLowerCase().includes("429");
-      const msg = isRate ? "Too many requests right now. Please wait a few seconds and try again." : (e.message || "Failed to load profile.");
+      const isNotReady = e?.message?.toLowerCase().includes("profile not ready");
+      const msg = isNotReady
+        ? "Your profile isn't ready yet. Please tap Retry in a moment."
+        : isRate
+        ? "Too many requests right now. Please wait a few seconds and try again."
+        : (e.message || "Failed to load profile.");
       setDecksError(msg);
       setStatsError(msg);
     } finally {
