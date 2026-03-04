@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Trophy, AlertCircle, RefreshCw, Swords, LogIn } from "lucide-react";
+import { Trophy, AlertCircle, RefreshCw, Swords, LogIn, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
-import { getLeagueStandings } from "@/components/services/leagueService";
+import { getLeagueStandings, joinPublicLeague, acceptInviteJoinLeague } from "@/components/services/leagueService";
 import { ROUTES } from "@/components/utils/routes";
 import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 function LoadingRows() {
   return (
