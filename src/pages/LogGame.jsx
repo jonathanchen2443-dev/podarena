@@ -121,10 +121,21 @@ export default function LogGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLeagueId, contextType]);
 
-  // ── Auto-add current user on mount and context change ────────────────────
+  // ── Auto-add current user on mount ────────────────────────────────────────
   useEffect(() => {
     if (!currentUser?.id || authLoading) return;
     setParticipantIds((prev) => (prev.includes(currentUser.id) ? prev : [currentUser.id, ...prev]));
+    // Pre-cache current user's profile data for casual PlacementInput
+    if (currentUser?.id) {
+      setCasualProfiles((prev) => ({
+        ...prev,
+        [currentUser.id]: {
+          userId: currentUser.id,
+          display_name: currentUser.display_name || "You",
+          avatar_url: currentUser.avatar_url || null,
+        },
+      }));
+    }
   }, [currentUser?.id, authLoading]);
 
   // ── Reset participants when context changes ───────────────────────────────
