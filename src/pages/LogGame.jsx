@@ -309,25 +309,6 @@ export default function LogGame() {
       {/* Casual mode */}
       {contextType === "casual" && (
         <div className="space-y-3">
-          {/* 1v1 quick preset */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Quick preset:</span>
-            <button
-              type="button"
-              onClick={() => {
-                // Auto-add self if not added; keeps existing selections
-                if (!participantIds.includes(currentUser?.id) && currentUser?.id) {
-                  setParticipantIds([currentUser.id]);
-                  setPlacements({});
-                  setDeckSelections({});
-                }
-              }}
-              className="px-3 py-1 rounded-lg text-xs font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-            >
-              ⚔️ 1v1
-            </button>
-          </div>
-
           <CasualParticipantPicker
             selectedIds={participantIds}
             onAdd={addParticipant}
