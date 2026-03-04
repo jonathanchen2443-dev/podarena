@@ -70,7 +70,19 @@ export async function createGameWithParticipants({
     notes: notes || "",
   });
 
-  // 4. Create participant records
+  // 4. Validate all participant user_ids exist as Profile rows before writing
+  const allProfiles = await base44.entities.Profile.list("-created_date", 200);
+  const profileIdSet = new Set(allProfiles.map((p) => p.id));
+  for (const p of participants) {
+    if (!profileIdSet.has(p.user_id)) {
+      throw new Error(
+        `Cannot log game: participant user_id "${p.user_id}" has no matching Profile. ` +
+        `Ensure all participants have registered profiles before logging a game.`
+      );
+    }
+  }
+
+  // 5. Create participant records
   const participantRecords = participants.map((p) => ({
     game_id: game.id,
     user_id: p.user_id,
