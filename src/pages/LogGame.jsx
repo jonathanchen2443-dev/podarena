@@ -121,10 +121,17 @@ export default function LogGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLeagueId, contextType]);
 
+  // ── Auto-add current user on mount and context change ────────────────────
+  useEffect(() => {
+    if (!currentUser?.id || authLoading) return;
+    setParticipantIds((prev) => (prev.includes(currentUser.id) ? prev : [currentUser.id, ...prev]));
+  }, [currentUser?.id, authLoading]);
+
   // ── Reset participants when context changes ───────────────────────────────
   function handleContextChange(type) {
     setContextType(type);
-    setParticipantIds([]);
+    // Keep current user pre-added
+    setParticipantIds(currentUser?.id ? [currentUser.id] : []);
     setPlacements({});
     setDeckSelections({});
     setSubmitError(null);
@@ -135,7 +142,8 @@ export default function LogGame() {
 
   function handleLeagueChange(id) {
     setSelectedLeagueId(id);
-    setParticipantIds([]);
+    // Keep current user pre-added
+    setParticipantIds(currentUser?.id ? [currentUser.id] : []);
     setPlacements({});
     setDeckSelections({});
     setSubmitError(null);
