@@ -83,7 +83,26 @@ function ActiveDecksCard({ activeDecks, totalDecks }) {
   );
 }
 
-export default function StatRingCards({ stats, decks }) {
+function SkeletonRingCard() {
+  return (
+    <div className="flex-1 bg-gray-900/60 border border-gray-800/50 rounded-xl p-4 flex flex-col items-center gap-2 animate-pulse">
+      <div className="h-3 w-10 bg-gray-700 rounded self-start" />
+      <div className="w-[72px] h-[72px] rounded-full bg-gray-800" />
+      <div className="h-3 w-20 bg-gray-700 rounded" />
+    </div>
+  );
+}
+
+export default function StatRingCards({ stats, decks, loading }) {
+  if (loading) {
+    return (
+      <div className="flex gap-3">
+        <SkeletonRingCard />
+        <SkeletonRingCard />
+      </div>
+    );
+  }
+
   const wins = stats?.wins ?? 0;
   const gamesPlayed = stats?.gamesPlayed ?? 0;
   const totalDecks = decks?.length ?? 0;
