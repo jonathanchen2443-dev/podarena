@@ -32,7 +32,11 @@ export default function CasualParticipantPicker({
     if (!q) return true;
     return (
       p.display_name?.toLowerCase().includes(q) ||
-      p.username?.toLowerCase().includes(q)
+      p.username?.toLowerCase().includes(q) ||
+      p.display_name_lc?.includes(q) ||
+      p.username_lc?.includes(q) ||
+      p.public_user_id === q ||
+      p.public_user_id === q.replace(/^0+/, "").padStart(6, "0")
     );
   });
 
