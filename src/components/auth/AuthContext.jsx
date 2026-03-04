@@ -67,6 +67,7 @@ export function AuthProvider({ children }) {
     isGuest: !isAuthenticated,
     currentUser,
     profileError,
+    profileBootstrapError,
     login,
     logout,
     refreshAuth: initAuth,
