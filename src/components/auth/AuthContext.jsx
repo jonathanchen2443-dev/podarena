@@ -96,6 +96,9 @@ export function AuthProvider({ children }) {
     );
   }
 
+  // profileBootstrapError: authenticated but profile couldn't load — render children
+  // so pages can show their own guards + retry (with refreshAuth available in context)
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
