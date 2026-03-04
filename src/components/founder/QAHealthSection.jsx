@@ -136,6 +136,8 @@ async function runChecks(auth) {
 export default function QAHealthSection({ auth }) {
   const [checks, setChecks] = useState(null);
   const [running, setRunning] = useState(false);
+  const [repairResult, setRepairResult] = useState(null);
+  const [repairing, setRepairing] = useState(false);
 
   async function handleRun() {
     setRunning(true);
@@ -143,6 +145,14 @@ export default function QAHealthSection({ auth }) {
     const results = await runChecks(auth);
     setChecks(results);
     setRunning(false);
+  }
+
+  async function handleRepair() {
+    setRepairing(true);
+    setRepairResult(null);
+    const result = await repairOrphanRows();
+    setRepairResult(result);
+    setRepairing(false);
   }
 
   const passed = checks?.filter((c) => c.status === "pass").length || 0;
@@ -165,7 +175,7 @@ export default function QAHealthSection({ auth }) {
       <Button
         className="w-full ds-btn-primary rounded-xl"
         onClick={handleRun}
-        disabled={running}
+        disabled={running || repairing}
       >
         {running ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Running…</> : "Run Health Checks"}
       </Button>
@@ -175,6 +185,26 @@ export default function QAHealthSection({ auth }) {
           {checks.map((c, i) => <CheckRow key={i} {...c} />)}
         </div>
       )}
+
+      {/* Orphan Repair Tool */}
+      <div className="border-t border-gray-800 pt-4 space-y-2">
+        <p className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Orphan Repair (admin)</p>
+        <Button
+          variant="outline"
+          className="w-full rounded-xl text-xs border-amber-800/40 text-amber-400 hover:bg-amber-900/20"
+          onClick={handleRepair}
+          disabled={repairing || running}
+        >
+          {repairing
+            ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Scanning…</>
+            : <><Wrench className="w-3.5 h-3.5 mr-1.5" /> Repair Orphan Rows</>}
+        </Button>
+        {repairResult && (
+          <p className="text-[11px] text-emerald-400 text-center">
+            Done — {repairResult.orphanMembers} LeagueMember(s) removed, {repairResult.orphanParticipants} GameParticipant(s) marked orphaned.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
