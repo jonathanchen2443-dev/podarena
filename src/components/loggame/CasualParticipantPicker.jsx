@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { UserPlus, X, User, Search } from "lucide-react";
+import { X, User, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 /**

@@ -1,5 +1,5 @@
 import React from "react";
-import { UserPlus, X, User } from "lucide-react";
+import { X, User } from "lucide-react";
 
 export default function ParticipantPicker({
   members,
