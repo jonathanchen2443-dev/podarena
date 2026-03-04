@@ -253,7 +253,7 @@ export default function Profile() {
       </Card>
 
       {/* Stat ring cards */}
-      <StatRingCards stats={stats} decks={decks} />
+      <StatRingCards stats={stats} decks={decks} loading={decksLoading} />
 
       {/* Badges section */}
       <BadgesSection stats={stats} decks={decks} />
