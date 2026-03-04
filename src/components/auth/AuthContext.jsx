@@ -57,10 +57,34 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     isGuest: !isAuthenticated,
     currentUser,
+    profileError,
     login,
     logout,
     refreshAuth: initAuth,
   };
+
+  if (profileError) {
+    return (
+      <AuthContext.Provider value={value}>
+        <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+          <div className="bg-gray-900 border border-red-800 rounded-2xl p-8 max-w-sm w-full text-center space-y-4">
+            <div className="text-red-400 text-4xl">⚠️</div>
+            <h2 className="text-white font-semibold text-lg">Profile Setup Failed</h2>
+            <p className="text-gray-400 text-sm">
+              Failed to initialize your profile. This may be a temporary issue.
+            </p>
+            <button
+              onClick={initAuth}
+              className="w-full py-2.5 rounded-xl text-sm font-medium text-white ds-btn-primary"
+              style={{ backgroundColor: "var(--ds-primary-btn)" }}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </AuthContext.Provider>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
