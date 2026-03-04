@@ -17,30 +17,38 @@ export function AuthProvider({ children }) {
 
   async function initAuth() {
     setProfileError(false);
+    setProfileBootstrapError(null);
     try {
       const authenticated = await base44.auth.isAuthenticated();
       setIsAuthenticated(authenticated);
       if (authenticated) {
-        const profile = await getOrCreateProfile();
-        setCurrentUser(profile);
+        try {
+          const profile = await getOrCreateProfile();
+          setCurrentUser(profile);
+        } catch (e) {
+          // Profile bootstrap failed — stay authenticated but flag error
+          let authEmail = "unknown", authId = "unknown";
+          try {
+            const u = await base44.auth.me();
+            authEmail = u?.email || "unknown";
+            authId = u?.id || "unknown";
+          } catch (_) {}
+          console.error("[AuthContext] getOrCreateProfile FAILED", {
+            error: e?.message || e,
+            authEmail,
+            authId,
+          });
+          setCurrentUser(null);
+          setProfileBootstrapError(e?.message || "Profile setup failed.");
+        }
       }
     } catch (e) {
-      // Get auth user info for diagnostics
-      let authEmail = "unknown", authId = "unknown";
-      try {
-        const u = await base44.auth.me();
-        authEmail = u?.email || "unknown";
-        authId = u?.id || "unknown";
-      } catch (_) {}
-      console.error("[AuthContext] getOrCreateProfile FAILED", {
-        error: e?.message || e,
-        authEmail,
-        authId,
-      });
+      console.error("[AuthContext] isAuthenticated check FAILED", e?.message || e);
       setIsAuthenticated(false);
       setCurrentUser(null);
       setProfileError(true);
     } finally {
+      // authLoading = false only after auth + profile bootstrap both resolve
       setAuthLoading(false);
     }
   }
