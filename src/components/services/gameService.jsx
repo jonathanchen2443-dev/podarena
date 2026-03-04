@@ -359,7 +359,11 @@ export async function listMyPendingApprovals(auth) {
   const leagueMap = {};
   allLeagues.forEach((l) => { leagueMap[l.id] = l; });
   const profileMap = {};
-  allProfiles.forEach((p) => { profileMap[p.id] = p; });
+  // Key by Profile.id (primary); also key by Profile.user_id as fallback for legacy rows
+  allProfiles.forEach((p) => {
+    profileMap[p.id] = p;
+    if (p.user_id) profileMap[p.user_id] = p;
+  });
 
   // 4. Assemble rows
   return gameIds
@@ -371,7 +375,7 @@ export async function listMyPendingApprovals(auth) {
       const league = game.league_id ? leagueMap[game.league_id] : null;
       const participants = participantArrays[i].map((p) => ({
         userId: p.user_id,
-        display_name: profileMap[p.user_id]?.display_name || "Unknown",
+        display_name: profileMap[p.user_id]?.display_name || profileMap[p.user_id]?.username || "Unknown",
         avatar_url: profileMap[p.user_id]?.avatar_url || null,
         result: p.result || null,
         placement: p.placement || null,
