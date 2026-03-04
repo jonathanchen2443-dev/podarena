@@ -152,12 +152,24 @@ async function _validateInviteInternal(leagueId, token) {
  */
 async function _fetchProfileMap(userIds) {
   if (userIds.length === 0) return {};
-  // Fetch up to 200 profiles and filter client-side — much cheaper than N individual calls
+  // Fetch up to 200 profiles, keyed by Profile.id (which is what LeagueMember/GameParticipant.user_id stores)
   const allProfiles = await base44.entities.Profile.list("-created_date", 200);
   const needed = new Set(userIds);
   const map = {};
+  // Primary index: Profile.id
   for (const p of allProfiles) {
     if (needed.has(p.id)) map[p.id] = p;
+  }
+  // Fallback index: Profile.user_id (auth uid) for any legacy rows not matched above
+  const unresolved = userIds.filter((uid) => !map[uid]);
+  if (unresolved.length > 0) {
+    console.warn("[profileMap] Unresolved user_ids (may be auth UIDs):", unresolved);
+    for (const p of allProfiles) {
+      if (p.user_id && unresolved.includes(p.user_id)) {
+        // Map the legacy auth uid -> profile so it resolves correctly
+        map[p.user_id] = p;
+      }
+    }
   }
   return map;
 }
