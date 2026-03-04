@@ -1,11 +1,41 @@
 import React, { useState } from "react";
-import { CheckCircle, XCircle, Loader2, Activity } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, Activity, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/components/utils/routes";
 import { base44 } from "@/api/base44Client";
 import { getSettings, DEFAULT_FEATURE_FLAGS, DEFAULT_NAV_CONFIG } from "@/components/services/appSettingsService";
 import { isFounder } from "@/components/services/founderService";
 import { listVisibleLeagues } from "@/components/services/leagueService";
+
+/**
+ * Scan LeagueMember and GameParticipant rows for phantom user_ids (no matching Profile).
+ * Marks orphans: LeagueMember → status="removed", GameParticipant → result="orphaned".
+ * Returns counts.
+ */
+async function repairOrphanRows() {
+  const allProfiles = await base44.entities.Profile.list("-created_date", 200);
+  const profileIdSet = new Set(allProfiles.map((p) => p.id));
+
+  // --- LeagueMember ---
+  const allMembers = await base44.entities.LeagueMember.list("-created_date", 500);
+  const orphanMembers = allMembers.filter(
+    (m) => m.status === "active" && !profileIdSet.has(m.user_id)
+  );
+  for (const m of orphanMembers) {
+    await base44.entities.LeagueMember.update(m.id, { status: "removed" });
+  }
+
+  // --- GameParticipant ---
+  const allParts = await base44.entities.GameParticipant.list("-created_date", 500);
+  const orphanParts = allParts.filter(
+    (p) => p.result !== "orphaned" && !profileIdSet.has(p.user_id)
+  );
+  for (const p of orphanParts) {
+    await base44.entities.GameParticipant.update(p.id, { result: "orphaned" });
+  }
+
+  return { orphanMembers: orphanMembers.length, orphanParticipants: orphanParts.length };
+}
 
 function CheckRow({ name, status, detail }) {
   return (
