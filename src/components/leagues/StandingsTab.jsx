@@ -79,6 +79,7 @@ export default function StandingsTab({ auth, leagueId, inviteToken = null, isMem
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [joining, setJoining] = useState(false);
   const fetchingRef = useRef(false);
 
   async function loadStandings() {
