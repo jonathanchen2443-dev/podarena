@@ -8,12 +8,14 @@ export function AuthProvider({ children }) {
   const [authLoading, setAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null); // profile record
+  const [profileError, setProfileError] = useState(false);
 
   useEffect(() => {
     initAuth();
   }, []);
 
   async function initAuth() {
+    setProfileError(false);
     try {
       const authenticated = await base44.auth.isAuthenticated();
       setIsAuthenticated(authenticated);
@@ -22,8 +24,21 @@ export function AuthProvider({ children }) {
         setCurrentUser(profile);
       }
     } catch (e) {
+      // Get auth user info for diagnostics
+      let authEmail = "unknown", authId = "unknown";
+      try {
+        const u = await base44.auth.me();
+        authEmail = u?.email || "unknown";
+        authId = u?.id || "unknown";
+      } catch (_) {}
+      console.error("[AuthContext] getOrCreateProfile FAILED", {
+        error: e?.message || e,
+        authEmail,
+        authId,
+      });
       setIsAuthenticated(false);
       setCurrentUser(null);
+      setProfileError(true);
     } finally {
       setAuthLoading(false);
     }
