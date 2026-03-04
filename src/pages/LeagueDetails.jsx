@@ -479,78 +479,7 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
   return (
     <div className="space-y-3">
 
-      {/* ── Invited-view panel ─────────────────────────────────────────────── */}
-      {showInvitePanel && accessMode === "invited_view" && !isMember && (
-        <Card className="ds-accent-bg border" style={{ borderColor: "rgb(var(--ds-primary-muted-bd))" }}>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-white font-semibold text-sm">You're invited to join this league</p>
-                <p className="text-gray-400 text-xs mt-0.5">Accept to become a member and participate in games.</p>
-              </div>
-              <button onClick={handleDeclineInvite} className="text-gray-500 hover:text-gray-300 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            {inviteActionError && (
-              <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{inviteActionError}</p>
-            )}
-            {(() => {
-              const maxM = league.max_members || 10;
-              const isFull = !membersLoading && members.length >= maxM;
-              if (isFull) return (
-                <p className="text-amber-400 text-xs bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">League is full ({members.length}/{maxM})</p>
-              );
-              return null;
-            })()}
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                disabled={acceptingInvite || (!membersLoading && members.length >= (league.max_members || 10))}
-                onClick={handleAcceptInvite}
-                className="ds-btn-primary text-white rounded-lg flex-1"
-              >
-                {acceptingInvite ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Accept & Join"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={acceptingInvite}
-                onClick={handleDeclineInvite}
-                className="border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg flex-1"
-              >
-                Decline
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Join public league CTA ──────────────────────────────────────────── */}
-      {!isMember && accessMode === "public" && (() => {
-        const maxM = league.max_members || 10;
-        const isFull = members.length >= maxM && !membersLoading;
-        return (
-          <Card className="bg-gray-900/60 border-gray-800/50">
-            <CardContent className="p-4 space-y-2">
-              <p className="text-white text-sm font-medium">Want to participate?</p>
-              <p className="text-gray-400 text-xs">Join this public league to log games and appear in the standings.</p>
-              {isFull ? (
-                <p className="text-amber-400 text-xs bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">League is full ({members.length}/{maxM} members)</p>
-              ) : (
-                <Button
-                  size="sm"
-                  disabled={joining}
-                  onClick={handleJoinPublic}
-                  className="ds-btn-primary text-white rounded-lg w-full mt-1"
-                >
-                  {joining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : auth.isGuest ? "Sign in to join" : "Request to Join"}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })()}
+      {/* Join/Request CTAs are shown only in Standings tab — removed from Info tab */}
 
       {/* ── League info card ────────────────────────────────────────────────── */}
       <Card className="bg-gray-900/60 border-gray-800/50">
