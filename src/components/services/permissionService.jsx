@@ -69,9 +69,9 @@ export function canModifyLeague(league, profileId, memberships) {
 
 // ─── New helpers for gating ──────────────────────────────────────────────────
 
-/** Can this user create a new deck? Requires auth. */
-export function canCreateDeck({ isGuest }) {
-  return !isGuest;
+/** Can this user create a new deck? Requires auth + loaded profile. */
+export function canCreateDeck({ isGuest, currentUser }) {
+  return !isGuest && !!currentUser && !!currentUser.id;
 }
 
 /** Can this user edit/delete a specific deck? Requires auth + ownership. */

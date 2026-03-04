@@ -28,7 +28,10 @@ export function invalidateDeckStatsCache(userId) {
  * Returns decks[] each with: gamesWithDeck, winsWithDeck, winRatePercent
  */
 export async function getMyDecksWithStats(auth) {
-  if (auth.isGuest || !auth.currentUser) return [];
+  if (auth.isGuest) return [];
+  if (!auth.currentUser || !auth.currentUser.id) {
+    throw new Error("Profile not ready. Please retry.");
+  }
   const userId = auth.currentUser.id;
   const cKey = `deckStats::${userId}`;
 
