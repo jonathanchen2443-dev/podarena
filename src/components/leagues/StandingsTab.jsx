@@ -171,16 +171,8 @@ export default function StandingsTab({ auth, leagueId, inviteToken = null, isMem
         </Card>
       )}
 
-      {/* Log Game CTA */}
-      {auth.isGuest ? (
-        <button
-          onClick={() => base44.auth.redirectToLogin(window.location.href)}
-          className="w-full flex items-center justify-center gap-2 h-11 rounded-xl border border-gray-700 bg-gray-900/40 text-gray-400 hover:text-white hover:border-gray-600 hover:bg-gray-800/60 transition-all text-sm font-medium"
-        >
-          <LogIn className="w-4 h-4" />
-          Sign in to log games
-        </button>
-      ) : isMember ? (
+      {/* Log Game CTA for members */}
+      {isMember && (
         <button
           onClick={() => navigate(`${ROUTES.LOG_GAME}?leagueId=${leagueId}&returnTo=league&returnLeagueId=${leagueId}`)}
           className="w-full flex items-center justify-center gap-2 h-11 rounded-xl ds-btn-primary text-white transition-colors text-sm font-medium"
@@ -188,7 +180,46 @@ export default function StandingsTab({ auth, leagueId, inviteToken = null, isMem
           <Swords className="w-4 h-4" />
           Log Game
         </button>
-      ) : null}
+      )}
+
+      {/* Sign-in CTA for guests */}
+      {auth.isGuest && (
+        <button
+          onClick={() => base44.auth.redirectToLogin(window.location.href)}
+          className="w-full flex items-center justify-center gap-2 h-11 rounded-xl border border-gray-700 bg-gray-900/40 text-gray-400 hover:text-white hover:border-gray-600 hover:bg-gray-800/60 transition-all text-sm font-medium"
+        >
+          <LogIn className="w-4 h-4" />
+          Sign in to log games
+        </button>
+      )}
+
+      {/* Join CTA for non-members */}
+      {!auth.isGuest && !isMember && league && (
+        <button
+          disabled={joining}
+          onClick={async () => {
+            if (joining) return;
+            setJoining(true);
+            try {
+              if (inviteToken) {
+                await acceptInviteJoinLeague(auth, leagueId, inviteToken);
+              } else {
+                await joinPublicLeague(auth, leagueId);
+              }
+              toast.success(`Joined "${league.name}"!`);
+              onJoined?.();
+            } catch (e) {
+              toast.error(e.message || "Failed to join.");
+            } finally {
+              setJoining(false);
+            }
+          }}
+          className="w-full flex items-center justify-center gap-2 h-11 rounded-xl ds-btn-primary text-white transition-colors text-sm font-medium disabled:opacity-60"
+        >
+          {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {league.is_public ? "Join League" : "Request to Join"}
+        </button>
+      )}
     </div>
   );
 }
