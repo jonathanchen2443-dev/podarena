@@ -266,7 +266,7 @@ export async function getLeagueStandings(auth, leagueId, inviteToken = null) {
 
     return {
       userId: uid,
-      display_name: profile?.display_name || "Unknown",
+      display_name: profile?.display_name || profile?.username || "Unknown",
       avatar_url: profile?.avatar_url || null,
       gamesPlayed: s.gamesPlayed,
       wins: s.wins,
@@ -332,7 +332,7 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false,
       const deck = p.deck_id ? deckMap[p.deck_id] : null;
       return {
         userId: p.user_id,
-        display_name: profile?.display_name || "Unknown",
+        display_name: profile?.display_name || profile?.username || "Unknown",
         avatar_url: profile?.avatar_url || null,
         result: p.result || null,
         placement: p.placement || null,
@@ -735,7 +735,7 @@ export async function listLeagueMembers(auth, leagueId, inviteToken = null) {
     return {
       membershipId: m.id, // exposed so promote/remove can use it
       userId: m.user_id,
-      display_name: profile?.display_name || "Unknown",
+      display_name: profile?.display_name || profile?.username || "Unknown",
       avatar_url: profile?.avatar_url || null,
       role: m.role,
     };
