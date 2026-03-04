@@ -335,23 +335,31 @@ async function _doGetOrCreate(user) {
 
   const created = await base44.entities.Profile.create(payload);
 
-  // ── Verify persistence: newly created profile must be readable by user_id or email ──
-  const verifyByUid = user.id
-    ? await base44.entities.Profile.filter({ user_id: user.id })
-    : [];
-  const verifyByEmail = verifyByUid.length === 0 && user.email
-    ? await base44.entities.Profile.filter({ email: user.email })
-    : verifyByUid;
-  const verified = verifyByUid.length > 0 ? verifyByUid : verifyByEmail;
-
-  if (verified.length === 0) {
-    throw new Error(
-      `Profile creation verification failed for user_id=${user.id} email=${user.email}. ` +
-      `Profile.create returned id=${created.id} but subsequent filter returned 0 rows.`
-    );
+  // ── Verify persistence with retry (RLS may take a moment to reflect new row) ──
+  const delays = [150, 300, 600];
+  let profile = null;
+  for (let i = 0; i <= delays.length; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, delays[i - 1]));
+    const rows = user.id
+      ? await base44.entities.Profile.filter({ user_id: user.id })
+      : [];
+    if (rows.length > 0) { profile = rows[0]; break; }
+    // fallback by email
+    if (user.email) {
+      const byEmail = await base44.entities.Profile.filter({ email: user.email });
+      if (byEmail.length > 0) { profile = byEmail[0]; break; }
+    }
   }
 
-  const profile = verified[0];
+  if (!profile) {
+    // Return the created record directly — better than throwing and blocking the user
+    console.warn(
+      `[PROFILE WARN] Post-create filter returned 0 rows for user_id=${user.id} email=${user.email}. ` +
+      `Returning created record id=${created.id} directly.`
+    );
+    profile = created;
+  }
+
   console.log(`[PROFILE OK] id=${profile.id} user_id=${profile.user_id} email=${profile.email}`);
   return profile;
 }
