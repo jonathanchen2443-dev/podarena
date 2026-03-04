@@ -668,6 +668,8 @@ export async function acceptInviteJoinLeague(auth, leagueId, token) {
     throw new Error("You are already a member.");
   }
 
+  await _requireValidProfile(auth);
+
   let membership;
   if (existing.length > 0) {
     membership = await base44.entities.LeagueMember.update(existing[0].id, {
