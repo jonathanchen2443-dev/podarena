@@ -86,7 +86,7 @@ export default function ProfileDecks() {
     } else {
       setLoading(false);
     }
-  }, [authLoading, isGuest, window.location.search]);
+  }, [authLoading, isGuest, currentUser?.id, window.location.search]);
 
   async function loadDecks() {
     if (fetchingRef.current) return;
