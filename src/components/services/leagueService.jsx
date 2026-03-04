@@ -605,6 +605,8 @@ export async function joinPublicLeague(auth, leagueId) {
     throw new Error("You are already a member.");
   }
 
+  await _requireValidProfile(auth);
+
   let membership;
   if (existing.length > 0) {
     membership = await base44.entities.LeagueMember.update(existing[0].id, { status: "active" });
