@@ -162,7 +162,7 @@ export default function LeagueDetails() {
       </div>
 
       {/* Tab content */}
-      {activeTab === "standings" && <StandingsTab auth={auth} leagueId={leagueId} inviteToken={inviteToken} isMember={isMember} />}
+      {activeTab === "standings" && <StandingsTab auth={auth} leagueId={leagueId} inviteToken={inviteToken} isMember={isMember} league={league} onJoined={handleJoined} />}
       {activeTab === "games" && <GamesTab auth={auth} leagueId={leagueId} inviteToken={inviteToken} />}
       {activeTab === "info" && (
         <InfoTab
