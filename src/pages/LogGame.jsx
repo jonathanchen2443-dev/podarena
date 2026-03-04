@@ -233,7 +233,7 @@ export default function LogGame() {
     <div className="flex items-center justify-between mb-5">
       <button
         onClick={handleBack}
-        className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors"
+        className="flex items-center gap-1.5 text-sm font-medium text-gray-300 hover:text-white bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700/60 rounded-xl px-3 py-2 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
