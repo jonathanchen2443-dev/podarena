@@ -754,10 +754,15 @@ export async function listLeagueMembers(auth, leagueId, inviteToken = null) {
 
   await getLeagueById(auth, leagueId, inviteToken);
 
-  const members = await base44.entities.LeagueMember.filter({
+  const rawMembers = await base44.entities.LeagueMember.filter({
     league_id: leagueId,
     status: "active",
   });
+
+  // Filter out phantom members whose user_id has no matching Profile
+  const _allProfilesForMembers = await base44.entities.Profile.list("-created_date", 200);
+  const _profileIdSetForMembers = new Set(_allProfilesForMembers.map((p) => p.id));
+  const members = rawMembers.filter((m) => _profileIdSetForMembers.has(m.user_id));
 
   const userIds = members.map((m) => m.user_id);
   const profileMap = await _fetchProfileMap(userIds);
