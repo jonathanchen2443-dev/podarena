@@ -136,6 +136,23 @@ export default function Profile() {
 
   if (authLoading) return <LoadingState message="Loading profile…" />;
 
+  // Profile not ready guard (authenticated but currentUser not bootstrapped yet)
+  if (!isGuest && !currentUser?.id) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-4">
+        <AlertCircle className="w-8 h-8 text-amber-400/70" />
+        <p className="text-gray-300 text-sm font-medium">Setting up your profile for the first time.</p>
+        <p className="text-gray-500 text-sm">Please try again in a few seconds.</p>
+        <button
+          onClick={async () => { await refreshAuth(); fetchingRef.current = false; loadAll(); }}
+          className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl ds-btn-primary text-white"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Retry
+        </button>
+      </div>
+    );
+  }
+
   // ── Guest view ───────────────────────────────────────────────────────────────
   if (isGuest) {
     return (
