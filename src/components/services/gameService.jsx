@@ -92,7 +92,7 @@ export async function createGameWithParticipants({
   }));
   await base44.entities.GameParticipant.bulkCreate(participantRecords);
 
-  // 5. Create approval records for everyone except the creator
+  // 6. Create approval records for everyone except the creator
   const approvalRecords = participants
     .filter((p) => p.user_id !== creatorProfileId)
     .map((p) => ({
