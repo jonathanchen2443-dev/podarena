@@ -22,7 +22,7 @@ import { toast } from "sonner";
 
 export default function Profile() {
   const auth = useAuth();
-  const { isGuest, authLoading, currentUser, logout } = auth;
+  const { isGuest, authLoading, currentUser, logout, refreshAuth } = auth;
   const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [decks, setDecks] = useState([]);
