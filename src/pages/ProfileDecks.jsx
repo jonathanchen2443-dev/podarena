@@ -90,6 +90,12 @@ export default function ProfileDecks() {
 
   async function loadDecks() {
     if (fetchingRef.current) return;
+    // Hard guard: never query with undefined user
+    if (!auth.currentUser?.id) {
+      setError("Your profile isn't ready yet. Please try again in a moment.");
+      setLoading(false);
+      return;
+    }
     fetchingRef.current = true;
     setLoading(true);
     setError(null);
