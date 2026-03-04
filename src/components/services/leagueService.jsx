@@ -455,6 +455,8 @@ export async function createLeague(auth, { name, description, is_public, max_mem
 
   const clampedMax = Math.min(10, Math.max(2, Number(max_members) || 10));
 
+  await _requireValidProfile(auth);
+
   const league = await base44.entities.League.create({
     name: trimmedName,
     description: (description || "").trim(),
