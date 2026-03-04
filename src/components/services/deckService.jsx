@@ -6,8 +6,9 @@ import { canCreateDeck, canEditDeck } from "@/components/services/permissionServ
 
 export async function listMyDecks(auth) {
   if (auth.isGuest || !auth.currentUser) throw new Error("Authentication required.");
-  // RLS filters by created_by (email); listing all owned decks works without extra filter
-  return base44.entities.Deck.list("-updated_date", 200);
+  // Filter explicitly by owner_id so only this user's decks are returned,
+  // even if RLS is ever widened for deck visibility in standings.
+  return base44.entities.Deck.filter({ owner_id: auth.currentUser.id }, "-updated_date", 200);
 }
 
 export async function getMyDeckById(auth, deckId) {
