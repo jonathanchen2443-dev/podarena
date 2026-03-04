@@ -60,19 +60,6 @@ export default function CasualParticipantPicker({
         <span className="text-gray-600 normal-case">(min. 2)</span>
       </label>
 
-      {/* Quick-add self */}
-      {!isSelfAdded && currentUserId && (
-        <button
-          type="button"
-          onClick={handleAddSelf}
-          className="mb-2 flex items-center gap-1.5 text-xs hover:opacity-80 transition-opacity"
-          style={{ color: "var(--ds-primary-text)" }}
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          Add me
-        </button>
-      )}
-
       {/* Search box */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />

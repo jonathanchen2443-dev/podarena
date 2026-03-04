@@ -27,19 +27,6 @@ export default function ParticipantPicker({
         <span className="text-gray-600 normal-case">(min. 2)</span>
       </label>
 
-      {/* Quick-add self */}
-      {!isSelfAdded && currentUserId && (
-        <button
-          type="button"
-          onClick={() => onAdd(currentUserId)}
-          className="mb-2 flex items-center gap-1.5 text-xs hover:opacity-80 transition-opacity"
-          style={{ color: "var(--ds-primary-text)" }}
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          Add me
-        </button>
-      )}
-
       {/* Dropdown to add others */}
       {membersLoading ? (
         <div className="text-xs text-gray-500 py-2">Loading members…</div>
