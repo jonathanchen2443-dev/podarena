@@ -107,6 +107,7 @@ export async function createGameWithParticipants({
     // Solo game or only creator — auto-approve
     await base44.entities.Game.update(game.id, { status: "approved" });
   }
+  // (Step numbering fixed: old 4→5, 5→6 after profile validation insertion above)
 
   return game;
 }
