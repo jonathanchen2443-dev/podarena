@@ -21,18 +21,7 @@ export default function CasualParticipantPicker({
 
   useEffect(() => {
     base44.entities.Profile.list("-created_date", 200)
-      .then((ps) => {
-        setAllProfiles(ps);
-        // Auto-cache profile data for any pre-selected IDs (e.g. current user pre-added)
-        if (currentUserId) {
-          const selfProfile = ps.find((p) => p.id === currentUserId);
-          if (selfProfile) {
-            // Notify parent about the pre-selected user's profile data so PlacementInput can resolve names
-            // We use onAdd but guard against re-adding if already selected
-            // (onAdd in parent guards duplicates via includes check)
-          }
-        }
-      })
+      .then((ps) => setAllProfiles(ps))
       .catch(() => {})
       .finally(() => setProfilesLoaded(true));
   }, []);
