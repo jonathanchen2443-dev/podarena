@@ -53,18 +53,22 @@ export default function Profile() {
     if (!authLoading && !isGuest) {
       loadAll();
     }
-  }, [authLoading, isGuest]);
+  }, [authLoading, isGuest, currentUser?.id]);
 
   async function loadAll() {
     if (fetchingRef.current) return;
+    // Hard guard: never query with undefined user
+    if (!currentUser?.id) {
+      setDecksError("Your profile isn't ready yet. Please try again in a moment.");
+      return;
+    }
     fetchingRef.current = true;
     setDecksLoading(true);
     setDecksError(null);
     setStatsError(null);
     try {
-      // Load profile record for avatar + username
-      const profiles = await base44.entities.Profile.filter({ created_by: currentUser?.email });
-      setProfile(profiles[0] || null);
+      // Use currentUser directly from AuthContext — no redundant Profile query needed
+      setProfile(currentUser);
 
       const [decksData, statsData] = await Promise.all([
         getMyDecksWithStats(auth),
