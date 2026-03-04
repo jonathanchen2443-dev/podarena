@@ -292,10 +292,15 @@ async function _doGetOrCreate(user) {
       updates.username_lc = uname;
     }
 
+    let profile;
     if (Object.keys(updates).length > 0) {
-      return base44.entities.Profile.update(existing.id, updates);
+      profile = await base44.entities.Profile.update(existing.id, updates);
+    } else {
+      profile = existing;
     }
-    return existing;
+
+    console.log(`[PROFILE OK] id=${profile.id} user_id=${profile.user_id} email=${profile.email}`);
+    return profile;
   }
 
   // 3. Create new profile
@@ -315,7 +320,27 @@ async function _doGetOrCreate(user) {
   };
   if (user.avatar_url) payload.avatar_url = user.avatar_url;
 
-  return base44.entities.Profile.create(payload);
+  const created = await base44.entities.Profile.create(payload);
+
+  // ── Verify persistence: newly created profile must be readable by user_id or email ──
+  const verifyByUid = user.id
+    ? await base44.entities.Profile.filter({ user_id: user.id })
+    : [];
+  const verifyByEmail = verifyByUid.length === 0 && user.email
+    ? await base44.entities.Profile.filter({ email: user.email })
+    : verifyByUid;
+  const verified = verifyByUid.length > 0 ? verifyByUid : verifyByEmail;
+
+  if (verified.length === 0) {
+    throw new Error(
+      `Profile creation verification failed for user_id=${user.id} email=${user.email}. ` +
+      `Profile.create returned id=${created.id} but subsequent filter returned 0 rows.`
+    );
+  }
+
+  const profile = verified[0];
+  console.log(`[PROFILE OK] id=${profile.id} user_id=${profile.user_id} email=${profile.email}`);
+  return profile;
 }
 
 /**
