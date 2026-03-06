@@ -109,6 +109,10 @@ export async function listVisibleLeagues(auth) {
       return cacheSet(cKey, allLeagues.filter((l) => l.is_public));
     }
 
+    if (!auth.currentUser.id) {
+      return cacheSet(cKey, allLeagues.filter((l) => l.is_public));
+    }
+
     const memberships = await base44.entities.LeagueMember.filter({
       user_id: auth.currentUser.id,
       status: "active",
@@ -492,6 +496,7 @@ export async function createLeague(auth, { name, description, is_public, max_mem
  */
 export async function listLeaguesForGameLogging(auth) {
   if (auth.isGuest || !auth.currentUser) return [];
+  if (!auth.currentUser.id) return [];
   const cKey = cacheKey("leaguesForLogging", auth.currentUser.id);
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;

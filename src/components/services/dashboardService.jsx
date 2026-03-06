@@ -37,6 +37,7 @@ export async function getDashboardData(auth) {
   if (auth.isGuest || !auth.currentUser) return null;
 
   const userId = auth.currentUser.id;
+  if (!userId) return null;
   const cKey = `dashboard::${userId}`;
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;

@@ -28,7 +28,7 @@ export function invalidateProfileStatsCache(userId) {
  * Returns { gamesPlayed, wins, decksCount, leaguesCount }
  */
 export async function getProfileStats(auth) {
-  if (auth.isGuest || !auth.currentUser) return null;
+  if (auth.isGuest || !auth.currentUser || !auth.currentUser.id) return null;
   const userId = auth.currentUser.id;
   const cKey = `profileStats::${userId}`;
 
