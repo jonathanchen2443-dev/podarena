@@ -333,47 +333,10 @@ async function _doGetOrCreate(user) {
   };
   if (user.avatar_url) payload.avatar_url = user.avatar_url;
 
-  const created = await base44.entities.Profile.create(payload);
-
-  // ── Verify persistence with retry ────────────────────────────────────────────
-  // Priority order: id > user_id > email. Never trust raw create stub.
-  const delays = [150, 300, 600, 1000];
-  let profile = null;
-
-  for (let i = 0; i <= delays.length; i++) {
-    if (i > 0) await new Promise((r) => setTimeout(r, delays[i - 1]));
-
-    // 1. Read back by the created row's own id (most reliable)
-    if (created.id) {
-      const byId = await base44.entities.Profile.filter({ id: created.id });
-      if (byId.length > 0) { profile = byId[0]; break; }
-    }
-
-    // 2. By auth UID stored in user_id field
-    if (user.id) {
-      const byUid = await base44.entities.Profile.filter({ user_id: user.id });
-      if (byUid.length > 0) { profile = byUid[0]; break; }
-    }
-
-    // 3. By email as last resort
-    if (user.email) {
-      const byEmail = await base44.entities.Profile.filter({ email: user.email });
-      if (byEmail.length > 0) { profile = byEmail[0]; break; }
-    }
-  }
-
-  if (!profile) {
-    // Read-back failed — use the raw create stub rather than blocking the user.
-    // This avoids orphan FK rows while keeping the user unblocked.
-    console.warn(
-      `[PROFILE WARN] Profile.create succeeded (id=${created.id}) but read-back failed. ` +
-      `Using created stub for user_id=${user.id} email=${user.email}.`
-    );
-    profile = created;
-  }
-
-  console.log(`[PROFILE OK] id=${profile.id} user_id=${profile.user_id} email=${profile.email}`);
-  return profile;
+  // Return created profile immediately — no retry loop blocking the user.
+  // The created object from Base44 SDK contains the persisted id.
+  console.log(`[PROFILE OK] created id=${created.id} user_id=${created.user_id} email=${created.email}`);
+  return created;
 }
 
 /**
