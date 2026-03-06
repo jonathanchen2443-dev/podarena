@@ -333,9 +333,27 @@ async function _doGetOrCreate(user) {
   };
   if (user.avatar_url) payload.avatar_url = user.avatar_url;
 
-  // Return created profile immediately — no retry loop blocking the user.
-  // The created object from Base44 SDK contains the persisted id.
-  console.log(`[PROFILE OK] created id=${created.id} user_id=${created.user_id} email=${created.email}`);
+  const created = await base44.entities.Profile.create(payload);
+
+  // ── Single lightweight read-back ──────────────────────────────────────────
+  // Verify the row is readable before returning. One attempt only — no loops.
+  // If it fails, we fall back to the created stub rather than blocking the user.
+  // IDENTITY CONTRACT: Profile.id (Base44 entity id) is the join key used by
+  // Deck.owner_id, LeagueMember.user_id, GameParticipant.user_id, GameApproval.approver_user_id.
+  // Profile.user_id (auth UID) is stored for future migration only; not used as FK today.
+  if (created?.id) {
+    try {
+      await new Promise((r) => setTimeout(r, 200));
+      const readback = await base44.entities.Profile.filter({ id: created.id });
+      if (readback.length > 0) {
+        console.log(`[PROFILE OK] created+verified id=${readback[0].id} user_id=${readback[0].user_id}`);
+        return readback[0];
+      }
+    } catch (_) { /* non-critical — fall through to stub */ }
+    console.warn(`[PROFILE WARN] Read-back failed for id=${created.id}. Using created stub.`);
+  }
+
+  console.log(`[PROFILE OK] created id=${created?.id} user_id=${created?.user_id} email=${created?.email}`);
   return created;
 }
 
