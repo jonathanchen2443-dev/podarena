@@ -69,12 +69,18 @@ export default function Profile() {
       // Use currentUser directly from AuthContext — no redundant Profile query needed
       setProfile(currentUser);
 
-      const [decksData, statsData] = await Promise.all([
-        getMyDecksWithStats(auth),
-        getProfileStats(auth),
-      ]);
+      // Decks are loaded independently via the same path as All Decks — no stats dependency
+      const decksData = await listMyDecks(auth);
       setDecks(decksData);
-      setStats(statsData);
+
+      // Stats are optional — failure here must NOT crash the deck area
+      try {
+        const statsData = await getProfileStats(auth);
+        setStats(statsData);
+      } catch (e) {
+        console.warn("[Profile] profileStatsService failed (non-fatal):", e?.message);
+        setStatsError("Stats temporarily unavailable.");
+      }
     } catch (e) {
       const isRate = e?.message?.toLowerCase().includes("rate") || e?.message?.toLowerCase().includes("429");
       const isNotReady = e?.message?.toLowerCase().includes("profile not ready");
