@@ -495,10 +495,8 @@ export async function listLeaguesForGameLogging(auth) {
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
 
-  const memberships = await base44.entities.LeagueMember.filter({
-    user_id: auth.currentUser.id,
-    status: "active",
-  });
+  const allMyMemberships = await base44.entities.LeagueMember.filter({ user_id: auth.currentUser.id }, "-created_date", 200);
+  const memberships = allMyMemberships.filter((m) => m.status === "active");
   if (memberships.length === 0) return cacheSet(cKey, []);
 
   const leagueIds = memberships.map((m) => m.league_id);
