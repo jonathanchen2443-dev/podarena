@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { Plus, Lock, AlertCircle, RefreshCw, ArrowLeft } from "lucide-react";
+// AlertCircle retained for error UI
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
 import { LoadingState, EmptyState } from "@/components/shell/PageStates";
@@ -59,7 +60,7 @@ function sortDecks(decks) {
 export default function ProfileDecks() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const { isGuest, authLoading, currentUser, refreshAuth } = auth;
+  const { isGuest, authLoading, currentUser } = auth;
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
