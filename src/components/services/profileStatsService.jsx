@@ -41,9 +41,9 @@ export async function getProfileStats(auth) {
     const [participations, decks, allMemberships] = await Promise.all([
       base44.entities.GameParticipant.filter({ user_id: userId }, "-created_date", 500),
       base44.entities.Deck.filter({ owner_id: userId }, "-updated_date", 200),
-      base44.entities.LeagueMember.list("-created_date", 200),
+      base44.entities.LeagueMember.filter({ user_id: userId }, "-created_date", 200),
     ]);
-    const memberships = allMemberships.filter((m) => m.user_id === userId);
+    const memberships = allMemberships;
 
     // We need game status for each game to filter approved only
     const gameIds = [...new Set(participations.map((p) => p.game_id))];
