@@ -35,11 +35,8 @@ import { base44 } from "@/api/base44Client";
  * Validate that the user is an active member of the given league.
  */
 export async function validateLeagueMembership(leagueId, userId) {
-  const members = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    user_id: userId,
-    status: "active",
-  });
+  const allMembers = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 200);
+  const members = allMembers.filter((m) => m.user_id === userId && m.status === "active");
   return members.length > 0 ? members[0] : null;
 }
 
