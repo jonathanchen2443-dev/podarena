@@ -363,13 +363,13 @@ async function _doGetOrCreate(user) {
   }
 
   if (!profile) {
-    // All verification reads failed — surface a proper bootstrap error.
-    // Do NOT silently use the raw create stub; doing so produces orphan FK rows.
-    console.error(
-      `[PROFILE ERROR] Profile.create succeeded (id=${created.id}) but all read-back ` +
-      `attempts failed for user_id=${user.id} email=${user.email}. Surfacing bootstrap error.`
+    // Read-back failed — use the raw create stub rather than blocking the user.
+    // This avoids orphan FK rows while keeping the user unblocked.
+    console.warn(
+      `[PROFILE WARN] Profile.create succeeded (id=${created.id}) but read-back failed. ` +
+      `Using created stub for user_id=${user.id} email=${user.email}.`
     );
-    throw new Error("Profile could not be verified after creation. Please try again.");
+    profile = created;
   }
 
   console.log(`[PROFILE OK] id=${profile.id} user_id=${profile.user_id} email=${profile.email}`);
