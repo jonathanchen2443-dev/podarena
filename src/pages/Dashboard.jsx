@@ -289,11 +289,9 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      // Get display name from profile
+      // currentUser IS the Profile record — read display_name directly, no re-fetch needed
       if (currentUser) {
-        const profiles = await base44.entities.Profile.filter({ email: currentUser.email });
-        if (profiles.length > 0) setDisplayName(profiles[0].display_name || "");
-        else setDisplayName(currentUser.full_name || "");
+        setDisplayName(currentUser.display_name || currentUser.full_name || "");
       }
       const result = await getDashboardData(auth);
       setData(result);

@@ -335,16 +335,27 @@ async function _doGetOrCreate(user) {
 
   const created = await base44.entities.Profile.create(payload);
 
-  // ── Verify persistence with retry (RLS may take a moment to reflect new row) ──
-  const delays = [150, 300, 600];
+  // ── Verify persistence with retry ────────────────────────────────────────────
+  // Priority order: id > user_id > email. Never trust raw create stub.
+  const delays = [150, 300, 600, 1000];
   let profile = null;
+
   for (let i = 0; i <= delays.length; i++) {
     if (i > 0) await new Promise((r) => setTimeout(r, delays[i - 1]));
-    const rows = user.id
-      ? await base44.entities.Profile.filter({ user_id: user.id })
-      : [];
-    if (rows.length > 0) { profile = rows[0]; break; }
-    // fallback by email
+
+    // 1. Read back by the created row's own id (most reliable)
+    if (created.id) {
+      const byId = await base44.entities.Profile.filter({ id: created.id });
+      if (byId.length > 0) { profile = byId[0]; break; }
+    }
+
+    // 2. By auth UID stored in user_id field
+    if (user.id) {
+      const byUid = await base44.entities.Profile.filter({ user_id: user.id });
+      if (byUid.length > 0) { profile = byUid[0]; break; }
+    }
+
+    // 3. By email as last resort
     if (user.email) {
       const byEmail = await base44.entities.Profile.filter({ email: user.email });
       if (byEmail.length > 0) { profile = byEmail[0]; break; }
@@ -352,12 +363,13 @@ async function _doGetOrCreate(user) {
   }
 
   if (!profile) {
-    // Return the created record directly — better than throwing and blocking the user
-    console.warn(
-      `[PROFILE WARN] Post-create filter returned 0 rows for user_id=${user.id} email=${user.email}. ` +
-      `Returning created record id=${created.id} directly.`
+    // All verification reads failed — surface a proper bootstrap error.
+    // Do NOT silently use the raw create stub; doing so produces orphan FK rows.
+    console.error(
+      `[PROFILE ERROR] Profile.create succeeded (id=${created.id}) but all read-back ` +
+      `attempts failed for user_id=${user.id} email=${user.email}. Surfacing bootstrap error.`
     );
-    profile = created;
+    throw new Error("Profile could not be verified after creation. Please try again.");
   }
 
   console.log(`[PROFILE OK] id=${profile.id} user_id=${profile.user_id} email=${profile.email}`);
