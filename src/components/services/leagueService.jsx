@@ -553,10 +553,8 @@ export async function getOrCreateInvite(auth, leagueId) {
   if (cached !== null) return cached;
 
   // Try to reuse existing active invite
-  const existing = await base44.entities.LeagueInvite.filter({
-    league_id: leagueId,
-    is_active: true,
-  });
+  const allExistingInvites = await base44.entities.LeagueInvite.filter({ league_id: leagueId }, "-created_date", 50);
+  const existing = allExistingInvites.filter((i) => i.is_active === true);
   const validInvite = existing.find((i) => !i.expires_at || new Date(i.expires_at) > new Date());
 
   let token;
