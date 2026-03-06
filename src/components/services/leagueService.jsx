@@ -517,8 +517,8 @@ export async function validateInvite(leagueId, token) {
   const cKey = cacheKey("invite_validate", leagueId, token);
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
-  const results = await base44.entities.LeagueInvite.filter({ league_id: leagueId, token, is_active: true });
-  const invite = results[0] || null;
+  const allInvitesPublic = await base44.entities.LeagueInvite.filter({ league_id: leagueId }, "-created_date", 50);
+  const invite = allInvitesPublic.find((i) => i.token === token && i.is_active === true) || null;
   if (!invite) return cacheSet(cKey, { valid: false, invite: null });
   if (invite.expires_at && new Date(invite.expires_at) < new Date()) return cacheSet(cKey, { valid: false, invite: null });
   return cacheSet(cKey, { valid: true, invite });
