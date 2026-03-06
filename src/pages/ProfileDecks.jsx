@@ -90,9 +90,8 @@ export default function ProfileDecks() {
 
   async function loadDecks() {
     if (fetchingRef.current) return;
-    // Hard guard: never query with undefined user
+    // If profile not ready yet, show empty state — do NOT error
     if (!auth.currentUser?.id) {
-      setError("Your profile isn't ready yet. Please try again in a moment.");
       setLoading(false);
       return;
     }
@@ -101,10 +100,11 @@ export default function ProfileDecks() {
     setError(null);
     try {
       const data = await getMyDecksWithStats(auth);
-      setDecks(sortDecks(data));
+      setDecks(sortDecks(data || []));
     } catch (e) {
-      const isRate = e?.message?.toLowerCase().includes("rate") || e?.message?.toLowerCase().includes("429");
-      setError(isRate ? "Too many requests right now. Please wait a few seconds and try again." : e.message || "Failed to load decks.");
+      // On any error, fall back to empty state rather than crashing
+      console.warn("[ProfileDecks] loadDecks error:", e?.message);
+      setDecks([]);
     } finally {
       setLoading(false);
       fetchingRef.current = false;
@@ -175,22 +175,7 @@ export default function ProfileDecks() {
   // ── Guest gate ──────────────────────────────────────────────────────────────
   if (authLoading || loading) return <LoadingState message="Loading decks…" />;
 
-  // Profile not ready guard
-  if (!isGuest && !currentUser?.id) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-4">
-        <AlertCircle className="w-8 h-8 text-amber-400/70" />
-        <p className="text-gray-300 text-sm font-medium">Setting up your profile for the first time.</p>
-        <p className="text-gray-500 text-sm">Please try again in a few seconds.</p>
-        <button
-          onClick={async () => { await refreshAuth(); fetchingRef.current = false; loadDecks(); }}
-          className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl ds-btn-primary text-white"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Retry
-        </button>
-      </div>
-    );
-  }
+  {/* Profile not ready — fall through to list view which shows empty state */}
 
   if (isGuest) {
     return (
