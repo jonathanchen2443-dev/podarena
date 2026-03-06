@@ -58,9 +58,14 @@ export function canModifyDeck(deck, profileId) {
   return !!profileId && deck.owner_id === profileId;
 }
 
-/** Can the user modify league settings? (admin or creator) */
+/**
+ * Can the user modify league settings?
+ * NOTE: `league.created_by` is a Base44 built-in email string, NOT a Profile.id.
+ * The email check is intentionally REMOVED to avoid id-space confusion.
+ * Admin access is determined solely by LeagueMember.role === "admin" (Profile.id space).
+ * Phase 3+: if creator-by-email check is needed, compare profile.email === league.created_by.
+ */
 export function canModifyLeague(league, profileId, memberships) {
-  if (league.created_by === profileId) return true;
   const membership = memberships?.find(
     (m) => m.league_id === league.id && m.user_id === profileId
   );
