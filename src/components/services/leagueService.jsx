@@ -162,8 +162,8 @@ export async function getLeagueById(auth, leagueId, inviteToken = null) {
 
 async function _validateInviteInternal(leagueId, token) {
   if (!token) return { valid: false };
-  const results = await base44.entities.LeagueInvite.filter({ league_id: leagueId, token, is_active: true });
-  const invite = results[0] || null;
+  const allInvitesInternal = await base44.entities.LeagueInvite.filter({ league_id: leagueId }, "-created_date", 50);
+  const invite = allInvitesInternal.find((i) => i.token === token && i.is_active === true) || null;
   if (!invite) return { valid: false };
   if (invite.expires_at && new Date(invite.expires_at) < new Date()) return { valid: false };
   return { valid: true, invite };
