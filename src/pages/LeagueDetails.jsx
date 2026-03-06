@@ -280,7 +280,8 @@ function InfoTab({ league: initialLeague, auth, isMember: initialIsMember, acces
     try {
       // listLeagueMembers calls getLeagueById internally; for invited_view we do a direct fetch
       if (!isMember) {
-        const rawMembers = await base44.entities.LeagueMember.filter({ league_id: league.id, status: "active" });
+        const allLeagueMembers = await base44.entities.LeagueMember.filter({ league_id: league.id }, "-created_date", 200);
+        const rawMembers = allLeagueMembers.filter((m) => m.status === "active");
         const { Profile } = base44.entities;
         const allProfiles = await Profile.list("-created_date", 200);
         const pm = {};
