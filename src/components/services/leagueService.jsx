@@ -695,10 +695,8 @@ export async function acceptInviteJoinLeague(auth, leagueId, token) {
 export async function leaveLeague(auth, leagueId) {
   if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
 
-  const allMembers = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    status: "active",
-  });
+  const allLeagueMembersForLeave = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 200);
+  const allMembers = allLeagueMembersForLeave.filter((m) => m.status === "active");
 
   const myMembership = allMembers.find((m) => m.user_id === auth.currentUser.id);
   if (!myMembership) throw new Error("You are not an active member of this league.");
