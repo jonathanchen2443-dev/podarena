@@ -1,30 +1,14 @@
-import React, { useState, useEffect } from "react";
+/**
+ * TODO: Deck insights were temporarily disabled due to Invalid query errors
+ * with the current query model. Rebuild with a clean single-field query
+ * approach before re-enabling.
+ */
+import React from "react";
 import ReactDOM from "react-dom";
-import { X, Swords, RefreshCw } from "lucide-react";
+import { X, Swords, BarChart2 } from "lucide-react";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
-import { getDeckInsights } from "@/components/services/deckInsightsService";
 
-function ModalContent({ deck, auth, onClose }) {
-  const [insights, setInsights] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getDeckInsights(auth, deck);
-      setInsights(data);
-    } catch (e) {
-      const isRate = e?.message?.toLowerCase().includes("rate") || e?.message?.toLowerCase().includes("429");
-      setError(isRate ? "Too many requests. Please wait a moment and retry." : (e.message || "Failed to load insights."));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { load(); }, [deck.id]);
-
+function ModalContent({ deck, onClose }) {
   const commanderName = deck.commander_name || deck.name;
   const imageUrl = deck.commander_image_url || null;
 
@@ -33,10 +17,8 @@ function ModalContent({ deck, auth, onClose }) {
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-      {/* Modal */}
       <div
         className="relative z-10 bg-gray-900 border border-gray-700/60 rounded-2xl w-full max-w-xs shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -73,53 +55,12 @@ function ModalContent({ deck, auth, onClose }) {
 
           <div className="border-t border-gray-800" />
 
-          {loading ? (
-            <div className="flex items-center justify-center py-4">
-              <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "rgb(var(--ds-primary-rgb)) transparent transparent transparent" }} />
-            </div>
-          ) : error ? (
-            <div className="text-center space-y-2 py-2">
-              <p className="text-red-400 text-xs">{error}</p>
-              <button
-                onClick={load}
-                className="flex items-center gap-1.5 text-xs hover:opacity-80 mx-auto"
-                style={{ color: "var(--ds-primary-text)" }}
-              >
-                <RefreshCw className="w-3 h-3" /> Retry
-              </button>
-            </div>
-          ) : insights ? (
-            <div className="space-y-3">
-              {/* Stats row */}
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: "Games", value: insights.gamesWithDeck },
-                  { label: "Wins", value: insights.winsWithDeck },
-                  { label: "Win Rate", value: `${insights.winRatePercent}%` },
-                ].map((s) => (
-                  <div key={s.label} className="bg-gray-800/60 rounded-xl p-2 text-center">
-                    <p className="text-white font-bold text-base">{s.value}</p>
-                    <p className="text-gray-500 text-[10px] mt-0.5">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Most defeated */}
-              <div className="bg-gray-800/40 rounded-xl p-3">
-                <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-1">Most Defeated Opponent</p>
-                {insights.mostDefeatedOpponent ? (
-                  <p className="text-white text-sm font-medium">
-                    {insights.mostDefeatedOpponent.display_name}
-                    <span className="text-gray-400 font-normal text-xs ml-1.5">
-                      ({insights.mostDefeatedOpponent.count}×)
-                    </span>
-                  </p>
-                ) : (
-                  <p className="text-gray-500 text-xs italic">Not enough data yet</p>
-                )}
-              </div>
-            </div>
-          ) : null}
+          {/* Static placeholder — insights disabled */}
+          <div className="flex flex-col items-center justify-center py-5 gap-2">
+            <BarChart2 className="w-8 h-8 text-gray-600" />
+            <p className="text-gray-400 text-sm font-medium">Insights coming soon</p>
+            <p className="text-gray-600 text-xs text-center">Deck performance stats will be available in a future update.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -129,6 +70,6 @@ function ModalContent({ deck, auth, onClose }) {
 export default function DeckInsightsModal({ deck, auth, onClose }) {
   if (!deck) return null;
   const portal = document.getElementById("modal-root");
-  const content = <ModalContent deck={deck} auth={auth} onClose={onClose} />;
+  const content = <ModalContent deck={deck} onClose={onClose} />;
   return portal ? ReactDOM.createPortal(content, portal) : content;
 }
