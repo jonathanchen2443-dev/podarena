@@ -227,10 +227,8 @@ export async function getLeagueStandings(auth, leagueId, inviteToken = null) {
   await getLeagueById(auth, leagueId, inviteToken);
 
   // 1. Fetch all active league members — excludes orphaned/removed/left rows
-  const allLeagueMembers = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    status: "active",
-  });
+  const _allLeagueMembers = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 200);
+  const allLeagueMembers = _allLeagueMembers.filter((m) => m.status === "active");
   // Load all profiles once to filter out phantom members (user_id with no matching Profile)
   const _allProfilesForStandings = await base44.entities.Profile.list("-created_date", 200);
   const _profileIdSetForStandings = new Set(_allProfilesForStandings.map((p) => p.id));
