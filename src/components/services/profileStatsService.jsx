@@ -37,28 +37,21 @@ export async function getProfileStats(auth) {
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
   const promise = (async () => {
-    // Parallel fetch: my participations, my decks, all memberships (filter client-side)
-    const [allParticipations, decks, allMemberships] = await Promise.all([
-      base44.entities.GameParticipant.list("-created_date", 500),
-      base44.entities.Deck.list("-updated_date", 200),
-      base44.entities.LeagueMember.list("-created_date", 200),
+    // Fetch each entity independently so one RLS failure doesn't block all stats
+    const [allParticipations, decks, allMemberships, games] = await Promise.all([
+      base44.entities.GameParticipant.list("-created_date", 500).catch(() => []),
+      base44.entities.Deck.list("-updated_date", 200).catch(() => []),
+      base44.entities.LeagueMember.list("-created_date", 200).catch(() => []),
+      base44.entities.Game.list("-created_date", 500).catch(() => []),
     ]);
     const participations = allParticipations.filter((p) => p.user_id === userId);
     const filteredDecks = decks.filter((d) => d.owner_id === userId);
     const memberships = allMemberships.filter((m) => m.user_id === userId);
 
-    // We need game status for each game to filter approved only
-    const gameIds = [...new Set(participations.map((p) => p.game_id))];
-    let approvedGameIds = new Set();
-    if (gameIds.length > 0) {
-      // Batch fetch games — filter approved client-side (includes league + casual)
-      const games = await base44.entities.Game.list("-created_date", 500);
-      for (const g of games) {
-        if (g.status === "approved" && gameIds.includes(g.id)) {
-          approvedGameIds.add(g.id);
-        }
-      }
-    }
+    const gameIds = new Set(participations.map((p) => p.game_id));
+    const approvedGameIds = new Set(
+      games.filter((g) => g.status === "approved" && gameIds.has(g.id)).map((g) => g.id)
+    );
 
     let gamesPlayed = 0;
     let wins = 0;
