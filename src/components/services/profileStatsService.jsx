@@ -37,12 +37,13 @@ export async function getProfileStats(auth) {
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
   const promise = (async () => {
-    // Parallel fetch: my participations, my decks, my active memberships
-    const [participations, decks, memberships] = await Promise.all([
+    // Parallel fetch: my participations, my decks, all memberships (filter client-side)
+    const [participations, decks, allMemberships] = await Promise.all([
       base44.entities.GameParticipant.filter({ user_id: userId }, "-created_date", 500),
       base44.entities.Deck.filter({ owner_id: userId }, "-updated_date", 200),
-      base44.entities.LeagueMember.filter({ user_id: userId }, "-created_date", 50),
+      base44.entities.LeagueMember.list("-created_date", 200),
     ]);
+    const memberships = allMemberships.filter((m) => m.user_id === userId);
 
     // We need game status for each game to filter approved only
     const gameIds = [...new Set(participations.map((p) => p.game_id))];
