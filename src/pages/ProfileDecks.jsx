@@ -175,8 +175,6 @@ export default function ProfileDecks() {
   // ── Guest gate ──────────────────────────────────────────────────────────────
   if (authLoading || loading) return <LoadingState message="Loading decks…" />;
 
-  {/* Profile not ready — fall through to list view which shows empty state */}
-
   if (isGuest) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-6">
