@@ -382,7 +382,7 @@ async function _doGetOrCreate(user) {
  * Batches all secondary fetches to avoid N+1.
  */
 export async function listMyPendingApprovals(auth) {
-  if (auth.isGuest || !auth.currentUser) return [];
+  if (auth.isGuest || !auth.currentUser || !auth.currentUser.id) return [];
 
   // 1. My pending approvals
   const myApprovals = await base44.entities.GameApproval.filter({

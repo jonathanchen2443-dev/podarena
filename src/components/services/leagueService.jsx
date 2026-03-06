@@ -103,20 +103,16 @@ export async function listVisibleLeagues(auth) {
   if (cached !== null) return cached;
 
   return dedupedFetch(cKey, async () => {
-    const allLeagues = await base44.entities.League.list("-created_date", 100);
+    const allLeagues = await base44.entities.League.list("-created_date", 100).catch(() => []);
 
-    if (auth.isGuest || !auth.currentUser) {
-      return cacheSet(cKey, allLeagues.filter((l) => l.is_public));
-    }
-
-    if (!auth.currentUser.id) {
+    if (auth.isGuest || !auth.currentUser || !auth.currentUser.id) {
       return cacheSet(cKey, allLeagues.filter((l) => l.is_public));
     }
 
     const memberships = await base44.entities.LeagueMember.filter({
       user_id: auth.currentUser.id,
       status: "active",
-    });
+    }).catch(() => []);
     const memberLeagueIds = new Set(memberships.map((m) => m.league_id));
     return cacheSet(cKey, allLeagues.filter((l) => l.is_public || memberLeagueIds.has(l.id)));
   });
