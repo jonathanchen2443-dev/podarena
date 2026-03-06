@@ -652,19 +652,17 @@ export async function acceptInviteJoinLeague(auth, leagueId, token) {
   if (!valid) throw new Error("This invite link is invalid or expired.");
 
   // Capacity check
-  const [leagueResults, activeMembers] = await Promise.all([
+  const [leagueResults, allMembersForInvite] = await Promise.all([
     base44.entities.League.filter({ id: leagueId }),
-    base44.entities.LeagueMember.filter({ league_id: leagueId, status: "active" }),
+    base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 200),
   ]);
   const league = leagueResults[0];
+  const activeMembers = allMembersForInvite.filter((m) => m.status === "active");
   const maxMembers = league?.max_members || 10;
   if (activeMembers.length >= maxMembers) throw new Error("This league is full.");
 
   // Idempotency
-  const existing = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    user_id: auth.currentUser.id,
-  });
+  const existing = allMembersForInvite.filter((m) => m.user_id === auth.currentUser.id);
   if (existing.length > 0 && existing[0].status === "active") {
     throw new Error("You are already a member.");
   }
