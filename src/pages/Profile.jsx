@@ -14,9 +14,8 @@ import AvatarUpload from "@/components/profile/AvatarUpload";
 import StatRingCards from "@/components/profile/StatRingCards";
 import BadgesSection from "@/components/profile/BadgesSection";
 import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
-import { getMyDecksWithStats, invalidateDeckStatsCache } from "@/components/services/deckStatsService";
 import { getProfileStats, invalidateProfileStatsCache } from "@/components/services/profileStatsService";
-import { deleteDeck } from "@/components/services/deckService";
+import { listMyDecks, deleteDeck } from "@/components/services/deckService";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
