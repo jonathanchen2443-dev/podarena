@@ -92,12 +92,10 @@ async function _checkMembership(profileId, leagueId) {
   const key = cacheKey("membership", profileId, leagueId);
   const cached = cacheGet(key);
   if (cached !== null) return cached;
-  const m = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    user_id: profileId,
-    status: "active",
-  });
-  return cacheSet(key, m.length > 0);
+  // 3-field filter causes Invalid query — filter by one field, check others client-side
+  const m = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 100);
+  const active = m.filter((r) => r.user_id === profileId && r.status === "active");
+  return cacheSet(key, active.length > 0);
 }
 
 /**
