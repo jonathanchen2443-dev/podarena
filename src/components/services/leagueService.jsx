@@ -594,16 +594,14 @@ export async function joinPublicLeague(auth, leagueId) {
   if (!league) throw new Error("League not found.");
   if (!league.is_public) throw new Error("This league is private. Use an invite link to join.");
 
-  // Capacity check
-  const activeMembers = await base44.entities.LeagueMember.filter({ league_id: leagueId, status: "active" });
+  // Capacity check — fetch all members for league, filter client-side
+  const allMembersForJoin = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 200);
+  const activeMembers = allMembersForJoin.filter((m) => m.status === "active");
   const maxMembers = league.max_members || 10;
   if (activeMembers.length >= maxMembers) throw new Error("This league is full.");
 
   // Idempotency: check if already member
-  const existing = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    user_id: auth.currentUser.id,
-  });
+  const existing = allMembersForJoin.filter((m) => m.user_id === auth.currentUser.id);
   if (existing.length > 0 && existing[0].status === "active") {
     throw new Error("You are already a member.");
   }
