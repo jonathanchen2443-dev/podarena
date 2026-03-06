@@ -87,6 +87,7 @@ export default function LeagueDetails() {
   }
 
   if (authLoading || loading) return <LoadingState message="Loading league…" />;
+  if (!league) return <GateView icon={Info} title="League not found" description="This league doesn't exist or has been removed." />;
 
   if (accessError === "not_found") {
     return <GateView icon={Info} title="League not found" description="This league doesn't exist or has been removed." />;
