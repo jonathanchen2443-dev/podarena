@@ -720,10 +720,8 @@ export async function leaveLeague(auth, leagueId) {
 export async function removeMember(auth, leagueId, memberUserId) {
   if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
 
-  const allMembers = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    status: "active",
-  });
+  const allLeagueMembersForRemove = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 200);
+  const allMembers = allLeagueMembersForRemove.filter((m) => m.status === "active");
 
   const myMembership = allMembers.find((m) => m.user_id === auth.currentUser.id);
   if (!myMembership || myMembership.role !== "admin") throw new Error("Only admins can remove members.");
