@@ -745,10 +745,8 @@ export async function listLeagueMembers(auth, leagueId, inviteToken = null) {
 
   await getLeagueById(auth, leagueId, inviteToken);
 
-  const rawMembers = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    status: "active",
-  });
+  const allMembersRaw = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 200);
+  const rawMembers = allMembersRaw.filter((m) => m.status === "active");
 
   // Filter out phantom members whose user_id has no matching Profile
   const _allProfilesForMembers = await base44.entities.Profile.list("-created_date", 200);
