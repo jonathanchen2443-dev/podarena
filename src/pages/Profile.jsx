@@ -103,7 +103,6 @@ export default function Profile() {
     toast.success("Deck deleted.");
     setDeletingDeck(null);
     setDeleteLoading(false);
-    invalidateDeckStatsCache(currentUser?.id);
     invalidateProfileStatsCache(currentUser?.id);
     fetchingRef.current = false;
     await loadAll();
