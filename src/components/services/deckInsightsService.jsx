@@ -38,11 +38,13 @@ export async function getDeckInsights(auth, deck) {
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
   const promise = (async () => {
-    // 1. Fetch all my participations for this deck + all games in parallel
-    const [myParticipations, allGames] = await Promise.all([
-      base44.entities.GameParticipant.filter({ user_id: userId, deck_id: deckId }),
+    // 1. Fetch all my participations + all games in parallel
+    // Multi-field filter causes Invalid query — fetch by one field, filter client-side
+    const [allMyParticipations, allGames] = await Promise.all([
+      base44.entities.GameParticipant.filter({ user_id: userId }, "-created_date", 500),
       base44.entities.Game.list("-created_date", 500),
     ]);
+    const myParticipations = allMyParticipations.filter((p) => p.deck_id === deckId);
 
     const approvedGameIds = new Set(
       allGames.filter((g) => g.status === "approved").map((g) => g.id)
