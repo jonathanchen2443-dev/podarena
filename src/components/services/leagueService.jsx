@@ -406,11 +406,8 @@ export async function isLeagueAdmin(auth, leagueId) {
   const cKey = cacheKey("adminCheck", leagueId, auth.currentUser.id);
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
-  const members = await base44.entities.LeagueMember.filter({
-    league_id: leagueId,
-    user_id: auth.currentUser.id,
-    status: "active",
-  });
+  const allMembersForAdmin = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 100);
+  const members = allMembersForAdmin.filter((m) => m.user_id === auth.currentUser.id && m.status === "active");
   return cacheSet(cKey, members.length > 0 && members[0].role === "admin");
 }
 
