@@ -70,7 +70,7 @@ export async function getProfileStats(auth) {
     const result = {
       gamesPlayed,
       wins,
-      decksCount: decks.length,
+      decksCount: filteredDecks.length,
       leaguesCount: memberships.filter((m) => m.status === "active").length,
     };
     return cacheSet(cKey, result);
