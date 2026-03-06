@@ -1,6 +1,33 @@
 /**
  * Game Service - Business logic for creating games and handling approvals.
  * All permission checks and multi-entity writes are centralized here.
+ *
+ * ── IDENTITY CONTRACT (Phase 2 baseline) ──────────────────────────────────────
+ *
+ * currentUser     = Profile record (Base44 entity row)
+ * currentUser.id  = Profile.id  (Base44 entity UUID — the ACTIVE join key)
+ *
+ * FOREIGN KEY USAGE (all use Profile.id today):
+ *   Deck.owner_id               → Profile.id
+ *   LeagueMember.user_id        → Profile.id
+ *   GameParticipant.user_id     → Profile.id
+ *   GameApproval.approver_user_id → Profile.id
+ *   Notification.actor_user_id  → Profile.id
+ *   Notification.recipient_user_id → Profile.id
+ *   LeagueInvite.created_by_user_id → Profile.id
+ *   GameParticipant.deck_id     → Deck.id
+ *
+ * Profile.user_id = auth UID (Supabase/Base44 Users.id)
+ *   - Stored at registration for future migration
+ *   - NOT used as FK by any entity today
+ *   - Backfilled on login for pre-existing profiles
+ *
+ * FUTURE MIGRATION NOTE:
+ *   When migrating to Users.id, the above FK fields will need updating.
+ *   Profile.user_id is the bridge for that migration.
+ *   Do NOT use Profile.user_id as a FK join key until the migration is complete.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 import { base44 } from "@/api/base44Client";
 
