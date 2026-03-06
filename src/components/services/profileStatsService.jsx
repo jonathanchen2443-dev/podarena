@@ -69,7 +69,7 @@ export async function getProfileStats(auth) {
       gamesPlayed,
       wins,
       decksCount: decks.length,
-      leaguesCount: memberships.length,
+      leaguesCount: memberships.filter((m) => m.status === "active").length,
     };
     return cacheSet(cKey, result);
   })();
