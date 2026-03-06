@@ -5,6 +5,13 @@
  * - All keys are scoped by operation + leagueId + userId + inviteToken
  * - invited_view results never pollute member/public cache entries (different token in key)
  * - invalidateLeagueCache(leagueId) wipes all keys containing leagueId
+ *
+ * ── IDENTITY CONTRACT ─────────────────────────────────────────────────────────
+ * All userId parameters in this service are Profile.id (Base44 entity UUID).
+ * auth.currentUser.id === Profile.id — always.
+ * LeagueMember.user_id → Profile.id (NOT auth/Users.id).
+ * See gameService.js for the full identity contract documentation.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 import { base44 } from "@/api/base44Client";
 import { getOrCreateProfile } from "@/components/services/gameService";
