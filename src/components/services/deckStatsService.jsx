@@ -40,8 +40,8 @@ export async function getMyDecksWithStats(auth) {
   const promise = (async () => {
     // 1. Fetch my decks + all my participations in parallel
     const [decks, allParticipations] = await Promise.all([
-      base44.entities.Deck.filter({ owner_id: userId }, "-updated_date"),
-      base44.entities.GameParticipant.filter({ user_id: userId }),
+      base44.entities.Deck.filter({ owner_id: userId }, "-updated_date", 200).catch(() => []),
+      base44.entities.GameParticipant.filter({ user_id: userId }, "-created_date", 500).catch(() => []),
     ]);
 
     if (decks.length === 0) return cacheSet(cKey, []);
