@@ -114,10 +114,8 @@ export async function listVisibleLeagues(auth) {
       return cacheSet(cKey, allLeagues.filter((l) => l.is_public));
     }
 
-    const memberships = await base44.entities.LeagueMember.filter({
-      user_id: auth.currentUser.id,
-      status: "active",
-    }).catch(() => []);
+    const allMemberships = await base44.entities.LeagueMember.filter({ user_id: auth.currentUser.id }, "-created_date", 200).catch(() => []);
+    const memberships = allMemberships.filter((m) => m.status === "active");
     const memberLeagueIds = new Set(memberships.map((m) => m.league_id));
     return cacheSet(cKey, allLeagues.filter((l) => l.is_public || memberLeagueIds.has(l.id)));
   });
