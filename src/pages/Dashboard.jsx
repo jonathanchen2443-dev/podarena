@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { useAuth } from "@/components/auth/AuthContext";
 import { getDashboardData } from "@/components/services/dashboardService";
-import { base44 } from "@/api/base44Client";
 import {
   Bell, Swords, BookOpen, ChevronRight,
   Plus, RefreshCw, AlertCircle, Layers
