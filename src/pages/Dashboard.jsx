@@ -5,8 +5,8 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { getDashboardData } from "@/components/services/dashboardService";
 import { base44 } from "@/api/base44Client";
 import {
-  Bell, Swords, BookOpen, ChevronRight, LogIn,
-  Plus, RefreshCw, AlertCircle, Layers, Trophy
+  Bell, Swords, BookOpen, ChevronRight,
+  Plus, RefreshCw, AlertCircle, Layers
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
