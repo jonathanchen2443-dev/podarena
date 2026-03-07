@@ -64,6 +64,7 @@ import Pods from './pages/Pods';
 import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
+import UserProfile from './pages/UserProfile';
 import __Layout from './Layout.jsx';
 
 
@@ -85,6 +86,7 @@ export const PAGES = {
     "Profile": Profile,
     "ProfileDecks": ProfileDecks,
     "Register": Register,
+    "UserProfile": UserProfile,
 }
 
 export const pagesConfig = {
