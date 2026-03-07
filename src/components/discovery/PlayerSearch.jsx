@@ -34,7 +34,7 @@ export default function PlayerSearch({ placeholder = "Search players…", classN
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (val.trim().length < 2) {
+    if (val.trim().length < 3) {
       setResults([]);
       setOpen(false);
       return;
