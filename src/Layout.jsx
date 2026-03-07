@@ -204,23 +204,9 @@ function StandaloneShell({ children }) {
 // Inner layout — runs inside AuthProvider so it can read auth state
 function InnerLayout({ children, currentPageName }) {
   const { authLoading, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const pageLower = currentPageName?.toLowerCase() || "";
   const shell = usesShell(currentPageName);
   const standalone = NO_SHELL_PAGES.includes(pageLower);
-  const isGuestAllowed = GUEST_ALLOWED_PAGES.includes(pageLower);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated && !isGuestAllowed) {
-      // Redirect unauthenticated visitors away from internal pages to Landing
-      navigate(createPageUrl("Landing"), { replace: true });
-    }
-    if (isAuthenticated && pageLower === "landing") {
-      // Authenticated user tried to open Landing — send to Dashboard
-      navigate(createPageUrl("Dashboard"), { replace: true });
-    }
-  }, [authLoading, isAuthenticated, isGuestAllowed, pageLower, navigate]);
 
   // While auth resolves, show nothing (avoids flash of wrong screen)
   if (authLoading) {
