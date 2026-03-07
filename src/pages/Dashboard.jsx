@@ -159,6 +159,9 @@ function AuthDashboard({ data, displayName, auth }) {
         <StatCard icon={Swords} iconClass="bg-emerald-500/10 text-emerald-400" label="Recent Games" value={recentGames.length} />
       </div>
 
+      {/* Player search */}
+      <PlayerSearch placeholder="Find a player…" />
+
       {/* Quick actions */}
       <div className="grid grid-cols-2 gap-3">
         <Link to={ROUTES.LOG_GAME}>
