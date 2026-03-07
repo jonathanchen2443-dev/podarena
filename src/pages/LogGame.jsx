@@ -6,62 +6,27 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { LoadingState } from "@/components/shell/PageStates";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
-import { listLeaguesForGameLogging, listLeagueMembers } from "@/components/services/leagueService";
 import { listMyDecks } from "@/components/services/deckService";
 import { createGameWithParticipants } from "@/components/services/gameService";
 import { ROUTES } from "@/components/utils/routes";
-import LeaguePicker from "@/components/loggame/LeaguePicker";
-import ParticipantPicker from "@/components/loggame/ParticipantPicker";
 import CasualParticipantPicker from "@/components/loggame/CasualParticipantPicker";
 import PlacementInput from "@/components/loggame/PlacementInput";
 
-// Context toggle pill
-function ContextToggle({ value, onChange }) {
-  return (
-    <div className="flex bg-gray-900 border border-gray-700 rounded-xl p-1 gap-1">
-      {["league", "casual"].map((opt) => (
-        <button
-          key={opt}
-          type="button"
-          onClick={() => onChange(opt)}
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
-            value === opt
-              ? "ds-btn-primary text-white"
-              : "text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          {opt === "league" ? "⚔️ League Game" : "🎲 Casual Game"}
-        </button>
-      ))}
-    </div>
-  );
-}
+// PODS MIGRATION NOTE:
+// League-based game logging has been removed in Phase 1.
+// Only casual game logging is active. League/PODS-based logging
+// will be re-introduced when PODS are built.
 
 export default function LogGame() {
   const auth = useAuth();
   const { isGuest, authLoading, currentUser } = auth;
   const navigate = useNavigate();
 
-  const qp = new URLSearchParams(window.location.search);
-  const preselectedLeagueId = qp.get("leagueId");
-  const returnTo = qp.get("returnTo");
-  const returnLeagueId = qp.get("returnLeagueId");
+  const returnTo = new URLSearchParams(window.location.search).get("returnTo");
 
-  // ── Context mode ──────────────────────────────────────────────────────────
-  const [contextType, setContextType] = useState(preselectedLeagueId ? "league" : "league");
-
-  // ── League mode data ──────────────────────────────────────────────────────
-  const [leagues, setLeagues] = useState([]);
-  const [leaguesLoading, setLeaguesLoading] = useState(true);
-  const [members, setMembers] = useState([]);
-  const [membersLoading, setMembersLoading] = useState(false);
-
-  // ── Casual mode: profile cache for PlacementInput display names ───────────
-  const [casualProfiles, setCasualProfiles] = useState({}); // id -> { userId, display_name, avatar_url }
-
-  // ── Shared ────────────────────────────────────────────────────────────────
+  // ── Casual mode only ──────────────────────────────────────────────────────
+  const [casualProfiles, setCasualProfiles] = useState({});
   const [myDecks, setMyDecks] = useState([]);
-  const [selectedLeagueId, setSelectedLeagueId] = useState(preselectedLeagueId || null);
   const [participantIds, setParticipantIds] = useState([]);
   const [placements, setPlacements] = useState({});
   const [deckSelections, setDeckSelections] = useState({});
@@ -71,101 +36,49 @@ export default function LogGame() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  const leaguesFetchRef = useRef(false);
-  const membersFetchRef = useRef(false);
-  const lastMembersLeagueRef = useRef(null);
+  const decksFetchRef = useRef(false);
 
   function todayISO() {
     return new Date().toISOString().slice(0, 16);
   }
 
   function handleBack() {
-    if (returnTo === "league" && returnLeagueId) {
-      navigate(ROUTES.LEAGUE_DETAILS(returnLeagueId) + "&tab=standings");
-    } else {
+    if (returnTo) {
       navigate(-1);
+    } else {
+      navigate(ROUTES.HOME);
     }
   }
 
-  // ── Load leagues + decks ──────────────────────────────────────────────────
+  // ── Load decks ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (authLoading || isGuest) return;
-    if (leaguesFetchRef.current) return;
-    leaguesFetchRef.current = true;
-    setLeaguesLoading(true);
-
-    Promise.all([listLeaguesForGameLogging(auth), listMyDecks(auth)])
-      .then(([ls, decks]) => {
-        setLeagues(ls);
-        setMyDecks(decks.filter((d) => d.is_active !== false));
-      })
-      .catch(() => setLeagues([]))
-      .finally(() => setLeaguesLoading(false));
+    if (decksFetchRef.current) return;
+    decksFetchRef.current = true;
+    listMyDecks(auth)
+      .then((decks) => setMyDecks(decks.filter((d) => d.is_active !== false)))
+      .catch(() => setMyDecks([]))
+      .finally(() => { decksFetchRef.current = false; });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isGuest]);
 
-  // ── Load league members when league changes ───────────────────────────────
-  useEffect(() => {
-    if (!selectedLeagueId || contextType !== "league") { setMembers([]); return; }
-    if (membersFetchRef.current && lastMembersLeagueRef.current === selectedLeagueId) return;
-    membersFetchRef.current = true;
-    lastMembersLeagueRef.current = selectedLeagueId;
-    setMembersLoading(true);
-    listLeagueMembers(auth, selectedLeagueId)
-      .then((ms) => setMembers(ms))
-      .catch(() => setMembers([]))
-      .finally(() => {
-        setMembersLoading(false);
-        membersFetchRef.current = false;
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLeagueId, contextType]);
-
-  // ── Auto-add current user on mount ────────────────────────────────────────
+  // ── Auto-add current user ─────────────────────────────────────────────────
   useEffect(() => {
     if (!currentUser?.id || authLoading) return;
     setParticipantIds((prev) => (prev.includes(currentUser.id) ? prev : [currentUser.id, ...prev]));
-    // Pre-cache current user's profile data for casual PlacementInput
-    if (currentUser?.id) {
-      setCasualProfiles((prev) => ({
-        ...prev,
-        [currentUser.id]: {
-          userId: currentUser.id,
-          display_name: currentUser.display_name || "You",
-          avatar_url: currentUser.avatar_url || null,
-        },
-      }));
-    }
+    setCasualProfiles((prev) => ({
+      ...prev,
+      [currentUser.id]: {
+        userId: currentUser.id,
+        display_name: currentUser.display_name || "You",
+        avatar_url: currentUser.avatar_url || null,
+      },
+    }));
   }, [currentUser?.id, authLoading]);
-
-  // ── Reset participants when context changes ───────────────────────────────
-  function handleContextChange(type) {
-    setContextType(type);
-    // Keep current user pre-added
-    setParticipantIds(currentUser?.id ? [currentUser.id] : []);
-    setPlacements({});
-    setDeckSelections({});
-    setSubmitError(null);
-    if (type === "casual") {
-      setSelectedLeagueId(null);
-    }
-  }
-
-  function handleLeagueChange(id) {
-    setSelectedLeagueId(id);
-    // Keep current user pre-added
-    setParticipantIds(currentUser?.id ? [currentUser.id] : []);
-    setPlacements({});
-    setDeckSelections({});
-    setSubmitError(null);
-    membersFetchRef.current = false;
-    lastMembersLeagueRef.current = null;
-  }
 
   function addParticipant(uid, profileData) {
     if (participantIds.includes(uid)) return;
     setParticipantIds((prev) => [...prev, uid]);
-    // Cache profile for PlacementInput
     if (profileData) {
       setCasualProfiles((prev) => ({ ...prev, [uid]: profileData }));
     }
@@ -182,7 +95,6 @@ export default function LogGame() {
 
   // ── Validation ────────────────────────────────────────────────────────────
   function validate() {
-    if (contextType === "league" && !selectedLeagueId) return "Please select a league.";
     if (participantIds.length < 2) return "Please add at least 2 participants.";
     const dupCheck = new Set(participantIds);
     if (dupCheck.size !== participantIds.length) return "Duplicate participants detected.";
@@ -209,9 +121,9 @@ export default function LogGame() {
         result: placements[uid] === 1 ? "win" : "loss",
       }));
 
-      const game = await createGameWithParticipants({
-        leagueId: contextType === "league" ? selectedLeagueId : null,
-        contextType,
+      await createGameWithParticipants({
+        leagueId: null,
+        contextType: "casual",
         creatorProfileId: currentUser.id,
         playedAt: playedAt ? new Date(playedAt).toISOString() : new Date().toISOString(),
         notes,
@@ -219,13 +131,7 @@ export default function LogGame() {
       });
 
       toast.success("Game logged! Waiting for participant approvals.");
-
-      if (contextType === "league") {
-        navigate(`${ROUTES.LEAGUE_DETAILS(selectedLeagueId)}&tab=games&gameId=${game.id}`);
-      } else {
-        // Casual game — go to Inbox so they can see approvals
-        navigate(`${ROUTES.INBOX}?gameId=${game.id}`);
-      }
+      navigate(ROUTES.INBOX);
     } catch (e) {
       const isRateLimit = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
       setSubmitError(isRateLimit
@@ -263,11 +169,11 @@ export default function LogGame() {
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-6">
         {topNav}
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center ds-accent-bg ds-accent-bd border">
-        <Lock className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
+          <Lock className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
         </div>
         <div>
-        <h2 className="text-white font-semibold text-lg">Sign in to Log a Game</h2>
-        <p className="text-gray-400 text-sm mt-1">Sign in to log a game and submit it for approval.</p>
+          <h2 className="text-white font-semibold text-lg">Sign in to Log a Game</h2>
+          <p className="text-gray-400 text-sm mt-1">Sign in to log a game and submit it for approval.</p>
         </div>
         <Button className="ds-btn-primary text-white rounded-xl h-11 px-6" onClick={() => base44.auth.redirectToLogin()}>
           Sign In
@@ -276,11 +182,8 @@ export default function LogGame() {
     );
   }
 
-  if (leaguesLoading) return <LoadingState message="Loading…" />;
-
   const allPlacementsFilled = participantIds.length >= 2 && participantIds.every((uid) => placements[uid]);
 
-  // Build member-like list for PlacementInput in casual mode
   const casualMembersForPlacement = participantIds.map((uid) => ({
     userId: uid,
     display_name: casualProfiles[uid]?.display_name || uid,
@@ -293,47 +196,22 @@ export default function LogGame() {
 
       <div className="rounded-xl p-4 ds-accent-bg ds-accent-bd border">
         <p className="text-sm leading-relaxed" style={{ color: "var(--ds-primary-text)" }}>
-          Log a completed game. All participants will be asked to approve the result.
+          🎲 Log a casual game. All participants will be asked to approve the result.
         </p>
       </div>
 
-      {/* Context toggle */}
-      <ContextToggle value={contextType} onChange={handleContextChange} />
-
-      {/* League mode */}
-      {contextType === "league" && (
-        <>
-          <LeaguePicker leagues={leagues} value={selectedLeagueId} onChange={handleLeagueChange} />
-          {selectedLeagueId && (
-            <ParticipantPicker
-              members={members}
-              selectedIds={participantIds}
-              onAdd={addParticipant}
-              onRemove={removeParticipant}
-              currentUserId={currentUser?.id}
-              membersLoading={membersLoading}
-            />
-          )}
-        </>
-      )}
-
-      {/* Casual mode */}
-      {contextType === "casual" && (
-        <div className="space-y-3">
-          <CasualParticipantPicker
-            selectedIds={participantIds}
-            onAdd={addParticipant}
-            onRemove={removeParticipant}
-            currentUserId={currentUser?.id}
-          />
-        </div>
-      )}
+      <CasualParticipantPicker
+        selectedIds={participantIds}
+        onAdd={addParticipant}
+        onRemove={removeParticipant}
+        currentUserId={currentUser?.id}
+      />
 
       {/* Placements + decks */}
       {participantIds.length >= 2 && (
         <PlacementInput
           participants={participantIds}
-          members={contextType === "league" ? members : casualMembersForPlacement}
+          members={casualMembersForPlacement}
           placements={placements}
           onPlacementChange={setPlacement}
           myDecks={myDecks}
