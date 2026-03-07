@@ -22,7 +22,8 @@ export const DEFAULT_FEATURE_FLAGS = {
 };
 
 export const DEFAULT_NAV_CONFIG = [
-  { key: "leagues",  label: "Leagues",  icon: "Users",      routeKey: "LEAGUES",  enabled: true },
+  // PODS placeholder replaces Leagues in nav (Phase 1 migration)
+  { key: "pods",     label: "PODS",     icon: "Layers",     routeKey: "PODS",     enabled: true },
   { key: "logGame",  label: "Log Game", icon: "PlusCircle", routeKey: "LOG_GAME", enabled: true },
   { key: "home",     label: "Home",     icon: "Home",       routeKey: "HOME",     enabled: true },
   { key: "inbox",    label: "Inbox",    icon: "Bell",       routeKey: "INBOX",    enabled: true },

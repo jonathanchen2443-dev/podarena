@@ -12,10 +12,11 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 
 // Pages that use the app shell (bottom nav + top bar)
-const SHELL_PAGES = ["home", "dashboard", "leagueslist", "loggame", "inbox", "profile"];
+const SHELL_PAGES = ["home", "dashboard", "loggame", "inbox", "profile", "pods"];
 // Sub-pages that belong to a shell tab and should also show the nav
-// Note: approvals and decks are redirect shims — kept so they render inside the shell cleanly
-const SHELL_SUB_PAGES = ["leagues", "dashboard", "approvals", "decks", "profiledecks", "leaguedetails", "userprofile", "createleague", "founder"];
+const SHELL_SUB_PAGES = ["dashboard", "approvals", "decks", "profiledecks", "userprofile", "founder",
+  // DEPRECATED league sub-pages kept so old deep-links render safely inside the shell
+  "leagueslist", "leagues", "leaguedetails", "createleague"];
 // Pages that render without the shell (standalone) — /login is system-managed, not listed here
 const NO_SHELL_PAGES = ["register"];
 

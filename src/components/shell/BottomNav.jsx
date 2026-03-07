@@ -16,7 +16,8 @@ const ICON_MAP = {
 
 // Route key -> href
 const ROUTE_MAP = {
-  LEAGUES:  ROUTES.LEAGUES,
+  PODS:     ROUTES.PODS,
+  LEAGUES:  ROUTES.PODS,   // deprecated — redirect to PODS
   LOG_GAME: ROUTES.LOG_GAME,
   HOME:     ROUTES.HOME,
   INBOX:    ROUTES.INBOX,
