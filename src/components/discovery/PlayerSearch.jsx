@@ -69,6 +69,7 @@ export default function PlayerSearch({ placeholder = "Search by player name or I
   function handleClear() {
     setQuery("");
     setResults([]);
+    setSearchError(null);
     setOpen(false);
   }
 
