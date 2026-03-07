@@ -6,7 +6,7 @@ import { Swords, Bell, Layers } from "lucide-react";
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6995f1fed0849cf726dfe04d/bea8c705b_LogoBlack.jpg";
 
 export default function Landing() {
-  const nextUrl = createPageUrl("Dashboard");
+  const nextUrl = `${window.location.origin}${createPageUrl("Dashboard")}`;
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-6 py-12">

@@ -56,6 +56,7 @@ import Founder from './pages/Founder';
 import Home from './pages/Home';
 import Inbox from './pages/Inbox';
 import Invite from './pages/Invite';
+import Landing from './pages/Landing';
 import LeagueDetails from './pages/LeagueDetails';
 import Leagues from './pages/Leagues';
 import LeaguesList from './pages/LeaguesList';
@@ -65,7 +66,6 @@ import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
 import UserProfile from './pages/UserProfile';
-import Landing from './pages/Landing';
 import __Layout from './Layout.jsx';
 
 
@@ -79,6 +79,7 @@ export const PAGES = {
     "Home": Home,
     "Inbox": Inbox,
     "Invite": Invite,
+    "Landing": Landing,
     "LeagueDetails": LeagueDetails,
     "Leagues": Leagues,
     "LeaguesList": LeaguesList,
@@ -88,7 +89,6 @@ export const PAGES = {
     "ProfileDecks": ProfileDecks,
     "Register": Register,
     "UserProfile": UserProfile,
-    "Landing": Landing,
 }
 
 export const pagesConfig = {
