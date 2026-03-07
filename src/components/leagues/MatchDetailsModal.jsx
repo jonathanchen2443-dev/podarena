@@ -7,6 +7,7 @@ import { X, Trophy, User, CheckCircle, XCircle, Clock, ChevronDown, Loader2 } fr
 import { format } from "date-fns";
 import { approveGame, rejectGame, setMyDeckForGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
+import { getPublicProfile } from "@/components/services/profileService.jsx";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
