@@ -46,7 +46,9 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    const isAuth = await base44.auth.isAuthenticated();
+    // Auth check — isAuthenticated() may return false in test runner (no token injected)
+    // In production (browser calls), this properly blocks unauthenticated requests
+    const isAuth = await base44.auth.isAuthenticated().catch(() => false);
     if (!isAuth) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
