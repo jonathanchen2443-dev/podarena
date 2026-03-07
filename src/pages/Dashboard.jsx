@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
+import PlayerSearch from "@/components/discovery/PlayerSearch";
 
 
 // ── Status badge ──────────────────────────────────────────────────────────────
