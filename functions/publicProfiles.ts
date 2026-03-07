@@ -49,9 +49,13 @@ Deno.serve(async (req) => {
       const all = await base44.asServiceRole.entities.Profile.filter({}, '-created_date', 500);
 
       const matched = all.filter((p) => {
-        const name = (p.display_name_lc || p.display_name || '').toLowerCase();
-        const uid = (p.public_user_id || '').toLowerCase();
-        return name.includes(q) || uid.includes(q);
+        try {
+          const name = (p.display_name_lc || p.display_name || '').toLowerCase();
+          const uid = String(p.public_user_id ?? '').toLowerCase();
+          return name.includes(q) || uid.includes(q);
+        } catch (_) {
+          return false;
+        }
       });
 
       return Response.json({ results: matched.slice(0, 20).map(sanitizeProfile) });

@@ -38,6 +38,14 @@ export function toPublicProfile(p) {
 
 async function callBackend(payload) {
   const res = await base44.functions.invoke('publicProfiles', payload);
+  // Surface HTTP-level errors (401, 500, etc.) so callers can distinguish
+  // backend failure from empty results.
+  if (res.status && res.status >= 400) {
+    const msg = res.data?.error || `Backend error (${res.status})`;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
   return res.data;
 }
 
