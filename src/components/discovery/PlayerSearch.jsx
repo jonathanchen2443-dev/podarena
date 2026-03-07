@@ -130,7 +130,11 @@ export default function PlayerSearch({ placeholder = "Search by player name or I
 
       {open && !loading && query.trim().length >= 3 && results.length === 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded-xl shadow-xl z-50">
-          <div className="px-4 py-3 text-gray-500 text-sm text-center">No players found for "{query}".</div>
+          {searchError ? (
+            <div className="px-4 py-3 text-amber-400 text-sm text-center">{searchError}</div>
+          ) : (
+            <div className="px-4 py-3 text-gray-500 text-sm text-center">No players found for "{query}".</div>
+          )}
         </div>
       )}
     </div>
