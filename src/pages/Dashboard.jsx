@@ -84,52 +84,6 @@ function DashboardSkeleton() {
   );
 }
 
-// ── Guest view ────────────────────────────────────────────────────────────────
-function GuestView() {
-  return (
-    <div className="space-y-8">
-      <div className="text-center pt-6 pb-2">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ds-accent-bg ds-accent-bd border">
-          <Trophy className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
-        </div>
-        <h1 className="text-2xl font-bold text-white">PodArena</h1>
-        <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto">
-          Track games, standings, and approvals across your playgroup.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3">
-        <Button
-          className="ds-btn-primary text-white h-11 rounded-xl"
-          onClick={() => base44.auth.redirectToLogin()}
-        >
-          <LogIn className="w-4 h-4 mr-2" />
-          Sign In
-        </Button>
-      </div>
-
-      <Card className="bg-gray-900/60 border-gray-800/50">
-        <CardContent className="p-4 space-y-3">
-          {[
-            { icon: Swords, label: "Log game results with your playgroup" },
-            { icon: Bell, label: "Approve or reject games logged by others" },
-            { icon: Layers, label: "PODS are coming — a better way to organize" },
-          ].map(({ icon: Icon, label }, i) => (
-            <div key={i} className="flex items-center gap-3 text-gray-400 text-sm">
-              <Icon className="w-4 h-4 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
-              <span>{label}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <p className="text-center text-gray-600 text-xs">
-        Game logging and approvals require a free account.
-      </p>
-    </div>
-  );
-}
-
 // ── Authenticated view ────────────────────────────────────────────────────────
 function AuthDashboard({ data, displayName, auth }) {
   const { pendingApprovalsCount, myDecksCount, recentGames } = data;
