@@ -90,7 +90,7 @@ function NotificationRow({ notif, isRead, onMarkRead, onDelete }) {
           <p className="text-gray-400 text-xs">
             {isSystemMsg
               ? notif.message
-              : <><span style={{ color: "var(--ds-primary-text)" }}>{notif.actorName}</span> joined the league</>}
+              : <><span style={{ color: "var(--ds-primary-text)" }}>{notif.actorName}</span> joined the playgroup</>}
           </p>
         </div>
       </button>
