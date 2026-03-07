@@ -33,9 +33,14 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { action, query, profileId } = body;
 
-    // Auth gate (enforced in prod; test tool has no session token so isAuthenticated=false)
-    // const isAuth = await base44.auth.isAuthenticated().catch(() => false);
-    // if (!isAuth) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Auth gate: only authenticated app users may call this function.
+    // NOTE: The Base44 builder test tool does not forward a real session token,
+    // so test_backend_function calls will return 401 here. This is expected and
+    // correct — the gate is intentionally enforced at runtime only.
+    // To smoke-test via the test tool, temporarily comment this block out;
+    // re-enable before committing.
+    const isAuth = await base44.auth.isAuthenticated().catch(() => false);
+    if (!isAuth) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (action === 'search') {
       if (!query || query.trim().length < 3) return Response.json({ results: [] });
