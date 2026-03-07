@@ -204,23 +204,50 @@ function StandaloneShell({ children }) {
   );
 }
 
-export default function Layout({ children, currentPageName }) {
+// Inner layout — runs inside AuthProvider so it can read auth state
+function InnerLayout({ children, currentPageName }) {
+  const { authLoading, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const pageLower = currentPageName?.toLowerCase() || "";
   const shell = usesShell(currentPageName);
-  const standalone = NO_SHELL_PAGES.includes(currentPageName?.toLowerCase());
+  const standalone = NO_SHELL_PAGES.includes(pageLower);
+  const isGuestAllowed = GUEST_ALLOWED_PAGES.includes(pageLower);
 
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated && !isGuestAllowed) {
+      // Redirect unauthenticated visitors away from internal pages to Landing
+      navigate(createPageUrl("Landing"), { replace: true });
+    }
+    if (isAuthenticated && pageLower === "landing") {
+      // Authenticated user tried to open Landing — send to Dashboard
+      navigate(createPageUrl("Dashboard"), { replace: true });
+    }
+  }, [authLoading, isAuthenticated, isGuestAllowed, pageLower, navigate]);
+
+  // While auth resolves, show nothing (avoids flash of wrong screen)
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <style>{CSS_VARS}</style>
+      </div>
+    );
+  }
+
+  if (shell) return <AppShell currentPageName={currentPageName}>{children}</AppShell>;
+  if (standalone) return <StandaloneShell>{children}</StandaloneShell>;
+  return (
+    <div className="min-h-screen bg-gray-950">
+      <style>{CSS_VARS}</style>
+      {children}
+    </div>
+  );
+}
+
+export default function Layout({ children, currentPageName }) {
   return (
     <AuthProvider>
-      {shell ? (
-        <AppShell currentPageName={currentPageName}>{children}</AppShell>
-      ) : standalone ? (
-        <StandaloneShell>{children}</StandaloneShell>
-      ) : (
-        // Legacy pages with no shell
-        <div className="min-h-screen bg-gray-950">
-          <style>{CSS_VARS}</style>
-          {children}
-        </div>
-      )}
+      <InnerLayout currentPageName={currentPageName}>{children}</InnerLayout>
     </AuthProvider>
   );
 }
