@@ -6,7 +6,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, User, X, Loader2 } from "lucide-react";
-import { searchProfiles } from "@/components/services/profileService";
+import { searchProfiles } from "@/components/services/profileService.jsx";
 import { ROUTES } from "@/components/utils/routes";
 
 export default function PlayerSearch({ placeholder = "Search players…", className = "" }) {
