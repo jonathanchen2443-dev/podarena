@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { getDashboardData } from "@/components/services/dashboardService";
 import { base44 } from "@/api/base44Client";
 import {
-  Users, Bell, Swords, BookOpen, ChevronRight, LogIn,
+  Bell, Swords, BookOpen, ChevronRight, LogIn,
   Plus, RefreshCw, AlertCircle, Layers, Trophy
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
