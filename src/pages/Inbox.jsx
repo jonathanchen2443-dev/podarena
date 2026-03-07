@@ -205,12 +205,20 @@ export default function Inbox() {
 
       let notifItems = [];
       if (rawNotifs.length > 0) {
-        const [allProfiles, allLeagues] = await Promise.all([
-          base44.entities.Profile.list("-created_date", 200),
+        // Fetch league names directly (own-scoped read — user is a member of these leagues)
+        // Fetch actor display names via the public-safe backend layer (no email exposure).
+        const uniqueActorIds = [...new Set(rawNotifs.map((n) => n.actor_user_id).filter(Boolean))];
+        const [allLeagues, actorResults] = await Promise.all([
           base44.entities.League.list("-created_date", 200),
+          Promise.allSettled(uniqueActorIds.map((id) => getPublicProfile(id))),
         ]);
-        const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
         const leagueMap = Object.fromEntries(allLeagues.map((l) => [l.id, l]));
+        const actorMap = {};
+        uniqueActorIds.forEach((id, i) => {
+          actorMap[id] = actorResults[i].status === "fulfilled"
+            ? actorResults[i].value?.display_name || "Someone"
+            : "Someone";
+        });
 
         notifItems = rawNotifs.map((n) => ({
           id: n.id,
@@ -219,7 +227,7 @@ export default function Inbox() {
           createdAt: n.created_date,
           notif: {
             ...n,
-            actorName: profileMap[n.actor_user_id]?.display_name || "Someone",
+            actorName: actorMap[n.actor_user_id] || "Someone",
             leagueName: leagueMap[n.league_id]?.name || "Unknown League",
           },
         }));
