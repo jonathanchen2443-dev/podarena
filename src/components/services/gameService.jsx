@@ -272,13 +272,14 @@ async function _uniqueDisplayName(baseName, excludeProfileId = null) {
   return `${baseName} ${Date.now() % 10000}`;
 }
 
-// Promise-based mutex — survives React double-mount
+// Promise-based mutex — survives React double-mount in StrictMode
 let _provisioningPromise = null;
 
 export async function getOrCreateProfile() {
   const user = await base44.auth.me();
   if (!user) return null;
 
+  // Deduplicate concurrent calls (e.g. StrictMode double-mount)
   if (_provisioningPromise) {
     return _provisioningPromise;
   }
@@ -290,11 +291,11 @@ export async function getOrCreateProfile() {
 }
 
 async function _doGetOrCreate(user) {
-  // 1. Try to find by user_id (auth UID) — most reliable
+  // 1. Try to find by user_id (auth UID) — most reliable, covers Google OAuth
   const byUid = user.id ? await base44.entities.Profile.filter({ user_id: user.id }) : [];
   let existing = byUid.length > 0 ? byUid[0] : null;
 
-  // 2. Fallback: find by email (existing profiles before user_id was added)
+  // 2. Fallback: find by email (pre-existing profiles before user_id field was added)
   if (!existing && user.email) {
     const byEmail = await base44.entities.Profile.filter({ email: user.email });
     existing = byEmail.length > 0 ? byEmail[0] : null;
@@ -303,9 +304,14 @@ async function _doGetOrCreate(user) {
   if (existing) {
     const updates = {};
 
-    // Link user_id if missing (backfill for existing profiles)
+    // Link user_id if missing (backfill — important for Google OAuth users)
     if (!existing.user_id && user.id) {
       updates.user_id = user.id;
+    }
+
+    // Backfill avatar from Google if not already set
+    if (!existing.avatar_url && user.avatar_url) {
+      updates.avatar_url = user.avatar_url;
     }
 
     // Backfill public_user_id
@@ -329,6 +335,11 @@ async function _doGetOrCreate(user) {
       updates.username_lc = uname;
     }
 
+    // Backfill email if missing (safety net)
+    if (!existing.email && user.email) {
+      updates.email = user.email;
+    }
+
     let profile;
     if (Object.keys(updates).length > 0) {
       profile = await base44.entities.Profile.update(existing.id, updates);
@@ -341,6 +352,7 @@ async function _doGetOrCreate(user) {
   }
 
   // 3. Create new profile
+  // Resolve the best display name from all available Google/auth fields
   const baseName = _resolveDisplayName(user);
   const displayName = await _uniqueDisplayName(baseName);
   const publicId = await _generateUniquePublicUserId();
@@ -350,34 +362,27 @@ async function _doGetOrCreate(user) {
     user_id: user.id || null,
     display_name: displayName,
     display_name_lc: displayName.toLowerCase(),
-    email: user.email,
+    email: user.email || null,
     public_user_id: publicId,
     username,
     username_lc: username,
   };
+  // Ingest avatar from Google or any OAuth provider if available
   if (user.avatar_url) payload.avatar_url = user.avatar_url;
 
   const created = await base44.entities.Profile.create(payload);
 
-  // ── Single lightweight read-back ──────────────────────────────────────────
-  // Verify the row is readable before returning. One attempt only — no loops.
-  // If it fails, we fall back to the created stub rather than blocking the user.
-  // IDENTITY CONTRACT: Profile.id (Base44 entity id) is the join key used by
+  // Return the created record directly — no read-back delay.
+  // The platform SDK returns the full persisted record from .create().
+  // A post-write read-back adds latency and can produce false failures
+  // during RLS propagation on first login (especially Google OAuth).
+  // IDENTITY CONTRACT: Profile.id (Base44 entity UUID) is the join key used by
   // Deck.owner_id, LeagueMember.user_id, GameParticipant.user_id, GameApproval.approver_user_id.
-  // Profile.user_id (auth UID) is stored for future migration only; not used as FK today.
-  if (created?.id) {
-    try {
-      await new Promise((r) => setTimeout(r, 200));
-      const readback = await base44.entities.Profile.filter({ id: created.id });
-      if (readback.length > 0) {
-        console.log(`[PROFILE OK] created+verified id=${readback[0].id} user_id=${readback[0].user_id}`);
-        return readback[0];
-      }
-    } catch (_) { /* non-critical — fall through to stub */ }
-    console.warn(`[PROFILE WARN] Read-back failed for id=${created.id}. Using created stub.`);
+  if (!created?.id) {
+    throw new Error("Profile creation returned no ID. The record may not have been saved.");
   }
 
-  console.log(`[PROFILE OK] created id=${created?.id} user_id=${created?.user_id} email=${created?.email}`);
+  console.log(`[PROFILE OK] created id=${created.id} user_id=${created.user_id} email=${created.email}`);
   return created;
 }
 
