@@ -102,19 +102,23 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
         ]);
         const g = gameArr[0];
         if (!g) { onClose(); return; }
-        // Fetch profiles for participants
-        const profiles = await base44.entities.Profile.list("-created_date", 200);
-        const profileMap = {};
-        profiles.forEach((p) => { profileMap[p.id] = p; });
-        const participants = participantArr.map((p) => ({
-          userId: p.user_id,
-          display_name: profileMap[p.user_id]?.display_name || "Unknown",
-          avatar_url: profileMap[p.user_id]?.avatar_url || null,
-          result: p.result,
-          placement: p.placement,
-          deck_id: p.deck_id,
-          deck: null,
-        }));
+        // Resolve participant identities via the public-safe backend layer.
+        // getPublicProfile() uses asServiceRole + field sanitization — email never exposed.
+        const profileResults = await Promise.allSettled(
+          participantArr.map((p) => getPublicProfile(p.user_id))
+        );
+        const participants = participantArr.map((p, i) => {
+          const pub = profileResults[i].status === "fulfilled" ? profileResults[i].value : null;
+          return {
+            userId: p.user_id,
+            display_name: pub?.display_name || "Unknown",
+            avatar_url: pub?.avatar_url || null,
+            result: p.result,
+            placement: p.placement,
+            deck_id: p.deck_id,
+            deck: null,
+          };
+        });
         const approvedCount = approvalArr.filter((a) => a.status === "approved").length;
         const assembled = {
           id: g.id,
