@@ -127,11 +127,11 @@ const CSS_VARS = `
 `;
 
 function AuthActionSlot() {
-  const { isGuest, currentUser, authLoading } = useAuth();
+  const { currentUser, authLoading } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchUnread = useCallback(async () => {
-    if (isGuest || !currentUser) return;
+    if (!currentUser) return;
     try {
       const [notifs, approvals] = await Promise.all([
         base44.entities.Notification.filter(
@@ -139,56 +139,37 @@ function AuthActionSlot() {
           "-created_date",
           100
         ),
-        listMyPendingApprovals({ isGuest, currentUser, isAuthenticated: true }),
+        listMyPendingApprovals({ isGuest: false, currentUser, isAuthenticated: true }),
       ]);
       const unreadNotifs = notifs.filter((n) => !n.read_at).length;
-      // Pending approvals are always "unread" (need action)
       const count = unreadNotifs + approvals.length;
-      console.log("unreadCount", count, "notifs", notifs.length, "approvals", approvals.length);
       setUnreadCount(count);
     } catch (_) {}
-  }, [isGuest, currentUser]);
+  }, [currentUser]);
 
   useEffect(() => {
-    if (isGuest || !currentUser) return;
+    if (!currentUser) return;
     fetchUnread();
     const interval = setInterval(fetchUnread, 60_000);
-    // Re-fetch whenever Inbox marks read or deletes
     const unsub = onInboxUpdated(fetchUnread);
     return () => { clearInterval(interval); unsub(); };
-  }, [isGuest, currentUser, fetchUnread]);
+  }, [currentUser, fetchUnread]);
 
   if (authLoading) return null;
 
-  if (isGuest) {
-    return (
-      <button
-        onClick={() => base44.auth.redirectToLogin()}
-        className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-gray-800/50"
-      >
-        <LogIn className="w-4 h-4" />
-        <span className="text-xs font-medium">Login</span>
-      </button>
-    );
-  }
-
   return (
     <div className="flex items-center gap-2">
-      {/* Inbox icon with unread badge */}
       <Link
         to={ROUTES.INBOX}
         className="relative w-8 h-8 rounded-full flex items-center justify-center transition-colors ds-accent-bg ds-accent-bd border cursor-pointer"
       >
         <Bell className="w-4 h-4 pointer-events-none" style={{ color: "var(--ds-primary-text)" }} />
         {unreadCount > 0 && (
-          <span
-            className="pointer-events-none absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center px-0.5 leading-none"
-          >
+          <span className="pointer-events-none absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center px-0.5 leading-none">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </Link>
-      {/* Profile icon */}
       <Link to={ROUTES.PROFILE} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors ds-accent-bg ds-accent-bd border">
         <User className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
       </Link>
