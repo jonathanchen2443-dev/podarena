@@ -54,8 +54,8 @@ export default function UserProfile() {
         .catch(() => setStats(null))
         .finally(() => setStatsLoading(false));
 
-      base44.entities.Deck.filter({ owner_id: p.id })
-        .then((d) => setDecks(d.filter((dk) => dk.is_active !== false)))
+      getPublicProfileDecks(p.id)
+        .then((d) => setDecks(d))
         .catch(() => setDecks([]))
         .finally(() => setDecksLoading(false));
 
