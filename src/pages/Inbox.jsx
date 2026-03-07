@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { listMyPendingApprovals } from "@/components/services/gameService";
 import { invalidateLeagueCache } from "@/components/services/leagueService";
+import { getPublicProfile } from "@/components/services/profileService.jsx";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 import { formatDistanceToNow } from "date-fns";
 import { notifyInboxUpdated } from "@/components/services/inboxBus";
