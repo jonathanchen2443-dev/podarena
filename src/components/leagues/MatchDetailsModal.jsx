@@ -78,6 +78,7 @@ function ParticipantRow({ p, onNavigate }) {
  * 2. With just a `gameId` prop — the modal fetches its own data (from Dashboard casual games)
  */
 export default function MatchDetailsModal({ game: gameProp, gameId, auth, leagueId, onClose, onActionComplete }) {
+  const navigate = useNavigate();
   const [actionLoading, setActionLoading] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [myDecks, setMyDecks] = useState([]);
