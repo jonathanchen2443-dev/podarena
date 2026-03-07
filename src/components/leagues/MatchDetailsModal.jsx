@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Trophy, User, CheckCircle, XCircle, Clock, ChevronDown, Loader2 } from "lucide-react";
@@ -9,6 +10,7 @@ import { listMyDecks } from "@/components/services/deckService";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
+import { ROUTES } from "@/components/utils/routes";
 
 function statusBadge(status) {
   if (status === "approved") return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Approved</Badge>;
@@ -23,7 +25,7 @@ function resultLabel(p) {
   return null;
 }
 
-function ParticipantRow({ p }) {
+function ParticipantRow({ p, onNavigate }) {
   const result = resultLabel(p);
   const colors = p.deck?.color_identity || [];
   const hasRealColors = colors.some((c) => ["W","U","B","R","G"].includes(c));
@@ -39,7 +41,13 @@ function ParticipantRow({ p }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white font-medium truncate">{p.display_name}</p>
+        <button
+          onClick={() => p.userId && onNavigate && onNavigate(p.userId)}
+          className="text-sm text-white font-medium truncate hover:underline text-left disabled:cursor-default"
+          disabled={!p.userId || !onNavigate}
+        >
+          {p.display_name}
+        </button>
         {p.deck ? (
           <p className="text-xs text-gray-500 truncate">{p.deck.name}</p>
         ) : (
