@@ -18,7 +18,7 @@ const SHELL_SUB_PAGES = ["dashboard", "approvals", "decks", "profiledecks", "use
   // DEPRECATED league sub-pages kept so old deep-links render safely inside the shell
   "leagueslist", "leagues", "leaguedetails", "createleague"];
 // Pages that render without the shell (standalone / public)
-const NO_SHELL_PAGES = ["register", "landing"];
+const NO_SHELL_PAGES = ["register"];
 
 function usesShell(pageName) {
   if (!pageName) return false;
@@ -26,9 +26,6 @@ function usesShell(pageName) {
   if (NO_SHELL_PAGES.includes(lower)) return false;
   return SHELL_PAGES.includes(lower) || SHELL_SUB_PAGES.includes(lower);
 }
-
-// Pages that guests are allowed to view (everything else redirects to Landing)
-const GUEST_ALLOWED_PAGES = ["landing", "register"];
 
 // ── THEME SWITCH ─────────────────────────────────────────────────────────────
 // To revert to legacy violet theme: change THEME_MODE to "legacy"
