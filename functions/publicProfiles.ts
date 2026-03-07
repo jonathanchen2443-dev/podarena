@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       }
       const q = query.trim().toLowerCase();
 
-      const all = await base44.asServiceRole.entities.Profile.list('-created_date', 500);
+      const all = await base44.asServiceRole.entities.Profile.filter({}, '-created_date', 500);
 
       console.log(`[search] total records from service role: ${all.length}`);
       if (all.length > 0) {
