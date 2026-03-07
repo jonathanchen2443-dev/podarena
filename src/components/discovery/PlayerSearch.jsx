@@ -15,6 +15,7 @@ export default function PlayerSearch({ placeholder = "Search by player name or I
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const debounceRef = useRef(null);
   const containerRef = useRef(null);
 
