@@ -115,7 +115,7 @@ function FilterBar({ statusFilter, setStatusFilter, typeFilter, setTypeFilter })
   const typeOpts = [
     { value: "all", label: "All types" },
     { value: "game_logging", label: "Game approvals" },
-    { value: "league_activity", label: "League activity" },
+    { value: "league_activity", label: "Notifications" },
   ];
 
   function Chip({ value, current, onClick, children }) {
