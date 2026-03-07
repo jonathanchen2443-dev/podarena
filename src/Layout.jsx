@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
-import { LogIn, User, Bell } from "lucide-react";
+import { User, Bell } from "lucide-react";
 import { ROUTES } from "@/components/utils/routes";
 import { onInboxUpdated } from "@/components/services/inboxBus";
 import { listMyPendingApprovals } from "@/components/services/gameService";
