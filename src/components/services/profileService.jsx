@@ -44,15 +44,19 @@ export async function getPublicProfile(userId) {
 }
 
 export async function searchProfiles(query, limit = 20) {
-  if (!query || query.trim().length < 2) return [];
+  if (!query || query.trim().length < 3) return [];
   const q = query.trim().toLowerCase();
 
-  const all = await base44.entities.Profile.list("-created_date", 300).catch(() => []);
+  // Use filter({}) instead of list() — list() can be scope-limited by the SDK
+  // to the current user's own records. filter({}) with an empty predicate respects
+  // the open authenticated-read RLS on Profile and returns all visible profiles.
+  const all = await base44.entities.Profile.filter({}, "-created_date", 300).catch(() => []);
 
   const matched = all.filter((p) => {
     const name = (p.display_name || "").toLowerCase();
     const uid = (p.public_user_id || "").toLowerCase();
-    return name.includes(q) || uid === q;
+    // Partial match on display_name; partial match on public_user_id (not exact-only)
+    return name.includes(q) || uid.includes(q);
   });
 
   return matched.slice(0, limit).map(toPublicProfile);
