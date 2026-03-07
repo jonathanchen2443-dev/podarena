@@ -6,10 +6,16 @@ import { createPageUrl } from "@/utils";
  * Uses createPageUrl() so paths always match Base44's router registration.
  * Sub-views (new/edit deck, league details) use query params to avoid
  * unregistered nested paths that cause 404s.
+ *
+ * PODS MIGRATION (Phase 1):
+ * League routes are preserved below for reference but all active entry
+ * points now redirect to PODS. Do not use LEAGUES/LEAGUE_DETAILS/CREATE_LEAGUE
+ * in new UI code — use PODS instead.
  */
 export const ROUTES = {
   HOME: createPageUrl("Dashboard"),
-  LEAGUES: createPageUrl("LeaguesList"),
+  // PODS placeholder — replaces active Leagues nav
+  PODS: createPageUrl("Pods"),
   LOG_GAME: createPageUrl("LogGame"),
   INBOX: createPageUrl("Inbox"),
   PROFILE: createPageUrl("Profile"),
@@ -20,17 +26,17 @@ export const ROUTES = {
   PROFILE_DECK_NEW: `${createPageUrl("ProfileDecks")}?mode=new`,
   PROFILE_DECK_EDIT: (id) => `${createPageUrl("ProfileDecks")}?mode=edit&deckId=${id}`,
 
-  // Create league — dedicated page
-  CREATE_LEAGUE: createPageUrl("CreateLeague"),
-
-  // League details — on the LeagueDetails page, id via ?leagueId= query param
-  LEAGUE_DETAILS: (id) => `${createPageUrl("LeagueDetails")}?leagueId=${id}`,
-
-  // League invite link — appends invite token as query param
-  LEAGUE_INVITE: (id, token) => `${createPageUrl("LeagueDetails")}?leagueId=${id}&invite=${token}`,
-
-  // Short invite link — redirects to league via Invite page
-  INVITE: (token) => `${createPageUrl("Invite")}?token=${encodeURIComponent(token)}`,
+  // ── DEPRECATED League routes — kept for safe redirects, do not use in new UI ──
+  /** @deprecated Use ROUTES.PODS */
+  LEAGUES: createPageUrl("Pods"),
+  /** @deprecated Use ROUTES.PODS */
+  CREATE_LEAGUE: createPageUrl("Pods"),
+  /** @deprecated Use ROUTES.PODS */
+  LEAGUE_DETAILS: (_id) => createPageUrl("Pods"),
+  /** @deprecated Use ROUTES.PODS */
+  LEAGUE_INVITE: (_id, _token) => createPageUrl("Pods"),
+  /** @deprecated Use ROUTES.PODS */
+  INVITE: (_token) => createPageUrl("Pods"),
 
   // Public user profile — read-only, id via ?userId= query param
   USER_PROFILE: (userId) => `${createPageUrl("UserProfile")}?userId=${userId}`,
