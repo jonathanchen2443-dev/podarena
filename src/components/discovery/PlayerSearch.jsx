@@ -9,7 +9,7 @@ import { Search, User, X, Loader2 } from "lucide-react";
 import { searchProfiles } from "@/components/services/profileService.jsx";
 import { ROUTES } from "@/components/utils/routes";
 
-export default function PlayerSearch({ placeholder = "Search players…", className = "" }) {
+export default function PlayerSearch({ placeholder = "Search by player name or ID…", className = "" }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
