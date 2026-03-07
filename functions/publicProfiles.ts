@@ -42,6 +42,7 @@ function sanitizeDeck(raw) {
 }
 
 Deno.serve(async (req) => {
+  console.log('[publicProfiles] request received, action body pending');
   try {
     const base44 = createClientFromRequest(req);
 
