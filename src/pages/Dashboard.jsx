@@ -91,9 +91,9 @@ function GuestView() {
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ds-accent-bg ds-accent-bd border">
           <Trophy className="w-8 h-8" style={{ color: "var(--ds-primary-text)" }} />
         </div>
-        <h1 className="text-2xl font-bold text-white">Commander League Tracker</h1>
+        <h1 className="text-2xl font-bold text-white">PodArena</h1>
         <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto">
-          Track games, standings, and approvals across your playgroup leagues.
+          Track games, standings, and approvals across your playgroup.
         </p>
       </div>
 
@@ -105,12 +105,6 @@ function GuestView() {
           <LogIn className="w-4 h-4 mr-2" />
           Sign In
         </Button>
-        <Link to={ROUTES.LEAGUES}>
-          <Button variant="outline" className="w-full border-gray-700 text-gray-300 hover:bg-gray-800 h-11 rounded-xl">
-            <Layers className="w-4 h-4 mr-2" />
-            Browse Leagues
-          </Button>
-        </Link>
       </div>
 
       <Card className="bg-gray-900/60 border-gray-800/50">
@@ -118,7 +112,7 @@ function GuestView() {
           {[
             { icon: Swords, label: "Log game results with your playgroup" },
             { icon: Bell, label: "Approve or reject games logged by others" },
-            { icon: Trophy, label: "Track standings across multiple leagues" },
+            { icon: Layers, label: "PODS are coming — a better way to organize" },
           ].map(({ icon: Icon, label }, i) => (
             <div key={i} className="flex items-center gap-3 text-gray-400 text-sm">
               <Icon className="w-4 h-4 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
@@ -137,14 +131,13 @@ function GuestView() {
 
 // ── Authenticated view ────────────────────────────────────────────────────────
 function AuthDashboard({ data, displayName, auth }) {
-  const { myLeaguesCount, pendingApprovalsCount, myDecksCount, recentGames } = data;
-  const [casualModal, setCasualModal] = useState(null); // { gameId, game }
+  const { pendingApprovalsCount, myDecksCount, recentGames } = data;
+  const [casualModal, setCasualModal] = useState(null);
 
   function handleGameClick(game) {
     if (game.context_type === "casual" || !game.league_id) {
       setCasualModal({ gameId: game.id });
     }
-    // league games: navigate via Link below
   }
 
   return (
@@ -154,12 +147,12 @@ function AuthDashboard({ data, displayName, auth }) {
         <h1 className="text-xl font-bold text-white">
           {displayName ? `Hey, ${displayName} 👋` : "Welcome back 👋"}
         </h1>
-        <p className="text-gray-400 text-sm mt-0.5">Track games, approvals, and league activity.</p>
+        <p className="text-gray-400 text-sm mt-0.5">Track games, approvals, and your decks.</p>
       </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Users} iconClass="ds-accent-bg ds-accent-bd border" iconStyle={{ color: "var(--ds-primary-text)" }} label="My Leagues" value={myLeaguesCount} to={ROUTES.LEAGUES} />
+        <StatCard icon={Layers} iconClass="ds-accent-bg ds-accent-bd border" iconStyle={{ color: "var(--ds-primary-text)" }} label="PODS" value="—" to={ROUTES.PODS} />
         <StatCard icon={Bell} iconClass="bg-amber-500/10 text-amber-400" label="Pending Approvals" value={pendingApprovalsCount} to={ROUTES.INBOX} badge={pendingApprovalsCount} />
         <StatCard icon={BookOpen} iconClass="bg-sky-500/10 text-sky-400" label="My Decks" value={myDecksCount} to={ROUTES.PROFILE_DECKS} />
         <StatCard icon={Swords} iconClass="bg-emerald-500/10 text-emerald-400" label="Recent Games" value={recentGames.length} />
@@ -190,9 +183,6 @@ function AuthDashboard({ data, displayName, auth }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-300">Recent Activity</h2>
-          <Link to={ROUTES.LEAGUES} className="text-xs hover:opacity-80" style={{ color: "var(--ds-primary-text)" }}>
-            View Leagues →
-          </Link>
         </div>
 
         {recentGames.length === 0 ? (
@@ -216,13 +206,13 @@ function AuthDashboard({ data, displayName, auth }) {
                   <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors border-b border-gray-800/50 last:border-0 cursor-pointer">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        {isCasual ? (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                            🎲 Casual
-                          </span>
-                        ) : (
-                          <span className="text-white text-sm font-medium truncate">{game.leagueName}</span>
-                        )}
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
+                          isCasual
+                            ? "bg-sky-500/10 text-sky-400 border-sky-500/20"
+                            : "bg-gray-800 text-gray-400 border-gray-700"
+                        }`}>
+                          {isCasual ? "🎲 Casual" : "⚔️ Game"}
+                        </span>
                         <StatusBadge status={game.status} />
                       </div>
                       <p className="text-gray-500 text-xs truncate">{game.participantsSummary}</p>
@@ -234,17 +224,11 @@ function AuthDashboard({ data, displayName, auth }) {
                   </div>
                 );
 
-                if (isCasual) {
-                  return (
-                    <div key={game.id} onClick={() => handleGameClick(game)}>
-                      {inner}
-                    </div>
-                  );
-                }
+                // All games now open in modal (league games shown same as casual during migration)
                 return (
-                  <Link key={game.id} to={`${ROUTES.LEAGUE_DETAILS(game.league_id)}&tab=games&gameId=${game.id}`}>
+                  <div key={game.id} onClick={() => handleGameClick(game)}>
                     {inner}
-                  </Link>
+                  </div>
                 );
               })}
             </CardContent>
@@ -252,7 +236,7 @@ function AuthDashboard({ data, displayName, auth }) {
         )}
       </div>
 
-      {/* Casual game modal */}
+      {/* Game modal */}
       {casualModal && (
         <MatchDetailsModal
           gameId={casualModal.gameId}
@@ -289,7 +273,6 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      // currentUser IS the Profile record — read display_name directly, no re-fetch needed
       if (currentUser) {
         setDisplayName(currentUser.display_name || currentUser.full_name || "");
       }
