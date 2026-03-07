@@ -111,10 +111,12 @@ export default function PlayerSearch({ placeholder = "Search players…", classN
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">{profile.display_name}</p>
-                {profile.public_user_id && (
-                  <p className="text-gray-500 text-xs font-mono">#{profile.public_user_id}</p>
-                )}
+                <p className="text-white text-sm font-medium truncate">
+                  {profile.display_name}
+                  {profile.public_user_id && (
+                    <span className="text-gray-500 font-normal font-mono ml-1">({profile.public_user_id})</span>
+                  )}
+                </p>
               </div>
             </button>
           ))}
