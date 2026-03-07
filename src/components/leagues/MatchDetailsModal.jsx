@@ -287,7 +287,11 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
               {game.participants
                 .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))
                 .map((p) => (
-                  <ParticipantRow key={p.userId} p={p} />
+                  <ParticipantRow
+                    key={p.userId}
+                    p={p}
+                    onNavigate={(uid) => { onClose(); navigate(ROUTES.USER_PROFILE(uid)); }}
+                  />
                 ))}
             </div>
           </div>
