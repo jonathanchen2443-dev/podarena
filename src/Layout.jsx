@@ -14,6 +14,7 @@ import { Toaster } from "@/components/ui/sonner";
 // Pages that use the app shell (bottom nav + top bar)
 const SHELL_PAGES = ["home", "dashboard", "loggame", "inbox", "profile", "pods"];
 // Sub-pages that belong to a shell tab and should also show the nav
+// "userprofile" = public profile page — renders inside the shell
 const SHELL_SUB_PAGES = ["dashboard", "approvals", "decks", "profiledecks", "userprofile", "founder",
   // DEPRECATED league sub-pages kept so old deep-links render safely inside the shell
   "leagueslist", "leagues", "leaguedetails", "createleague"];
