@@ -28,10 +28,10 @@ export default function Landing() {
         {/* Feature bullets */}
         <div className="space-y-2.5">
           {[
-            { icon: Swords,  text: "Log game results with your playgroup" },
-            { icon: Bell,    text: "Approve or reject games logged by others" },
-            { icon: Layers,  text: "PODS — a better way to organize coming soon" },
-          ].map(({ icon: Icon, text }) => (
+            { Icon: Swords,  text: "Log game results with your playgroup" },
+            { Icon: Bell,    text: "Approve or reject games logged by others" },
+            { Icon: Layers,  text: "PODS — a better way to organize coming soon" },
+          ].map(({ Icon, text }) => (
             <div key={text} className="flex items-center gap-3 text-gray-400 text-sm">
               <Icon className="w-4 h-4 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
               <span>{text}</span>
