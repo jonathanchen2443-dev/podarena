@@ -14,6 +14,7 @@ import { createPageUrl } from "@/utils";
  */
 export const ROUTES = {
   HOME: createPageUrl("Dashboard"),
+  DASHBOARD: createPageUrl("Dashboard"),
   // PODS placeholder — replaces active Leagues nav
   PODS: createPageUrl("Pods"),
   LOG_GAME: createPageUrl("LogGame"),
