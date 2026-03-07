@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingState, ErrorState } from "@/components/shell/PageStates";
 import { useAuth } from "@/components/auth/AuthContext";
-import { getPublicProfile, getPublicProfileStats } from "@/components/services/profileService.js";
+import { getPublicProfile, getPublicProfileStats } from "@/components/services/profileService";
 import { base44 } from "@/api/base44Client";
 import { ROUTES } from "@/components/utils/routes";
 import PublicStatRings from "@/components/profile/PublicStatRings";
