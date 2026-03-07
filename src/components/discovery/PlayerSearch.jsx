@@ -37,18 +37,22 @@ export default function PlayerSearch({ placeholder = "Search by player name or I
 
     if (val.trim().length < 3) {
       setResults([]);
+      setSearchError(null);
       setOpen(false);
       return;
     }
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
+      setSearchError(null);
       try {
         const found = await searchProfiles(val.trim());
         setResults(found);
         setOpen(true);
-      } catch (_) {
+      } catch (err) {
         setResults([]);
+        setSearchError(err.status === 401 ? "Sign in to search for players." : "Search unavailable. Please try again.");
+        setOpen(true);
       } finally {
         setLoading(false);
       }
