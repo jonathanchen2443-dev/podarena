@@ -46,10 +46,8 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    let user = null;
-    try { user = await base44.auth.me(); } catch (_) {}
-    console.log('[auth] user:', user ? user.email : 'null/unauthenticated');
-    if (!user) {
+    const isAuth = await base44.auth.isAuthenticated();
+    if (!isAuth) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
