@@ -210,7 +210,7 @@ function AuthDashboard({ data, displayName, auth }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const auth = useAuth();
-  const { isGuest, authLoading, currentUser } = auth;
+  const { authLoading, currentUser } = auth;
 
   const [data, setData] = useState(null);
   const [displayName, setDisplayName] = useState("");
@@ -220,10 +220,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (isGuest) { setLoading(false); return; }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, isGuest]);
+  }, [authLoading]);
 
   async function load() {
     if (fetchingRef.current) return;
@@ -246,8 +245,6 @@ export default function Dashboard() {
   }
 
   if (authLoading || loading) return <DashboardSkeleton />;
-
-  if (isGuest) return <GuestView />;
 
   if (error) {
     return (
