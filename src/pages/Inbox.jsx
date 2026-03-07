@@ -363,7 +363,7 @@ export default function Inbox() {
             description={
               statusFilter !== "all" || typeFilter !== "all"
                 ? "No messages match your current filters."
-                : "You're all caught up. Game approvals and league join notifications will appear here."
+                : "You're all caught up. Game approvals and notifications will appear here."
             }
           />
         ) : (
