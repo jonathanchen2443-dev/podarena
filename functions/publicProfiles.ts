@@ -46,17 +46,22 @@ Deno.serve(async (req) => {
       if (!query || query.trim().length < 3) return Response.json({ results: [] });
       const q = query.trim().toLowerCase();
 
-      const all = await base44.asServiceRole.entities.Profile.filter({}, '-created_date', 500);
+      // Use server-side regex filtering to avoid fetching all profiles (CPU limit)
+      const [byName, byUid] = await Promise.all([
+        base44.asServiceRole.entities.Profile.filter(
+          { display_name_lc: { $regex: q } }, '-created_date', 20
+        ),
+        base44.asServiceRole.entities.Profile.filter(
+          { public_user_id: { $regex: q } }, '-created_date', 20
+        ),
+      ]);
 
-      const matched = all.filter((p) => {
-        try {
-          const name = (p.display_name_lc || p.display_name || '').toLowerCase();
-          const uid = String(p.public_user_id ?? '').toLowerCase();
-          return name.includes(q) || uid.includes(q);
-        } catch (_) {
-          return false;
-        }
-      });
+      // Merge and deduplicate by id
+      const seen = new Set();
+      const matched = [];
+      for (const p of [...byName, ...byUid]) {
+        if (!seen.has(p.id)) { seen.add(p.id); matched.push(p); }
+      }
 
       return Response.json({ results: matched.slice(0, 20).map(sanitizeProfile) });
     }
