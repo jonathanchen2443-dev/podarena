@@ -244,13 +244,17 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
 
   const { approved, rejected, pending, total, records } = game.approvalSummary;
 
-  // Build per-name breakdown using participant data as a profile map
+  // Build per-name breakdown: key by profile_id (for display joins)
   const participantNameMap = {};
   game.participants.forEach((p) => { participantNameMap[p.userId] = p.display_name; });
 
-  const approvedNames = records.filter((r) => r.status === "approved").map((r) => participantNameMap[r.approver_user_id] || "Unknown");
-  const pendingNames  = records.filter((r) => r.status === "pending").map((r) => participantNameMap[r.approver_user_id] || "Unknown");
-  const rejectedNames = records.filter((r) => r.status === "rejected").map((r) => participantNameMap[r.approver_user_id] || "Unknown");
+  // approver_profile_id is the Profile.id for display; fall back to userId map
+  const _approverName = (r) =>
+    participantNameMap[r.approver_profile_id] || participantNameMap[r.approver_user_id] || "Unknown";
+
+  const approvedNames = records.filter((r) => r.status === "approved").map(_approverName);
+  const pendingNames  = records.filter((r) => r.status === "pending").map(_approverName);
+  const rejectedNames = records.filter((r) => r.status === "rejected").map(_approverName);
 
   const modal = (
     <div
