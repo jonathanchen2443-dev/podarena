@@ -43,7 +43,8 @@ export async function getDashboardData(auth) {
     ]);
 
     // Recent games: simple flat fetch of my participations, no enrichment
-    const participations = await base44.entities.GameParticipant.filter({ user_id: userId }).catch(() => []);
+    // Use participant_profile_id (Profile.id) for the lookup — matches auth.currentUser.id
+    const participations = await base44.entities.GameParticipant.filter({ participant_profile_id: userId }).catch(() => []);
     const gameIds = [...new Set(participations.map((p) => p.game_id))].slice(0, 5);
 
     let recentGames = [];
