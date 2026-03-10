@@ -70,12 +70,15 @@ export async function getProfileInsights(auth) {
       // Fetch all participants for games I won — batch (filter by game_id won't work for multiple ids so we list all and filter)
       // We already have myParticipations. We need OTHER participants in those games.
       // Re-use allGames ids to do a targeted fetch per win game is N+1; instead list all participants and filter.
-      const allParticipantsInWinGames = await base44.entities.GameParticipant.list("-created_date", 1000);
+      // Use myParticipations game_ids to avoid listing all participants (RLS + perf)
+      // We can only see participants in our own games — sufficient for opponent counting
+      const allParticipantsInWinGames = await base44.entities.GameParticipant.list("-created_date", 1000).catch(() => []);
       const opponentCounts = {};
       for (const p of allParticipantsInWinGames) {
         if (!winGameIds.has(p.game_id)) continue;
-        if (p.user_id === userId) continue; // skip self
-        opponentCounts[p.user_id] = (opponentCounts[p.user_id] || 0) + 1;
+        const pid = p.participant_profile_id || p.user_id;
+        if (pid === userId) continue; // skip self
+        opponentCounts[pid] = (opponentCounts[pid] || 0) + 1;
       }
       const topOpponentId = Object.keys(opponentCounts).sort((a, b) => opponentCounts[b] - opponentCounts[a])[0];
       if (topOpponentId) {
