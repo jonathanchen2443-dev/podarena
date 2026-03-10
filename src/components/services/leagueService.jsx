@@ -344,8 +344,8 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false,
   ]);
 
   const allParticipants = participantArrays.flat();
-  const userIds = [...new Set(allParticipants.map((p) => p.user_id))];
-  const deckIds = [...new Set(allParticipants.map((p) => p.deck_id).filter(Boolean))];
+  const userIds = [...new Set(allParticipants.map((p) => p.participant_profile_id || p.user_id))];
+  const deckIds = [...new Set(allParticipants.map((p) => p.selected_deck_id || p.deck_id).filter(Boolean))];
 
   // Batch fetch profiles and decks
   const [profileMap, deckMap] = await Promise.all([
