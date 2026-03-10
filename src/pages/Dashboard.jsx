@@ -225,6 +225,23 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading]);
 
+  // Real-time: when any Game record changes status (e.g. approved after all votes),
+  // bust caches and reload so creator sees finalized state immediately.
+  useEffect(() => {
+    if (authLoading || !currentUser) return;
+    const unsubscribe = base44.entities.Game.subscribe((event) => {
+      if (event.type === "update" && event.data?.status === "approved") {
+        invalidateDashboardCache(currentUser.id);
+        invalidateProfileStatsCache(currentUser.id);
+        invalidateProfileInsightsCache(currentUser.id);
+        fetchingRef.current = false;
+        load();
+      }
+    });
+    return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, currentUser]);
+
   async function load() {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
