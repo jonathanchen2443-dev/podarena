@@ -290,6 +290,12 @@ export default function Inbox() {
 
   async function handleActionComplete(leagueId) {
     if (leagueId) invalidateLeagueCache(leagueId);
+    // Bust approver's own dashboard/stats caches so their view also reflects finalized state
+    if (currentUser?.id) {
+      invalidateDashboardCache(currentUser.id);
+      invalidateProfileStatsCache(currentUser.id);
+      invalidateProfileInsightsCache(currentUser.id);
+    }
     closeModal();
     fetchingRef.current = false;
     await loadAll();
