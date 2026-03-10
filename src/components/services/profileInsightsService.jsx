@@ -91,12 +91,13 @@ export async function getProfileInsights(auth) {
       }
     }
 
-    // Most Played Deck (approved games, non-null deck_id)
+    // Most Played Deck (approved games, non-null selected_deck_id)
     let mostPlayedDeck = null;
     const deckPlayCounts = {};
     for (const p of myApproved) {
-      if (!p.deck_id) continue;
-      deckPlayCounts[p.deck_id] = (deckPlayCounts[p.deck_id] || 0) + 1;
+      const deckId = p.selected_deck_id || p.deck_id;
+      if (!deckId) continue;
+      deckPlayCounts[deckId] = (deckPlayCounts[deckId] || 0) + 1;
     }
     const topDeckId = Object.keys(deckPlayCounts).sort((a, b) => deckPlayCounts[b] - deckPlayCounts[a])[0];
     if (topDeckId) {
