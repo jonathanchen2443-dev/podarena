@@ -12,11 +12,6 @@ import { ROUTES } from "@/components/utils/routes";
 import CasualParticipantPicker from "@/components/loggame/CasualParticipantPicker";
 import PlacementInput from "@/components/loggame/PlacementInput";
 
-// PODS MIGRATION NOTE:
-// League-based game logging has been removed in Phase 1.
-// Only casual game logging is active. League/PODS-based logging
-// will be re-introduced when PODS are built.
-
 export default function LogGame() {
   const auth = useAuth();
   const { isGuest, authLoading, currentUser } = auth;
@@ -24,33 +19,28 @@ export default function LogGame() {
 
   const returnTo = new URLSearchParams(window.location.search).get("returnTo");
 
-  // ── Casual mode only ──────────────────────────────────────────────────────
-  const [casualProfiles, setCasualProfiles] = useState({});
-  const [myDecks, setMyDecks] = useState([]);
+  // participantMap: { [profileId]: { profileId, authUserId, display_name, avatar_url } }
+  const [participantMap, setParticipantMap] = useState({});
+  // participantIds: Profile.id[] (ordered)
   const [participantIds, setParticipantIds] = useState([]);
+  const [myDecks, setMyDecks] = useState([]);
   const [placements, setPlacements] = useState({});
   const [deckSelections, setDeckSelections] = useState({});
   const [playedAt, setPlayedAt] = useState(todayISO());
   const [notes, setNotes] = useState("");
-
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
   const decksFetchRef = useRef(false);
 
-  function todayISO() {
-    return new Date().toISOString().slice(0, 16);
-  }
+  function todayISO() { return new Date().toISOString().slice(0, 16); }
 
   function handleBack() {
-    if (returnTo) {
-      navigate(-1);
-    } else {
-      navigate(ROUTES.HOME);
-    }
+    if (returnTo) navigate(-1);
+    else navigate(ROUTES.HOME);
   }
 
-  // ── Load decks ────────────────────────────────────────────────────────────
+  // Load creator's decks
   useEffect(() => {
     if (authLoading || isGuest) return;
     if (decksFetchRef.current) return;
@@ -62,50 +52,51 @@ export default function LogGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isGuest]);
 
-  // ── Auto-add current user ─────────────────────────────────────────────────
+  // Auto-add current user as first participant
   useEffect(() => {
     if (!currentUser?.id || authLoading) return;
-    setParticipantIds((prev) => (prev.includes(currentUser.id) ? prev : [currentUser.id, ...prev]));
-    setCasualProfiles((prev) => ({
+    const profileId = currentUser.id;
+    setParticipantIds((prev) => prev.includes(profileId) ? prev : [profileId, ...prev]);
+    setParticipantMap((prev) => ({
       ...prev,
-      [currentUser.id]: {
-        userId: currentUser.id,
+      [profileId]: {
+        profileId,
+        authUserId: currentUser.user_id || null,
         display_name: currentUser.display_name || "You",
         avatar_url: currentUser.avatar_url || null,
       },
     }));
   }, [currentUser?.id, authLoading]);
 
-  function addParticipant(uid, profileData) {
-    if (participantIds.includes(uid)) return;
-    setParticipantIds((prev) => [...prev, uid]);
-    if (profileData) {
-      setCasualProfiles((prev) => ({ ...prev, [uid]: profileData }));
+  function addParticipant(profileId, participantData) {
+    if (participantIds.includes(profileId)) return;
+    if (participantIds.length >= 4) return;
+    setParticipantIds((prev) => [...prev, profileId]);
+    if (participantData) {
+      setParticipantMap((prev) => ({ ...prev, [profileId]: participantData }));
     }
   }
 
-  function removeParticipant(uid) {
-    setParticipantIds((prev) => prev.filter((id) => id !== uid));
-    setPlacements((prev) => { const n = { ...prev }; delete n[uid]; return n; });
-    setDeckSelections((prev) => { const n = { ...prev }; delete n[uid]; return n; });
+  function removeParticipant(profileId) {
+    setParticipantIds((prev) => prev.filter((id) => id !== profileId));
+    setPlacements((prev) => { const n = { ...prev }; delete n[profileId]; return n; });
+    setDeckSelections((prev) => { const n = { ...prev }; delete n[profileId]; return n; });
+    setParticipantMap((prev) => { const n = { ...prev }; delete n[profileId]; return n; });
   }
 
-  function setPlacement(uid, val) { setPlacements((prev) => ({ ...prev, [uid]: val })); }
-  function setDeck(uid, deckId) { setDeckSelections((prev) => ({ ...prev, [uid]: deckId })); }
+  function setPlacement(profileId, val) { setPlacements((prev) => ({ ...prev, [profileId]: val })); }
+  function setDeck(profileId, deckId) { setDeckSelections((prev) => ({ ...prev, [profileId]: deckId })); }
 
-  // ── Validation ────────────────────────────────────────────────────────────
   function validate() {
     if (participantIds.length < 2) return "Please add at least 2 participants.";
-    const dupCheck = new Set(participantIds);
-    if (dupCheck.size !== participantIds.length) return "Duplicate participants detected.";
-    const usedPlacements = participantIds.map((uid) => placements[uid]).filter(Boolean);
+    if (participantIds.length > 4) return "Maximum 4 participants allowed.";
+    const usedPlacements = participantIds.map((id) => placements[id]).filter(Boolean);
     if (usedPlacements.length !== participantIds.length) return "All participants must have a placement.";
     const uniquePlacements = new Set(usedPlacements);
     if (uniquePlacements.size !== usedPlacements.length) return "Each placement must be unique.";
     return null;
   }
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitError(null);
@@ -114,20 +105,39 @@ export default function LogGame() {
 
     setSubmitting(true);
     try {
-      const participantsPayload = participantIds.map((uid) => ({
-        user_id: uid,
-        deck_id: deckSelections[uid] || null,
-        placement: placements[uid],
-        result: placements[uid] === 1 ? "win" : "loss",
-      }));
+      // Fetch deck objects for snapshot at game time
+      const deckIds = [...new Set(Object.values(deckSelections).filter(Boolean))];
+      let deckDataMap = {};
+      if (deckIds.length > 0) {
+        const deckFetches = await Promise.all(deckIds.map((id) => base44.entities.Deck.filter({ id })));
+        deckFetches.forEach((arr) => { if (arr[0]) deckDataMap[arr[0].id] = arr[0]; });
+      }
+
+      const creatorProfileId = currentUser.id;
+      // Get auth user id from profile.user_id (backfilled at registration)
+      const creatorAuthUserId = currentUser.user_id || null;
+
+      const participants = participantIds.map((profileId) => {
+        const info = participantMap[profileId] || {};
+        const deckId = deckSelections[profileId] || null;
+        return {
+          profileId,
+          authUserId: info.authUserId || null,
+          deck_id: deckId,
+          deckData: deckId ? deckDataMap[deckId] : null,
+          placement: placements[profileId],
+          result: placements[profileId] === 1 ? "win" : "loss",
+        };
+      });
 
       await createGameWithParticipants({
         leagueId: null,
         contextType: "casual",
-        creatorProfileId: currentUser.id,
+        creatorProfileId,
+        creatorAuthUserId,
         playedAt: playedAt ? new Date(playedAt).toISOString() : new Date().toISOString(),
         notes,
-        participants: participantsPayload,
+        participants,
       });
 
       toast.success("Game logged! Waiting for participant approvals.");
@@ -143,7 +153,6 @@ export default function LogGame() {
     }
   }
 
-  // ── Guards ────────────────────────────────────────────────────────────────
   if (authLoading) return <LoadingState message="Loading…" />;
 
   const topNav = (
@@ -182,12 +191,12 @@ export default function LogGame() {
     );
   }
 
-  const allPlacementsFilled = participantIds.length >= 2 && participantIds.every((uid) => placements[uid]);
+  const allPlacementsFilled = participantIds.length >= 2 && participantIds.every((id) => placements[id]);
 
-  const casualMembersForPlacement = participantIds.map((uid) => ({
-    userId: uid,
-    display_name: casualProfiles[uid]?.display_name || uid,
-    avatar_url: casualProfiles[uid]?.avatar_url || null,
+  const membersForPlacement = participantIds.map((profileId) => ({
+    userId: profileId,
+    display_name: participantMap[profileId]?.display_name || profileId,
+    avatar_url: participantMap[profileId]?.avatar_url || null,
   }));
 
   return (
@@ -204,24 +213,22 @@ export default function LogGame() {
         selectedIds={participantIds}
         onAdd={addParticipant}
         onRemove={removeParticipant}
-        currentUserId={currentUser?.id}
+        currentUserProfileId={currentUser?.id}
       />
 
-      {/* Placements + decks */}
       {participantIds.length >= 2 && (
         <PlacementInput
           participants={participantIds}
-          members={casualMembersForPlacement}
+          members={membersForPlacement}
           placements={placements}
           onPlacementChange={setPlacement}
           myDecks={myDecks}
           deckSelections={deckSelections}
           onDeckChange={setDeck}
-          currentUserId={currentUser?.id}
+          currentUserProfileId={currentUser?.id}
         />
       )}
 
-      {/* Metadata */}
       {participantIds.length >= 2 && (
         <div className="space-y-3">
           <div>
@@ -248,7 +255,6 @@ export default function LogGame() {
         </div>
       )}
 
-      {/* Error */}
       {submitError && (
         <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -256,7 +262,6 @@ export default function LogGame() {
         </div>
       )}
 
-      {/* Submit */}
       <Button
         type="submit"
         disabled={!allPlacementsFilled || submitting}
