@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { useAuth } from "@/components/auth/AuthContext";
+import { base44 } from "@/api/base44Client";
 import { getDashboardData, invalidateDashboardCache } from "@/components/services/dashboardService";
 import { invalidateProfileStatsCache } from "@/components/services/profileStatsService";
 import { invalidateProfileInsightsCache } from "@/components/services/profileInsightsService";
