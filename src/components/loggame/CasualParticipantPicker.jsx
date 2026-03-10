@@ -3,17 +3,20 @@ import { X, User, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 /**
- * CasualParticipantPicker — lets the user search all profiles to add participants
- * (no league membership requirement).
- */
-/**
- * onAdd(id, profileData) — passes id + profile object so parent can cache display names
+ * CasualParticipantPicker — lets the user search all profiles to add participants.
+ *
+ * onAdd(profileId, participantData) where participantData = {
+ *   profileId: string,     Profile.id
+ *   authUserId: string,    Auth User ID (user_id on Profile)
+ *   display_name: string,
+ *   avatar_url: string|null,
+ * }
  */
 export default function CasualParticipantPicker({
-  selectedIds,
+  selectedIds,     // Profile.id[]
   onAdd,
   onRemove,
-  currentUserId,
+  currentUserProfileId,  // Profile.id of the logged-in user
 }) {
   const [allProfiles, setAllProfiles] = useState([]);
   const [query, setQuery] = useState("");
@@ -41,36 +44,35 @@ export default function CasualParticipantPicker({
   });
 
   function handleSelect(profile) {
-    onAdd(profile.id, { userId: profile.id, display_name: profile.display_name, avatar_url: profile.avatar_url });
+    onAdd(profile.id, {
+      profileId: profile.id,
+      authUserId: profile.user_id || null,  // stored on Profile at registration
+      display_name: profile.display_name,
+      avatar_url: profile.avatar_url || null,
+    });
     setQuery("");
   }
-
-  function handleAddSelf() {
-    const self = allProfiles.find((p) => p.id === currentUserId);
-    if (self) onAdd(self.id, { userId: self.id, display_name: self.display_name, avatar_url: self.avatar_url });
-    else onAdd(currentUserId);
-  }
-
-  const isSelfAdded = selectedIds.includes(currentUserId);
 
   return (
     <div>
       <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">
         Participants <span className="text-red-400">*</span>{" "}
-        <span className="text-gray-600 normal-case">(min. 2)</span>
+        <span className="text-gray-600 normal-case">(min. 2, max. 4)</span>
       </label>
 
       {/* Search box */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name or username…"
-          className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))]"
-        />
-      </div>
+      {selectedIds.length < 4 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name or username…"
+            className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))]"
+          />
+        </div>
+      )}
 
       {/* Dropdown results */}
       {query && profilesLoaded && (
@@ -94,7 +96,7 @@ export default function CasualParticipantPicker({
                 )}
                 <span className="truncate">{p.display_name}</span>
                 {p.username && <span className="text-gray-500 text-xs">@{p.username}</span>}
-                {p.id === currentUserId && <span className="text-gray-500 text-xs">(you)</span>}
+                {p.id === currentUserProfileId && <span className="text-gray-500 text-xs">(you)</span>}
               </button>
             ))
           )}
@@ -104,11 +106,11 @@ export default function CasualParticipantPicker({
       {/* Selected list */}
       {selectedIds.length > 0 && (
         <div className="mt-3 space-y-2">
-          {selectedIds.map((uid) => {
-            const profile = allProfiles.find((p) => p.id === uid);
+          {selectedIds.map((profileId) => {
+            const profile = allProfiles.find((p) => p.id === profileId);
             return (
               <div
-                key={uid}
+                key={profileId}
                 className="flex items-center gap-2 bg-gray-800/60 border border-gray-700/50 rounded-xl px-3 py-2"
               >
                 {profile?.avatar_url ? (
@@ -119,16 +121,18 @@ export default function CasualParticipantPicker({
                   </div>
                 )}
                 <span className="flex-1 text-sm text-white truncate">
-                  {profile?.display_name || uid}
-                  {uid === currentUserId && <span className="text-gray-500 text-xs ml-1">(you)</span>}
+                  {profile?.display_name || profileId}
+                  {profileId === currentUserProfileId && <span className="text-gray-500 text-xs ml-1">(you)</span>}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => onRemove(uid)}
-                  className="text-gray-600 hover:text-red-400 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                {profileId !== currentUserProfileId && (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(profileId)}
+                    className="text-gray-600 hover:text-red-400 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             );
           })}
