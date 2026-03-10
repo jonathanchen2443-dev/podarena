@@ -171,9 +171,10 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
 
   useEffect(() => {
     if (!canAct || !game) return;
-    const myParticipant = game.participants.find((p) => p.userId === currentUserId);
+    // Match participant by Profile.id for display purposes
+    const myParticipant = game.participants.find((p) => p.userId === currentProfileId);
     if (myParticipant?.deck_id) setSelectedDeckId(myParticipant.deck_id);
-  }, [canAct, currentUserId, game]);
+  }, [canAct, currentProfileId, game]);
 
   useEffect(() => {
     if (!canAct || auth.isGuest) return;
