@@ -105,18 +105,24 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
         // Resolve participant identities via the public-safe backend layer.
         // getPublicProfile() uses asServiceRole + field sanitization — email never exposed.
         const profileResults = await Promise.allSettled(
-          participantArr.map((p) => getPublicProfile(p.user_id))
+          participantArr.map((p) => getPublicProfile(p.participant_profile_id || p.user_id))
         );
         const participants = participantArr.map((p, i) => {
           const pub = profileResults[i].status === "fulfilled" ? profileResults[i].value : null;
+          const profileId = p.participant_profile_id || p.user_id;
           return {
-            userId: p.user_id,
+            userId: profileId,             // Profile.id — for display/navigation
+            authUserId: p.participant_user_id || null,  // Auth UID
             display_name: pub?.display_name || "Unknown",
             avatar_url: pub?.avatar_url || null,
             result: p.result,
             placement: p.placement,
-            deck_id: p.deck_id,
-            deck: null,
+            deck_id: p.selected_deck_id || p.deck_id,
+            deck: (p.selected_deck_id || p.deck_id) ? {
+              id: p.selected_deck_id || p.deck_id,
+              name: p.deck_name_at_time || null,
+              color_identity: p.deck_snapshot_json?.color_identity || [],
+            } : null,
           };
         });
         const approvedCount = approvalArr.filter((a) => a.status === "approved").length;
