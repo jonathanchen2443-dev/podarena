@@ -1,7 +1,9 @@
 import React from "react";
 import { User } from "lucide-react";
 
-export default function PlacementInput({ participants, members, placements, onPlacementChange, myDecks, deckSelections, onDeckChange, currentUserId }) {
+export default function PlacementInput({ participants, members, placements, onPlacementChange, myDecks, deckSelections, onDeckChange, currentUserProfileId, currentUserId }) {
+  // Support both prop names for backwards compatibility
+  const myId = currentUserProfileId || currentUserId;
   const usedPlacements = new Set(Object.values(placements).filter(Boolean).map(Number));
 
   return (
