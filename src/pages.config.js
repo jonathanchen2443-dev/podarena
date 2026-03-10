@@ -59,12 +59,12 @@ import Invite from './pages/Invite';
 import LeagueDetails from './pages/LeagueDetails';
 import Leagues from './pages/Leagues';
 import LeaguesList from './pages/LeaguesList';
+import LogGame from './pages/LogGame';
 import Pods from './pages/Pods';
 import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
 import UserProfile from './pages/UserProfile';
-import LogGame from './pages/LogGame';
 import __Layout from './Layout.jsx';
 
 
@@ -81,12 +81,12 @@ export const PAGES = {
     "LeagueDetails": LeagueDetails,
     "Leagues": Leagues,
     "LeaguesList": LeaguesList,
+    "LogGame": LogGame,
     "Pods": Pods,
     "Profile": Profile,
     "ProfileDecks": ProfileDecks,
     "Register": Register,
     "UserProfile": UserProfile,
-    "LogGame": LogGame,
 }
 
 export const pagesConfig = {
