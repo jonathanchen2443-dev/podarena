@@ -154,12 +154,19 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
 
   const game = gameProp || fetchedGame;
 
-  const currentUserId = auth.currentUser?.id;
-  const myApproval = currentUserId && game
+  // For permission checks: use auth user id (not Profile.id)
+  // currentUser.user_id = Auth UID; currentUser.id = Profile.id
+  const currentProfileId = auth.currentUser?.id;
+  const currentAuthUserId = auth.currentUser?.user_id || null;
+
+  // Find my approval by auth user id (approver_user_id is always Auth UID)
+  const myApproval = game
     ? game.approvalSummary.records.find(
-        (a) => a.approver_user_id === currentUserId && a.status === "pending"
+        (a) => a.approver_user_id === currentAuthUserId && a.status === "pending"
       )
     : null;
+  // currentUserId kept for display/navigation lookups (Profile.id)
+  const currentUserId = currentProfileId;
   const canAct = !auth.isGuest && !!myApproval && game?.status === "pending";
 
   useEffect(() => {
