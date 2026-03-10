@@ -43,11 +43,11 @@ export async function getProfileInsights(auth) {
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
   const promise = (async () => {
-    // 1. Fetch all my participations + all approved games + all decks in parallel
+    // 1. Fetch all my participations (by participant_profile_id = Profile.id) + approved games + decks
     const [myParticipations, allGames, myDecks] = await Promise.all([
-      base44.entities.GameParticipant.filter({ user_id: userId }),
-      base44.entities.Game.list("-played_at", 500),
-      base44.entities.Deck.filter({ owner_id: userId }),
+      base44.entities.GameParticipant.filter({ participant_profile_id: userId }, "-created_date", 500).catch(() => []),
+      base44.entities.Game.list("-played_at", 500).catch(() => []),
+      base44.entities.Deck.filter({ owner_id: userId }).catch(() => []),
     ]);
 
     // Index approved game ids
