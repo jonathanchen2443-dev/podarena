@@ -260,17 +260,18 @@ export async function getLeagueStandings(auth, leagueId, inviteToken = null) {
   // 6. Aggregate stats per user from approved game participants
   const statsMap = {};
   for (const p of allParticipants) {
-    if (!statsMap[p.user_id]) {
-      statsMap[p.user_id] = { wins: 0, losses: 0, draws: 0, gamesPlayed: 0, participations: [] };
+    const pid = p.participant_profile_id || p.user_id;
+    if (!statsMap[pid]) {
+      statsMap[pid] = { wins: 0, losses: 0, draws: 0, gamesPlayed: 0, participations: [] };
     }
-    const s = statsMap[p.user_id];
+    const s = statsMap[pid];
     s.gamesPlayed++;
     let result = p.result;
     if (!result && p.placement != null) result = p.placement === 1 ? "win" : "loss";
     if (result === "win") s.wins++;
     else if (result === "draw") s.draws++;
     else s.losses++;
-    s.participations.push({ game_id: p.game_id, deck_id: p.deck_id, date: gameDateMap[p.game_id] });
+    s.participations.push({ game_id: p.game_id, deck_id: p.selected_deck_id || p.deck_id, date: gameDateMap[p.game_id] });
   }
 
   // 7. Shape rows — start from ALL active members (zero-game members included)
