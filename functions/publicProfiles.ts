@@ -83,11 +83,11 @@ Deno.serve(async (req) => {
       if (!profileId) return Response.json({ error: 'profileId required' }, { status: 400 });
 
       const [participations, decks] = await Promise.all([
-        base44.asServiceRole.entities.GameParticipant.filter({ user_id: profileId }, '-created_date', 200),
+        base44.asServiceRole.entities.GameParticipant.filter({ participant_profile_id: profileId }, '-created_date', 200),
         base44.asServiceRole.entities.Deck.filter({ owner_id: profileId }, '-created_date', 100),
       ]);
 
-      // Count wins/games directly from participation data — avoids fetching all games
+      // Count wins/games directly from participation data
       const gamesPlayed = participations.length;
       const wins = participations.filter((p) => p.placement === 1).length;
 
