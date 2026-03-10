@@ -39,14 +39,18 @@ export async function getProfileStats(auth) {
   const promise = (async () => {
     // Fetch each entity independently so one RLS failure doesn't block all stats
     const [allParticipations, decks, allMemberships, games] = await Promise.all([
-      base44.entities.GameParticipant.list("-created_date", 500).catch(() => []),
-      base44.entities.Deck.list("-updated_date", 200).catch(() => []),
-      base44.entities.LeagueMember.list("-created_date", 200).catch(() => []),
+      // RLS already scopes this to the current user's rows; filter by profile_id for new records
+      base44.entities.GameParticipant.filter({ participant_profile_id: userId }, "-created_date", 500).catch(() => []),
+      base44.entities.Deck.filter({ owner_id: userId }, "-updated_date", 200).catch(() => []),
+      base44.entities.LeagueMember.filter({ user_id: userId }, "-created_date", 200).catch(() => []),
       base44.entities.Game.list("-created_date", 500).catch(() => []),
     ]);
-    const participations = allParticipations.filter((p) => p.user_id === userId);
-    const filteredDecks = decks.filter((d) => d.owner_id === userId);
-    const memberships = allMemberships.filter((m) => m.user_id === userId);
+    // Accept both old (user_id) and new (participant_profile_id) field for migration compatibility
+    const participations = allParticipations.filter((p) =>
+      (p.participant_profile_id || p.user_id) === userId
+    );
+    const filteredDecks = decks;
+    const memberships = allMemberships;
 
     const gameIds = new Set(participations.map((p) => p.game_id));
     const approvedGameIds = new Set(
