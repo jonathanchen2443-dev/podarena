@@ -38,24 +38,25 @@ export async function getProfileStats(auth) {
 
   const promise = (async () => {
     // Fetch each entity independently so one RLS failure doesn't block all stats
-    const [allParticipations, decks, allMemberships, games] = await Promise.all([
-      // RLS already scopes this to the current user's rows; filter by profile_id for new records
+    const [participations, decks, memberships] = await Promise.all([
+      // RLS scopes to current user's participant rows; filter by profile_id for new records
       base44.entities.GameParticipant.filter({ participant_profile_id: userId }, "-created_date", 500).catch(() => []),
       base44.entities.Deck.filter({ owner_id: userId }, "-updated_date", 200).catch(() => []),
       base44.entities.LeagueMember.filter({ user_id: userId }, "-created_date", 200).catch(() => []),
-      base44.entities.Game.list("-created_date", 500).catch(() => []),
     ]);
-    // Accept both old (user_id) and new (participant_profile_id) field for migration compatibility
-    const participations = allParticipations.filter((p) =>
-      (p.participant_profile_id || p.user_id) === userId
-    );
-    const filteredDecks = decks;
-    const memberships = allMemberships;
 
-    const gameIds = new Set(participations.map((p) => p.game_id));
-    const approvedGameIds = new Set(
-      games.filter((g) => g.status === "approved" && gameIds.has(g.id)).map((g) => g.id)
-    );
+    // Fetch only the games this user participated in, filtering by approved status
+    const rawGameIds = [...new Set(participations.map((p) => p.game_id))];
+    let approvedGameIds = new Set();
+    if (rawGameIds.length > 0) {
+      // Fetch game records for just these IDs
+      const gameResults = await Promise.all(
+        rawGameIds.map((gid) => base44.entities.Game.filter({ id: gid }).then((r) => r[0]).catch(() => null))
+      );
+      approvedGameIds = new Set(
+        gameResults.filter((g) => g && g.status === "approved").map((g) => g.id)
+      );
+    }
 
     let gamesPlayed = 0;
     let wins = 0;
