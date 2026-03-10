@@ -123,6 +123,11 @@ export default function LogGame() {
         participants: participantPayload,
       });
 
+      // Bust caches so creator immediately sees pending game on Dashboard/Profile
+      invalidateDashboardCache(currentUser.id);
+      invalidateProfileStatsCache(currentUser.id);
+      invalidateProfileInsightsCache(currentUser.id);
+
       toast.success("Game logged! Waiting for participants to confirm.");
       navigate(ROUTES.DASHBOARD);
     } catch (err) {
