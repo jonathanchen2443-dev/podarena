@@ -228,7 +228,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
     setActionLoading("reject");
     setActionError(null);
     try {
-      await rejectGame(game.id, currentUserId, "");
+      await rejectGame(game.id, currentAuthUserId, currentProfileId, "");
       toast.success("Game rejected.");
       if (onActionComplete) await onActionComplete();
       onClose();
