@@ -42,10 +42,17 @@ export async function getDashboardData(auth) {
       listMyPendingApprovals(auth).catch(() => []),
     ]);
 
-    // Recent games: simple flat fetch of my participations, no enrichment
+    // Recent games: fetch my participations, sort by newest, then fetch game records
     // Use participant_profile_id (Profile.id) for the lookup — matches auth.currentUser.id
-    const participations = await base44.entities.GameParticipant.filter({ participant_profile_id: userId }).catch(() => []);
-    const gameIds = [...new Set(participations.map((p) => p.game_id))].slice(0, 5);
+    const participations = await base44.entities.GameParticipant.filter(
+      { participant_profile_id: userId }, "-created_date", 20
+    ).catch(() => []);
+
+    // Sort newest first before slicing
+    const sortedParticipations = participations
+      .slice()
+      .sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    const gameIds = [...new Set(sortedParticipations.map((p) => p.game_id))].slice(0, 10);
 
     let recentGames = [];
     if (gameIds.length > 0) {
@@ -54,7 +61,9 @@ export async function getDashboardData(auth) {
       );
       recentGames = games
         .filter(Boolean)
+        // Include pending + approved + rejected so creator sees their own submissions immediately
         .sort((a, b) => new Date(b.played_at || b.created_date) - new Date(a.played_at || a.created_date))
+        .slice(0, 5)
         .map((game) => ({
           id: game.id,
           league_id: game.league_id || null,
