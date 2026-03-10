@@ -83,13 +83,28 @@ Deno.serve(async (req) => {
       if (!profileId) return Response.json({ error: 'profileId required' }, { status: 400 });
 
       const [participations, decks] = await Promise.all([
-        base44.asServiceRole.entities.GameParticipant.filter({ participant_profile_id: profileId }, '-created_date', 200),
+        base44.asServiceRole.entities.GameParticipant.filter({ participant_profile_id: profileId }, '-created_date', 500),
         base44.asServiceRole.entities.Deck.filter({ owner_id: profileId }, '-created_date', 100),
       ]);
 
-      // Count wins/games directly from participation data
-      const gamesPlayed = participations.length;
-      const wins = participations.filter((p) => p.placement === 1).length;
+      // Only count games that have been fully approved — fetch those game statuses
+      const gameIds = [...new Set(participations.map((p) => p.game_id))];
+      let approvedGameIds = new Set();
+      if (gameIds.length > 0) {
+        // Batch: fetch games in chunks of 50 to avoid payload limits
+        const chunks = [];
+        for (let i = 0; i < gameIds.length; i += 50) chunks.push(gameIds.slice(i, i + 50));
+        const gameResults = await Promise.all(
+          chunks.map((chunk) =>
+            base44.asServiceRole.entities.Game.filter({ id: { $in: chunk }, status: 'approved' }, '-played_at', 50)
+          )
+        );
+        approvedGameIds = new Set(gameResults.flat().map((g) => g.id));
+      }
+
+      const approvedParticipations = participations.filter((p) => approvedGameIds.has(p.game_id));
+      const gamesPlayed = approvedParticipations.length;
+      const wins = approvedParticipations.filter((p) => p.placement === 1).length;
 
       return Response.json({
         stats: {
