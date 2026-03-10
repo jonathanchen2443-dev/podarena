@@ -244,9 +244,9 @@ export async function getLeagueStandings(auth, leagueId, inviteToken = null) {
   const allParticipants = participantArrays.flat();
 
   // 4. Batch-fetch profiles (union of member ids + participant ids) and decks
-  const participantUserIds = allParticipants.map((p) => p.user_id);
+  const participantUserIds = allParticipants.map((p) => p.participant_profile_id || p.user_id);
   const allUserIds = [...new Set([...allMemberUserIds, ...participantUserIds])];
-  const deckIds = [...new Set(allParticipants.map((p) => p.deck_id).filter(Boolean))];
+  const deckIds = [...new Set(allParticipants.map((p) => p.selected_deck_id || p.deck_id).filter(Boolean))];
 
   const [profileMap, deckMap] = await Promise.all([
     _fetchProfileMap(allUserIds),
