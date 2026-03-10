@@ -208,8 +208,8 @@ export default function MatchDetailsModal({ game: gameProp, gameId, auth, league
     setActionLoading("approve");
     setActionError(null);
     try {
-      await setMyDeckForGame(auth, game.id, selectedDeckId);
-      await approveGame(game.id, currentUserId);
+      // Pass both auth user id (for permission) and profile id (for participant row update)
+      await approveGame(game.id, currentAuthUserId, currentProfileId, selectedDeckId);
       toast.success("Game approved!");
       if (onActionComplete) await onActionComplete();
       onClose();
