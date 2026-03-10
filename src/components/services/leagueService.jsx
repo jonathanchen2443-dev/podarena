@@ -355,10 +355,12 @@ export async function listLeagueGames(auth, leagueId, { includeRejected = false,
 
   const result = games.map((game, i) => {
     const participants = participantArrays[i].map((p) => {
-      const profile = profileMap[p.user_id];
-      const deck = p.deck_id ? deckMap[p.deck_id] : null;
+      const profileId = p.participant_profile_id || p.user_id;
+      const deckId = p.selected_deck_id || p.deck_id;
+      const profile = profileMap[profileId];
+      const deck = deckId ? deckMap[deckId] : null;
       return {
-        userId: p.user_id,
+        userId: profileId,
         display_name: profile?.display_name || profile?.username || "Unknown",
         avatar_url: profile?.avatar_url || null,
         result: p.result || null,
