@@ -15,7 +15,7 @@ export default function PlacementInput({ participants, members, placements, onPl
         {participants.map((uid) => {
           const member = members.find((m) => m.userId === uid);
           const currentPlacement = placements[uid] || "";
-          const isCurrentUser = uid === currentUserId;
+          const isCurrentUser = uid === myId;
 
           return (
             <div key={uid} className="bg-gray-800/60 border border-gray-700/50 rounded-xl p-3 space-y-2">
