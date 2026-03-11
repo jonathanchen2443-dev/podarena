@@ -33,16 +33,16 @@ export const ROUTES = {
   PROFILE_DECK_EDIT: (id) => `${createPageUrl("ProfileDecks")}?mode=edit&deckId=${id}`,
 
   // ── DEPRECATED League routes — kept for safe redirects, do not use in new UI ──
-  /** @deprecated Use ROUTES.PODS */
-  LEAGUES: createPageUrl("Pods"),
-  /** @deprecated Use ROUTES.PODS */
-  CREATE_LEAGUE: createPageUrl("Pods"),
-  /** @deprecated Use ROUTES.PODS */
-  LEAGUE_DETAILS: (_id) => createPageUrl("Pods"),
-  /** @deprecated Use ROUTES.PODS */
-  LEAGUE_INVITE: (_id, _token) => createPageUrl("Pods"),
-  /** @deprecated Use ROUTES.PODS */
-  INVITE: (_token) => createPageUrl("Pods"),
+  /** @deprecated Use ROUTES.MY_PODS */
+  LEAGUES: createPageUrl("MyPods"),
+  /** @deprecated Use ROUTES.MY_PODS */
+  CREATE_LEAGUE: createPageUrl("MyPods"),
+  /** @deprecated Use ROUTES.MY_PODS */
+  LEAGUE_DETAILS: (_id) => createPageUrl("MyPods"),
+  /** @deprecated Use ROUTES.MY_PODS */
+  LEAGUE_INVITE: (_id, _token) => createPageUrl("MyPods"),
+  /** @deprecated Use ROUTES.MY_PODS */
+  INVITE: (_token) => createPageUrl("MyPods"),
 
   // Public user profile — read-only, id via ?userId= query param
   USER_PROFILE: (userId) => `${createPageUrl("UserProfile")}?userId=${userId}`,
