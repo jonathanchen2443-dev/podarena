@@ -215,6 +215,7 @@ export async function createGameWithParticipants({
   // Create the game
   const game = await base44.entities.Game.create({
     league_id: leagueId || null,
+    pod_id: podId || null,
     context_type: contextType,
     played_at: playedAt || new Date().toISOString(),
     status: "pending",
