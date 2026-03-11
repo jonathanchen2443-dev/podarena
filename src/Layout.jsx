@@ -134,10 +134,8 @@ function AuthActionSlot() {
       const authUser = await base44.auth.me().catch(() => null);
       const [notifs, approvals] = await Promise.all([
         authUser?.id
-          ? base44.entities.Notification.filter(
-              { recipient_user_id: authUser.id },
-              "-created_date",
-              100
+          ? base44.entities.Notification.list("-created_date", 100).then(
+              (list) => list.filter((n) => n.recipient_user_id === authUser.id)
             )
           : Promise.resolve([]),
         listMyPendingApprovals({ isGuest: false, currentUser, isAuthenticated: true }),

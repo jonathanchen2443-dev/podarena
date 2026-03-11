@@ -391,10 +391,10 @@ export async function listMyPendingApprovals(auth) {
   const authUser = await base44.auth.me().catch(() => null);
   if (!authUser?.id) return [];
 
-  const myApprovals = await base44.entities.GameApproval.filter({
-    approver_user_id: authUser.id,
-    status: "pending",
-  });
+  const allMyApprovals = await base44.entities.GameApproval.list("-created_date", 200);
+  const myApprovals = allMyApprovals.filter(
+    (a) => a.approver_user_id === authUser.id && a.status === "pending"
+  );
   if (myApprovals.length === 0) return [];
 
   const gameIds = [...new Set(myApprovals.map((a) => a.game_id))];
