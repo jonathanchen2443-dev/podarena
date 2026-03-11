@@ -474,7 +474,12 @@ export async function listMyPendingApprovals(auth) {
           approvalSummary,
         },
         leagueId: game.league_id || null,
-        leagueName: game.context_type === "casual" ? "Casual Game" : (league?.name || "Unknown League"),
+        podId: game.pod_id || null,
+        leagueName: game.context_type === "casual"
+          ? "Casual Game"
+          : game.context_type === "pod"
+            ? (podMap[game.pod_id]?.pod_name || "POD Game")
+            : (league?.name || "Unknown League"),
         contextType: game.context_type || "casual",
         submittedByName: submitterProfile?.display_name || null,
       };
