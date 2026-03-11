@@ -187,11 +187,12 @@ export default function Inbox() {
     setLoading(true);
     setError(null);
     try {
+      const authUser = await base44.auth.me().catch(() => null);
       const [approvalRows, rawNotifs] = await Promise.all([
         listMyPendingApprovals(auth),
-        currentUser
+        authUser?.id
           ? base44.entities.Notification.filter(
-              { recipient_user_id: currentUser.id },
+              { recipient_user_id: authUser.id },
               "-created_date",
               50
             )
