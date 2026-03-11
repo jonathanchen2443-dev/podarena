@@ -44,7 +44,7 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
   const canAddMore = currentCount + toAdd.length < maxMembers;
 
   async function handleSave(e) {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!podName.trim()) { setError("POD name is required."); return; }
     setSaving(true);
     setError(null);
