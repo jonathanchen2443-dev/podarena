@@ -128,7 +128,8 @@ export async function toggleFavorite(membershipId, currentValue) {
 
 export async function createInviteMembership(podId, authUserId, profileId, inviterAuthUserId, inviterProfileId) {
   // Check for existing live row first
-  const existing = await base44.entities.PODMembership.filter({ pod_id: podId, user_id: authUserId });
+  const allRows = await base44.entities.PODMembership.list("-created_date", 200);
+  const existing = allRows.filter((r) => r.pod_id === podId && r.user_id === authUserId);
   const liveRow = existing.find((r) => ["active", "invited_pending"].includes(r.membership_status));
   if (liveRow) return liveRow;
 
@@ -144,6 +145,58 @@ export async function createInviteMembership(podId, authUserId, profileId, invit
     invited_by_profile_id: inviterProfileId || null,
     is_favorite: false,
   });
+}
+
+/**
+ * Full invite flow: creates PODMembership (invited_pending) + Notification (pod_invite).
+ * Idempotent — will not create duplicates if a live membership already exists.
+ *
+ * @param {object} pod          - { id, pod_name, pod_code, description }
+ * @param {object} invitee      - { id (profileId), user_id (authUserId), display_name }
+ * @param {string} inviterAuthUserId
+ * @param {string} inviterProfileId
+ */
+export async function inviteUserToPOD(pod, invitee, inviterAuthUserId, inviterProfileId) {
+  const inviteeAuthUserId = invitee.user_id || null;
+  const inviteeProfileId = invitee.id;
+
+  // 1. Create (or reuse) membership row
+  const membership = await createInviteMembership(
+    pod.id,
+    inviteeAuthUserId || "",
+    inviteeProfileId,
+    inviterAuthUserId,
+    inviterProfileId
+  );
+
+  // 2. Guard against duplicate notification for the same pod+user combination
+  if (inviteeAuthUserId) {
+    const existingNotifs = await base44.entities.Notification.list("-created_date", 50);
+    const alreadySent = existingNotifs.find(
+      (n) =>
+        n.type === "pod_invite" &&
+        n.recipient_user_id === inviteeAuthUserId &&
+        n.metadata?.pod_id === pod.id &&
+        !n.read_at
+    );
+    if (!alreadySent) {
+      await base44.entities.Notification.create({
+        type: "pod_invite",
+        pod_id: pod.id,
+        actor_user_id: inviterAuthUserId,
+        recipient_user_id: inviteeAuthUserId,
+        metadata: {
+          pod_id: pod.id,
+          pod_name: pod.pod_name,
+          pod_code: pod.pod_code,
+          pod_description: pod.description || "",
+          membership_id: membership.id,
+        },
+      });
+    }
+  }
+
+  return membership;
 }
 
 // ── POD GAME ─────────────────────────────────────────────────────────────────
