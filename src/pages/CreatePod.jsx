@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createPOD } from "@/components/services/podService";
+import { createPOD, inviteUserToPOD } from "@/components/services/podService";
 import { ArrowLeft, Layers, X, AlertCircle } from "lucide-react";
 import PlayerSearchInput from "@/components/pods/PlayerSearchInput";
 import { toast } from "sonner";
@@ -55,22 +55,14 @@ export default function CreatePod() {
         creatorAuthUserId: authUser.id,
       });
 
-      // Create invited_pending memberships for selected users
+      // Invite selected users: creates PODMembership + Notification in one call
       for (const u of invitedUsers) {
-        try {
-          await base44.entities.PODMembership.create({
-            pod_id: pod.id,
-            user_id: u.user_id || "",
-            profile_id: u.id,
-            role: "member",
-            membership_status: "invited_pending",
-            source: "invite",
-            invited_at: new Date().toISOString(),
-            invited_by_user_id: authUser.id,
-            invited_by_profile_id: currentUser.id,
-            is_favorite: false,
-          });
-        } catch (_) {}
+        await inviteUserToPOD(
+          { id: pod.id, pod_name: pod.pod_name, pod_code: pod.pod_code, description: pod.description || "" },
+          u,
+          authUser.id,
+          currentUser.id
+        );
       }
 
       toast.success(`POD "${pod.pod_name}" created! PODID: ${pod.pod_code}`);
