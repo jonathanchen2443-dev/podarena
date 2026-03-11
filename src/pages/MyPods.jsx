@@ -73,18 +73,34 @@ export default function MyPods() {
     try {
       const authUser = await base44.auth.me().catch(() => null);
       if (!authUser?.id) return;
-      const myMemberships = await base44.entities.PODMembership.filter({
-        user_id: authUser.id,
-        membership_status: "active",
-      });
-      if (myMemberships.length === 0) { setPods([]); setMemberships([]); return; }
-      const podIds = [...new Set(myMemberships.map((m) => m.pod_id))];
-      const podResults = await Promise.all(
-        podIds.map((id) => base44.entities.POD.get(id).catch(() => null))
-      );
-      const validPods = podResults.filter(Boolean).filter((p) => p.status === "active");
-      setPods(validPods);
-      setMemberships(myMemberships);
+      const [myMemberships, myInvites] = await Promise.all([
+        base44.entities.PODMembership.filter({ user_id: authUser.id, membership_status: "active" }),
+        base44.entities.PODMembership.filter({ user_id: authUser.id, membership_status: "invited_pending" }),
+      ]);
+
+      // Active PODs
+      if (myMemberships.length > 0) {
+        const podIds = [...new Set(myMemberships.map((m) => m.pod_id))];
+        const podResults = await Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null)));
+        const validPods = podResults.filter(Boolean).filter((p) => p.status === "active");
+        setPods(validPods);
+        setMemberships(myMemberships);
+      } else {
+        setPods([]);
+        setMemberships([]);
+      }
+
+      // Pending invites
+      if (myInvites.length > 0) {
+        const invitePodIds = [...new Set(myInvites.map((m) => m.pod_id))];
+        const invitePodResults = await Promise.all(invitePodIds.map((id) => base44.entities.POD.get(id).catch(() => null)));
+        const validInvitePods = invitePodResults.filter(Boolean);
+        setPendingInvites(myInvites);
+        setPendingInvitePods(validInvitePods);
+      } else {
+        setPendingInvites([]);
+        setPendingInvitePods([]);
+      }
     } finally {
       setLoading(false);
     }
