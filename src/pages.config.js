@@ -69,6 +69,7 @@ import MyPods from './pages/MyPods';
 import AllPods from './pages/AllPods';
 import ExplorePods from './pages/ExplorePods';
 import CreatePod from './pages/CreatePod';
+import Pod from './pages/Pod';
 import __Layout from './Layout.jsx';
 
 
@@ -95,6 +96,7 @@ export const PAGES = {
     "AllPods": AllPods,
     "ExplorePods": ExplorePods,
     "CreatePod": CreatePod,
+    "Pod": Pod,
 }
 
 export const pagesConfig = {
