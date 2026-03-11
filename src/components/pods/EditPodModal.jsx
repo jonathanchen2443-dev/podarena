@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
-import { updatePOD } from "@/components/services/podService";
-import { inviteUserToPOD } from "@/components/services/podService";
+import { updatePOD, inviteUserToPOD } from "@/components/services/podService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, AlertCircle } from "lucide-react";
