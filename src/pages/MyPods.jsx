@@ -78,7 +78,7 @@ export default function MyPods() {
       if (myMemberships.length === 0) { setPods([]); setMemberships([]); return; }
       const podIds = [...new Set(myMemberships.map((m) => m.pod_id))];
       const podResults = await Promise.all(
-        podIds.map((id) => base44.entities.POD.filter({ id }).then((r) => r[0]).catch(() => null))
+        podIds.map((id) => base44.entities.POD.get(id).catch(() => null))
       );
       const validPods = podResults.filter(Boolean).filter((p) => p.status === "active");
       setPods(validPods);
