@@ -1,17 +1,48 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/components/auth/AuthContext";
 import { updatePOD } from "@/components/services/podService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, AlertCircle } from "lucide-react";
+import PlayerSearchInput from "@/components/pods/PlayerSearchInput";
 import { toast } from "sonner";
 
 export default function EditPodModal({ pod, onClose, onUpdated }) {
+  const { currentUser } = useAuth();
   const [podName, setPodName] = useState(pod.pod_name || "");
   const [description, setDescription] = useState(pod.description || "");
   const [maxMembers, setMaxMembers] = useState(pod.max_members || 8);
   const [isPublic, setIsPublic] = useState(pod.is_public !== false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Current active member profile IDs (to exclude from search)
+  const [activeMemberProfileIds, setActiveMemberProfileIds] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  // Users to add (invited_pending)
+  const [toAdd, setToAdd] = useState([]);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    base44.entities.PODMembership.filter({ pod_id: pod.id, membership_status: "active" })
+      .then((ms) => setActiveMemberProfileIds(ms.map((m) => m.profile_id).filter(Boolean)))
+      .catch(() => {})
+      .finally(() => setMembersLoading(false));
+  }, [pod.id]);
+
+  function addPlayer(profile) {
+    if (toAdd.find((u) => u.id === profile.id)) return;
+    setToAdd((prev) => [...prev, profile]);
+  }
+
+  function removeFromAdd(id) {
+    setToAdd((prev) => prev.filter((u) => u.id !== id));
+  }
+
+  // Respect max_members: active + pending-adds
+  const currentCount = activeMemberProfileIds.length;
+  const canAddMore = currentCount + toAdd.length < maxMembers;
 
   async function handleSave(e) {
     e.preventDefault();
@@ -25,6 +56,30 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
         max_members: maxMembers,
         is_public: isPublic,
       });
+
+      // Add new players as invited_pending memberships
+      if (toAdd.length > 0) {
+        setAdding(true);
+        const authUser = await base44.auth.me();
+        for (const u of toAdd) {
+          try {
+            await base44.entities.PODMembership.create({
+              pod_id: pod.id,
+              user_id: u.user_id || "",
+              profile_id: u.id,
+              role: "member",
+              membership_status: "invited_pending",
+              source: "invite",
+              invited_at: new Date().toISOString(),
+              invited_by_user_id: authUser.id,
+              invited_by_profile_id: currentUser?.id || null,
+              is_favorite: false,
+            });
+          } catch (_) {}
+        }
+        setAdding(false);
+      }
+
       toast.success("POD updated!");
       onUpdated();
     } catch (err) {
@@ -34,9 +89,15 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
     }
   }
 
+  const excludeIds = [
+    ...(currentUser ? [currentUser.id] : []),
+    ...activeMemberProfileIds,
+    ...toAdd.map((u) => u.id),
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-gray-900 border border-gray-700 rounded-t-3xl w-full max-w-lg p-6 pb-8 space-y-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-t-3xl w-full max-w-lg p-6 pb-8 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-white font-bold text-lg">Edit POD</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white">
@@ -69,6 +130,39 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
             </button>
           </div>
 
+          {/* Add Players */}
+          <div>
+            <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">
+              Add Players <span className="text-gray-600 normal-case">(optional)</span>
+            </label>
+            {membersLoading ? (
+              <div className="py-2 text-gray-500 text-sm">Loading members…</div>
+            ) : canAddMore ? (
+              <PlayerSearchInput
+                excludeProfileIds={excludeIds}
+                onSelect={addPlayer}
+                placeholder="Search by name or #UserID…"
+              />
+            ) : (
+              <p className="text-xs text-amber-400 py-2">POD is at max capacity ({maxMembers} members).</p>
+            )}
+            {toAdd.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {toAdd.map((u) => (
+                  <div key={u.id} className="flex items-center gap-1.5 bg-gray-800 rounded-full pl-2 pr-1 py-1">
+                    <span className="text-white text-xs">{u.display_name}</span>
+                    <button type="button" onClick={() => removeFromAdd(u.id)} className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-700">
+                      <X className="w-3 h-3 text-gray-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {toAdd.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">These players will receive an invite (pending admin approval).</p>
+            )}
+          </div>
+
           {error && (
             <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -78,8 +172,8 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
 
           <div className="flex gap-2">
             <Button type="button" onClick={onClose} variant="outline" className="flex-1 h-10 rounded-xl border-gray-700 text-gray-300">Cancel</Button>
-            <Button type="submit" disabled={saving} className="flex-1 h-10 rounded-xl ds-btn-primary">
-              {saving ? "Saving…" : "Save Changes"}
+            <Button type="submit" disabled={saving || adding} className="flex-1 h-10 rounded-xl ds-btn-primary">
+              {saving || adding ? "Saving…" : "Save Changes"}
             </Button>
           </div>
         </form>
