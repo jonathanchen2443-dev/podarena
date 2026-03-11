@@ -129,12 +129,17 @@ function AuthActionSlot() {
   const fetchUnread = useCallback(async () => {
     if (!currentUser) return;
     try {
+      // Fetch Auth User ID separately — Notification RLS uses {{user.id}} (Auth UID),
+      // not the Profile entity ID stored in currentUser.id
+      const authUser = await base44.auth.me().catch(() => null);
       const [notifs, approvals] = await Promise.all([
-        base44.entities.Notification.filter(
-          { recipient_user_id: currentUser.id },
-          "-created_date",
-          100
-        ),
+        authUser?.id
+          ? base44.entities.Notification.filter(
+              { recipient_user_id: authUser.id },
+              "-created_date",
+              100
+            )
+          : Promise.resolve([]),
         listMyPendingApprovals({ isGuest: false, currentUser, isAuthenticated: true }),
       ]);
       const unreadNotifs = notifs.filter((n) => !n.read_at).length;
