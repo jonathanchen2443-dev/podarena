@@ -62,6 +62,8 @@ export default function MyPods() {
   const navigate = useNavigate();
   const [pods, setPods] = useState([]);
   const [memberships, setMemberships] = useState([]);
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [pendingInvitePods, setPendingInvitePods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
