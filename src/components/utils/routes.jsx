@@ -1,4 +1,3 @@
-
 import { createPageUrl } from "@/utils";
 
 /**
@@ -16,8 +15,13 @@ export const ROUTES = {
   HOME: createPageUrl("Dashboard"),
   DASHBOARD: createPageUrl("Dashboard"),
   LANDING: createPageUrl("Landing"),
-  // PODS placeholder — replaces active Leagues nav
-  PODS: createPageUrl("Pods"),
+  // PODS — main landing redirects to MyPods
+  PODS: createPageUrl("MyPods"),
+  MY_PODS: createPageUrl("MyPods"),
+  ALL_PODS: createPageUrl("AllPods"),
+  EXPLORE_PODS: createPageUrl("ExplorePods"),
+  POD: (podId) => `${createPageUrl("Pod")}?podId=${podId}`,
+  CREATE_POD: createPageUrl("CreatePod"),
   LOG_GAME: createPageUrl("LogGame"),
   INBOX: createPageUrl("Inbox"),
   PROFILE: createPageUrl("Profile"),
