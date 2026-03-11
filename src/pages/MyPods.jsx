@@ -73,7 +73,7 @@ export default function MyPods() {
     try {
       const authUser = await base44.auth.me().catch(() => null);
       if (!authUser?.id) return;
-      const allMemberships = await base44.entities.PODMembership.filter({ user_id: authUser.id });
+      const allMemberships = await base44.entities.PODMembership.list();
       const myMemberships = allMemberships.filter((m) => m.membership_status === "active");
       const myInvites = allMemberships.filter((m) => m.membership_status === "invited_pending");
 
