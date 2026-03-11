@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Users, PlusCircle, Home, Bell, User, LayoutGrid, Layers } from "lucide-react";
+import { Users, PlusCircle, Home, Bell, User, LayoutGrid, Layers, Network } from "lucide-react";
 import { ROUTES } from "@/components/utils/routes";
 import { getSettings, DEFAULT_NAV_CONFIG } from "@/components/services/appSettingsService";
 
@@ -13,6 +13,7 @@ const ICON_MAP = {
   User,
   LayoutGrid,
   Layers,
+  Network,
 };
 
 // Route key -> href
