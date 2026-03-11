@@ -65,6 +65,9 @@ import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
 import UserProfile from './pages/UserProfile';
+import MyPods from './pages/MyPods';
+import AllPods from './pages/AllPods';
+import ExplorePods from './pages/ExplorePods';
 import __Layout from './Layout.jsx';
 
 
@@ -87,6 +90,9 @@ export const PAGES = {
     "ProfileDecks": ProfileDecks,
     "Register": Register,
     "UserProfile": UserProfile,
+    "MyPods": MyPods,
+    "AllPods": AllPods,
+    "ExplorePods": ExplorePods,
 }
 
 export const pagesConfig = {
