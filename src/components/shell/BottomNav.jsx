@@ -35,14 +35,10 @@ const ROUTE_MAP = {
 };
 
 function buildTabs(config) {
-  if (!config || !Array.isArray(config) || config.length === 0) {
-    return DEFAULT_NAV_CONFIG
-      .filter((t) => t.enabled)
-      .map((t) => ({ label: t.label, icon: ICON_MAP[t.icon] || Home, href: ROUTE_MAP[t.routeKey] }))
-      .filter((t) => t.href);
-  }
-  return config
+  const source = (config && Array.isArray(config) && config.length > 0) ? config : DEFAULT_NAV_CONFIG;
+  return source
     .filter((t) => t.enabled)
+    .map(normalizePODsTab)
     .map((t) => ({ label: t.label, icon: ICON_MAP[t.icon] || Home, href: ROUTE_MAP[t.routeKey] }))
     .filter((t) => t.href);
 }
