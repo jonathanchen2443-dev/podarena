@@ -38,7 +38,7 @@ export default function Pod() {
     if (!podId) return;
     setLoading(true);
     try {
-      const podData = await base44.entities.POD.filter({ id: podId }).then((r) => r[0]);
+      const podData = await base44.entities.POD.get(podId).catch(() => null);
       if (!podData) { navigate(createPageUrl("MyPods")); return; }
       setPod(podData);
 

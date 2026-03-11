@@ -414,7 +414,7 @@ export async function listMyPendingApprovals(auth) {
 
   const [allLeagues, allPods, allProfiles] = await Promise.all([
     leagueIds.length > 0 ? base44.entities.League.list("-created_date", 200) : Promise.resolve([]),
-    podIds.length > 0 ? Promise.all(podIds.map((id) => base44.entities.POD.filter({ id }).then((r) => r[0]).catch(() => null))) : Promise.resolve([]),
+    podIds.length > 0 ? Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null))) : Promise.resolve([]),
     base44.entities.Profile.list("-created_date", 200),
   ]);
 
