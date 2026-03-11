@@ -69,22 +69,23 @@ export default function ExplorePods() {
       const authUser = currentUser ? await base44.auth.me().catch(() => null) : null;
       const myActivePodIds = new Set();
       if (authUser?.id) {
-        const myMemberships = await base44.entities.PODMembership.filter({ user_id: authUser.id, membership_status: "active" });
-        myMemberships.forEach((m) => myActivePodIds.add(m.pod_id));
+        const myMemberships = await base44.entities.PODMembership.list("-created_date", 200);
+        myMemberships
+          .filter((m) => m.user_id === authUser.id && m.membership_status === "active")
+          .forEach((m) => myActivePodIds.add(m.pod_id));
       }
 
       // Public active PODs
-      const allPods = await base44.entities.POD.filter({ is_public: true, status: "active" }, "-created_date", 50);
+      const allPodsRaw = await base44.entities.POD.list("-created_date", 100);
+      const allPods = allPodsRaw.filter((p) => p.is_public && p.status === "active");
       const explorePods = allPods.filter((p) => !myActivePodIds.has(p.id));
 
-      // Fetch member counts
-      const countResults = await Promise.all(
-        explorePods.map((p) =>
-          base44.entities.PODMembership.filter({ pod_id: p.id, membership_status: "active" })
-            .then((rows) => ({ id: p.id, count: rows.length }))
-            .catch(() => ({ id: p.id, count: 0 }))
-        )
-      );
+      // Fetch member counts — use a single list call and aggregate client-side
+      const allMemberships = await base44.entities.PODMembership.list("-created_date", 500);
+      const countResults = explorePods.map((p) => ({
+        id: p.id,
+        count: allMemberships.filter((m) => m.pod_id === p.id && m.membership_status === "active").length,
+      }));
       const counts = Object.fromEntries(countResults.map((r) => [r.id, r.count]));
       setMemberCounts(counts);
       setPods(explorePods);
