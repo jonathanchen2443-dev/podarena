@@ -146,28 +146,11 @@ export default function CreatePod() {
         {/* Invite Users */}
         <div>
           <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">Invite Players <span className="text-gray-600 normal-case">(optional)</span></label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-            <Input
-              value={inviteSearch}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search by display name…"
-              className="pl-9 bg-gray-900 border-gray-700 text-white rounded-xl h-10"
-            />
-          </div>
-          {searchResults.length > 0 && (
-            <div className="mt-1 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
-              {searchResults.map((p) => (
-                <button key={p.id} type="button" onClick={() => addInvite(p)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 transition-colors text-left">
-                  {p.avatar_url ? <img src={p.avatar_url} className="w-7 h-7 rounded-full object-cover" alt="" /> : <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-400">{(p.display_name || "?")[0]}</div>}
-                  <div>
-                    <p className="text-white text-sm">{p.display_name}</p>
-                    {p.public_user_id && <p className="text-gray-500 text-xs">#{p.public_user_id}</p>}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          <PlayerSearchInput
+            excludeProfileIds={[currentUser.id, ...invitedUsers.map((u) => u.id)]}
+            onSelect={addInvite}
+            placeholder="Search by name or #UserID…"
+          />
           {invitedUsers.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {invitedUsers.map((u) => (
