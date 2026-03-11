@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, Lock, AlertCircle, RefreshCw, ChevronRight, Users, Trash2 } from "lucide-react";
+import { Bell, Lock, AlertCircle, RefreshCw, ChevronRight, Users, Trash2, Layers } from "lucide-react";
 import { LoadingState, EmptyState } from "@/components/shell/PageStates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,9 @@ import { getPublicProfile } from "@/components/services/profileService.jsx";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 import { formatDistanceToNow } from "date-fns";
 import { notifyInboxUpdated } from "@/components/services/inboxBus";
+import { toast } from "sonner";
 
-// ── Approval row (game_logging type) ─────────────────────────────────────────
+// ── Game Approval row ─────────────────────────────────────────────────────────
 function ApprovalRow({ row, isRead, onClick, onDelete }) {
   const { game, leagueName, submittedByName } = row;
   const names = game.participants.map((p) => p.display_name);
@@ -59,7 +60,7 @@ function ApprovalRow({ row, isRead, onClick, onDelete }) {
   );
 }
 
-// ── Notification row (league_activity type) ───────────────────────────────────
+// ── League/System Notification row ────────────────────────────────────────────
 function NotificationRow({ notif, isRead, onMarkRead, onDelete }) {
   const isSystemMsg = notif.type === "system_message";
 
@@ -109,6 +110,80 @@ function NotificationRow({ notif, isRead, onMarkRead, onDelete }) {
   );
 }
 
+// ── POD Invite row ────────────────────────────────────────────────────────────
+function PodInviteRow({ item, onAccept, onReject, onDelete }) {
+  const [acting, setActing] = useState(false);
+  const { notif } = item;
+  const meta = notif.metadata || {};
+
+  async function handleAccept() {
+    setActing(true);
+    await onAccept(item);
+  }
+
+  async function handleReject() {
+    setActing(true);
+    await onReject(item);
+  }
+
+  return (
+    <div className="relative flex flex-col border-b border-gray-800/50 last:border-0 group">
+      {!item.isRead && (
+        <div className="absolute left-2 top-5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+      )}
+      <div className={`flex items-start gap-3 pt-3.5 pb-2 ${!item.isRead ? "pl-5 pr-4" : "px-4"}`}>
+        <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Layers className="w-4 h-4 text-amber-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className={`text-sm font-semibold ${item.isRead ? "text-gray-300" : "text-white"}`}>POD Invite</span>
+            <span className="text-gray-500 text-xs shrink-0">
+              {formatDistanceToNow(new Date(notif.created_date), { addSuffix: true })}
+            </span>
+          </div>
+          <p className="text-white text-sm font-medium">{meta.pod_name || "Unknown POD"}</p>
+          {meta.pod_code && <p className="text-gray-500 text-xs font-mono">{meta.pod_code}</p>}
+          {meta.pod_description && (
+            <p className="text-gray-400 text-xs mt-0.5 line-clamp-2">{meta.pod_description}</p>
+          )}
+          {notif.actorName && (
+            <p className="text-gray-500 text-xs mt-0.5">Invited by <span style={{ color: "var(--ds-primary-text)" }}>{notif.actorName}</span></p>
+          )}
+        </div>
+        <button
+          onClick={onDelete}
+          className="pl-1 py-0.5 text-gray-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+          aria-label="Delete"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+      {!item.isRead && (
+        <div className={`flex gap-2 pb-3.5 ${!item.isRead ? "pl-16 pr-4" : "px-4"}`}>
+          <Button
+            size="sm"
+            disabled={acting}
+            className="flex-1 ds-btn-primary h-8 rounded-xl text-xs font-semibold"
+            onClick={handleAccept}
+          >
+            {acting ? "…" : "Accept"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={acting}
+            className="flex-1 h-8 rounded-xl text-xs border-gray-700 text-gray-300 hover:bg-gray-800"
+            onClick={handleReject}
+          >
+            Decline
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Filter bar ────────────────────────────────────────────────────────────────
 function FilterBar({ statusFilter, setStatusFilter, typeFilter, setTypeFilter }) {
   const statusOpts = [
@@ -119,6 +194,7 @@ function FilterBar({ statusFilter, setStatusFilter, typeFilter, setTypeFilter })
   const typeOpts = [
     { value: "all", label: "All types" },
     { value: "game_logging", label: "Game approvals" },
+    { value: "pod_invite", label: "POD invites" },
     { value: "league_activity", label: "Notifications" },
   ];
 
@@ -191,10 +267,8 @@ export default function Inbox() {
       const [approvalRows, rawNotifs] = await Promise.all([
         listMyPendingApprovals(auth),
         authUser?.id
-          ? base44.entities.Notification.filter(
-              { recipient_user_id: authUser.id },
-              "-created_date",
-              50
+          ? base44.entities.Notification.list("-created_date", 100).then(
+              (list) => list.filter((n) => n.recipient_user_id === authUser.id)
             )
           : Promise.resolve([]),
       ]);
@@ -209,8 +283,6 @@ export default function Inbox() {
 
       let notifItems = [];
       if (rawNotifs.length > 0) {
-        // Fetch league names directly (own-scoped read — user is a member of these leagues)
-        // Fetch actor display names via the public-safe backend layer (no email exposure).
         const uniqueActorIds = [...new Set(rawNotifs.map((n) => n.actor_user_id).filter(Boolean))];
         const [allLeagues, actorResults] = await Promise.all([
           base44.entities.League.list("-created_date", 200),
@@ -220,21 +292,37 @@ export default function Inbox() {
         const actorMap = {};
         uniqueActorIds.forEach((id, i) => {
           actorMap[id] = actorResults[i].status === "fulfilled"
-            ? actorResults[i].value?.display_name || "Someone"
-            : "Someone";
+            ? actorResults[i].value?.display_name || null
+            : null;
         });
 
-        notifItems = rawNotifs.map((n) => ({
-          id: n.id,
-          type: "league_activity",
-          isRead: !!n.read_at,
-          createdAt: n.created_date,
-          notif: {
-            ...n,
-            actorName: actorMap[n.actor_user_id] || "Someone",
-            leagueName: leagueMap[n.league_id]?.name || "Unknown League",
-          },
-        }));
+        notifItems = rawNotifs.map((n) => {
+          if (n.type === "pod_invite") {
+            return {
+              id: n.id,
+              type: "pod_invite",
+              isRead: !!n.read_at,
+              createdAt: n.created_date,
+              notif: {
+                ...n,
+                actorName: actorMap[n.actor_user_id] || null,
+                metadata: n.metadata || {},
+              },
+            };
+          }
+          // league_join, system_message
+          return {
+            id: n.id,
+            type: "league_activity",
+            isRead: !!n.read_at,
+            createdAt: n.created_date,
+            notif: {
+              ...n,
+              actorName: actorMap[n.actor_user_id] || "Someone",
+              leagueName: leagueMap[n.league_id]?.name || "Unknown League",
+            },
+          };
+        });
       }
 
       setItems(
@@ -264,7 +352,7 @@ export default function Inbox() {
     if (!item || item.isRead) return;
     setItems((prev) => prev.map((it) => it.id === itemId ? { ...it, isRead: true } : it));
     notifyInboxUpdated();
-    if (item.type === "league_activity") {
+    if (item.type === "league_activity" || item.type === "pod_invite") {
       await base44.entities.Notification.update(item.id, { read_at: new Date().toISOString() });
     }
   }
@@ -273,9 +361,38 @@ export default function Inbox() {
     const item = items.find((it) => it.id === itemId);
     setItems((prev) => prev.filter((it) => it.id !== itemId));
     notifyInboxUpdated();
-    if (item?.type === "league_activity") {
+    if (item?.type === "league_activity" || item?.type === "pod_invite") {
       await base44.entities.Notification.delete(item.id);
     }
+  }
+
+  async function handlePodInviteAccept(item) {
+    const membershipId = item.notif.metadata?.membership_id;
+    const podName = item.notif.metadata?.pod_name || "POD";
+    if (membershipId) {
+      await base44.entities.PODMembership.update(membershipId, {
+        membership_status: "active",
+        joined_at: new Date().toISOString(),
+        decided_at: new Date().toISOString(),
+      });
+    }
+    await base44.entities.Notification.update(item.id, { read_at: new Date().toISOString() });
+    setItems((prev) => prev.filter((it) => it.id !== item.id));
+    notifyInboxUpdated();
+    toast.success(`You joined ${podName}!`);
+  }
+
+  async function handlePodInviteReject(item) {
+    const membershipId = item.notif.metadata?.membership_id;
+    if (membershipId) {
+      await base44.entities.PODMembership.update(membershipId, {
+        membership_status: "rejected",
+        decided_at: new Date().toISOString(),
+      });
+    }
+    await base44.entities.Notification.update(item.id, { read_at: new Date().toISOString() });
+    setItems((prev) => prev.filter((it) => it.id !== item.id));
+    notifyInboxUpdated();
   }
 
   function openModal(gameId) {
@@ -294,7 +411,6 @@ export default function Inbox() {
 
   async function handleActionComplete(leagueId) {
     if (leagueId) invalidateLeagueCache(leagueId);
-    // Bust approver's own dashboard/stats caches so their view also reflects finalized state
     if (currentUser?.id) {
       invalidateDashboardCache(currentUser.id);
       invalidateProfileStatsCache(currentUser.id);
@@ -316,7 +432,7 @@ export default function Inbox() {
         <div>
           <h2 className="text-white font-semibold text-lg">Sign in to view your inbox</h2>
           <p className="text-gray-400 text-sm mt-1">
-            Sign in to approve or reject game results logged by your playgroup.
+            Sign in to approve game results and respond to POD invites.
           </p>
         </div>
         <Button className="ds-btn-primary text-white rounded-xl h-11 px-6" onClick={() => base44.auth.redirectToLogin()}>
@@ -382,7 +498,7 @@ export default function Inbox() {
             description={
               statusFilter !== "all" || typeFilter !== "all"
                 ? "No messages match your current filters."
-                : "You're all caught up. Game approvals and notifications will appear here."
+                : "You're all caught up. Game approvals, POD invites, and notifications will appear here."
             }
           />
         ) : (
@@ -399,6 +515,17 @@ export default function Inbox() {
                         markRead(item.id);
                         openModal(item.approvalRow.game.id);
                       }}
+                      onDelete={() => deleteItem(item.id)}
+                    />
+                  );
+                }
+                if (item.type === "pod_invite") {
+                  return (
+                    <PodInviteRow
+                      key={item.id}
+                      item={item}
+                      onAccept={handlePodInviteAccept}
+                      onReject={handlePodInviteReject}
                       onDelete={() => deleteItem(item.id)}
                     />
                   );

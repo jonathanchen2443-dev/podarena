@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { updatePOD } from "@/components/services/podService";
+import { inviteUserToPOD } from "@/components/services/podService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, AlertCircle } from "lucide-react";
@@ -17,16 +18,16 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // Current active member profile IDs (to exclude from search)
   const [activeMemberProfileIds, setActiveMemberProfileIds] = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);
-  // Users to add (invited_pending)
   const [toAdd, setToAdd] = useState([]);
-  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    base44.entities.PODMembership.filter({ pod_id: pod.id, membership_status: "active" })
-      .then((ms) => setActiveMemberProfileIds(ms.map((m) => m.profile_id).filter(Boolean)))
+    base44.entities.PODMembership.list("-created_date", 100)
+      .then((all) => {
+        const active = all.filter((m) => m.pod_id === pod.id && m.membership_status === "active");
+        setActiveMemberProfileIds(active.map((m) => m.profile_id).filter(Boolean));
+      })
       .catch(() => {})
       .finally(() => setMembersLoading(false));
   }, [pod.id]);
@@ -40,7 +41,6 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
     setToAdd((prev) => prev.filter((u) => u.id !== id));
   }
 
-  // Respect max_members: active + pending-adds
   const currentCount = activeMemberProfileIds.length;
   const canAddMore = currentCount + toAdd.length < maxMembers;
 
@@ -57,27 +57,17 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
         is_public: isPublic,
       });
 
-      // Add new players as invited_pending memberships
       if (toAdd.length > 0) {
-        setAdding(true);
         const authUser = await base44.auth.me();
+        const updatedPodData = {
+          id: pod.id,
+          pod_name: podName.trim(),
+          pod_code: pod.pod_code,
+          description: description.trim(),
+        };
         for (const u of toAdd) {
-          try {
-            await base44.entities.PODMembership.create({
-              pod_id: pod.id,
-              user_id: u.user_id || "",
-              profile_id: u.id,
-              role: "member",
-              membership_status: "invited_pending",
-              source: "invite",
-              invited_at: new Date().toISOString(),
-              invited_by_user_id: authUser.id,
-              invited_by_profile_id: currentUser?.id || null,
-              is_favorite: false,
-            });
-          } catch (_) {}
+          await inviteUserToPOD(updatedPodData, u, authUser.id, currentUser?.id || null);
         }
-        setAdding(false);
       }
 
       toast.success("POD updated!");
@@ -96,44 +86,82 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-gray-900 border border-gray-700 rounded-t-3xl w-full max-w-lg p-6 pb-8 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-gray-900 border border-gray-700 rounded-t-3xl w-full max-w-lg flex flex-col max-h-[90vh]">
+
+        {/* Fixed header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-800/50 flex-shrink-0">
           <h2 className="text-white font-bold text-lg">Edit POD</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-4">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <div>
             <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">POD Name *</label>
-            <Input value={podName} onChange={(e) => setPodName(e.target.value)} maxLength={60} className="bg-gray-800 border-gray-700 text-white rounded-xl h-10" />
+            <Input
+              value={podName}
+              onChange={(e) => setPodName(e.target.value)}
+              maxLength={60}
+              className="bg-gray-800 border-gray-700 text-white rounded-xl h-10"
+            />
           </div>
+
           <div>
             <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={300} className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))] placeholder-gray-600" />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              maxLength={300}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))] placeholder-gray-600"
+            />
           </div>
+
           <div>
             <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">Max Members</label>
-            <select value={maxMembers} onChange={(e) => setMaxMembers(Number(e.target.value))} className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 h-10 text-sm focus:outline-none">
-              {[2,3,4,5,6,7,8,10,12,15,20].map((n) => <option key={n} value={n}>{n} members</option>)}
+            <select
+              value={maxMembers}
+              onChange={(e) => setMaxMembers(Number(e.target.value))}
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 h-10 text-sm focus:outline-none"
+            >
+              {[2,3,4,5,6,7,8,10,12,15,20].map((n) => (
+                <option key={n} value={n}>{n} members</option>
+              ))}
             </select>
           </div>
-          <div className="flex items-center justify-between bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3">
-            <div>
+
+          {/* Public toggle */}
+          <div className="flex items-center justify-between bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 gap-4">
+            <div className="flex-1 min-w-0">
               <p className="text-sm text-white font-medium">Public POD</p>
               <p className="text-xs text-gray-500">Discoverable in Explore</p>
             </div>
-            <button type="button" onClick={() => setIsPublic((v) => !v)} className={`w-10 h-6 rounded-full transition-colors ${isPublic ? "bg-[rgb(var(--ds-primary-rgb))]" : "bg-gray-600"} relative`}>
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isPublic ? "translate-x-5" : "translate-x-1"}`} />
+            <button
+              type="button"
+              onClick={() => setIsPublic((v) => !v)}
+              className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200"
+              style={{ backgroundColor: isPublic ? "rgb(var(--ds-primary-rgb))" : "#4B5563" }}
+            >
+              <span
+                className="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
+                style={{ transform: isPublic ? "translateX(22px)" : "translateX(4px)" }}
+              />
             </button>
           </div>
 
           {/* Add Players */}
           <div>
             <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">
-              Add Players <span className="text-gray-600 normal-case">(optional)</span>
+              Invite Players <span className="text-gray-600 normal-case">(optional)</span>
             </label>
             {membersLoading ? (
               <div className="py-2 text-gray-500 text-sm">Loading members…</div>
@@ -151,7 +179,11 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
                 {toAdd.map((u) => (
                   <div key={u.id} className="flex items-center gap-1.5 bg-gray-800 rounded-full pl-2 pr-1 py-1">
                     <span className="text-white text-xs">{u.display_name}</span>
-                    <button type="button" onClick={() => removeFromAdd(u.id)} className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-700">
+                    <button
+                      type="button"
+                      onClick={() => removeFromAdd(u.id)}
+                      className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-700"
+                    >
                       <X className="w-3 h-3 text-gray-400" />
                     </button>
                   </div>
@@ -159,7 +191,7 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
               </div>
             )}
             {toAdd.length > 0 && (
-              <p className="text-xs text-gray-500 mt-1">These players will receive an invite (pending admin approval).</p>
+              <p className="text-xs text-gray-500 mt-1">These players will receive a POD invite in their Inbox.</p>
             )}
           </div>
 
@@ -169,14 +201,31 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
+        </div>
 
-          <div className="flex gap-2">
-            <Button type="button" onClick={onClose} variant="outline" className="flex-1 h-10 rounded-xl border-gray-700 text-gray-300">Cancel</Button>
-            <Button type="submit" disabled={saving || adding} className="flex-1 h-10 rounded-xl ds-btn-primary">
-              {saving || adding ? "Saving…" : "Save Changes"}
-            </Button>
-          </div>
-        </form>
+        {/* Sticky footer — always visible above bottom nav */}
+        <div className="flex-shrink-0 border-t border-gray-800/50 px-5 py-4 bg-gray-900">
+          <form onSubmit={handleSave}>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                onClick={onClose}
+                variant="outline"
+                className="flex-1 h-11 rounded-xl border-gray-700 text-gray-300 hover:bg-gray-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="flex-1 h-11 rounded-xl ds-btn-primary font-semibold"
+              >
+                {saving ? "Saving…" : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </div>
+
       </div>
     </div>
   );
