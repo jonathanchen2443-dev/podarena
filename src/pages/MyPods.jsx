@@ -6,7 +6,7 @@ import { ROUTES } from "@/components/utils/routes";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Layers, Plus, Search, Star, Users, ChevronRight, Compass, List, Mail } from "lucide-react";
+import { Layers, Plus, Search, Star, ChevronRight, Compass, List } from "lucide-react";
 import { toggleFavorite } from "@/components/services/podService";
 import { toast } from "sonner";
 
@@ -62,8 +62,6 @@ export default function MyPods() {
   const navigate = useNavigate();
   const [pods, setPods] = useState([]);
   const [memberships, setMemberships] = useState([]);
-  const [pendingInvites, setPendingInvites] = useState([]);
-  const [pendingInvitePods, setPendingInvitePods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -75,9 +73,7 @@ export default function MyPods() {
       if (!authUser?.id) return;
       const allMemberships = await base44.entities.PODMembership.list();
       const myMemberships = allMemberships.filter((m) => m.membership_status === "active");
-      const myInvites = allMemberships.filter((m) => m.membership_status === "invited_pending");
 
-      // Active PODs
       if (myMemberships.length > 0) {
         const podIds = [...new Set(myMemberships.map((m) => m.pod_id))];
         const podResults = await Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null)));
@@ -87,18 +83,6 @@ export default function MyPods() {
       } else {
         setPods([]);
         setMemberships([]);
-      }
-
-      // Pending invites
-      if (myInvites.length > 0) {
-        const invitePodIds = [...new Set(myInvites.map((m) => m.pod_id))];
-        const invitePodResults = await Promise.all(invitePodIds.map((id) => base44.entities.POD.get(id).catch(() => null)));
-        const validInvitePods = invitePodResults.filter(Boolean);
-        setPendingInvites(myInvites);
-        setPendingInvitePods(validInvitePods);
-      } else {
-        setPendingInvites([]);
-        setPendingInvitePods([]);
       }
     } finally {
       setLoading(false);
@@ -175,46 +159,6 @@ export default function MyPods() {
           className="pl-9 bg-gray-900 border-gray-700 text-white placeholder-gray-600 rounded-xl h-10"
         />
       </div>
-
-      {/* Pending Invites Section */}
-      {pendingInvitePods.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Pending POD Invites</h2>
-          </div>
-          <div className="bg-gray-900/60 border border-amber-500/30 rounded-2xl overflow-hidden">
-            {pendingInvitePods.map((pod) => (
-              <div
-                key={pod.id}
-                className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 last:border-0 cursor-pointer hover:bg-gray-800/30 transition-colors"
-                onClick={() => openPod(pod.id)}
-              >
-                {pod.image_url ? (
-                  <img src={pod.image_url} alt={pod.pod_name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
-                    <Layers className="w-5 h-5 text-amber-400" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium text-sm truncate">{pod.pod_name}</p>
-                  <p className="text-gray-500 text-xs font-mono">{pod.pod_code}</p>
-                  {pod.description && (
-                    <p className="text-gray-500 text-xs truncate mt-0.5">{pod.description}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
-                    Invited
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-600" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* POD Cards */}
       {displayed.length === 0 ? (
