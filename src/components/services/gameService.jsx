@@ -186,6 +186,7 @@ function _buildDeckSnapshot(deck) {
  */
 export async function createGameWithParticipants({
   leagueId,
+  podId,
   contextType = "casual",
   creatorProfileId,
   creatorAuthUserId,
