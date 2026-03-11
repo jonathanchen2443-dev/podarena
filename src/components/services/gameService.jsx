@@ -409,14 +409,17 @@ export async function listMyPendingApprovals(auth) {
   const validGameIds = new Set(validGames.map((g) => g.id));
 
   const leagueIds = [...new Set(validGames.map((g) => g.league_id).filter(Boolean))];
+  const podIds = [...new Set(validGames.map((g) => g.pod_id).filter(Boolean))];
   const allParticipants = participantArrays.flat();
 
-  const [allLeagues, allProfiles] = await Promise.all([
+  const [allLeagues, allPods, allProfiles] = await Promise.all([
     leagueIds.length > 0 ? base44.entities.League.list("-created_date", 200) : Promise.resolve([]),
+    podIds.length > 0 ? Promise.all(podIds.map((id) => base44.entities.POD.filter({ id }).then((r) => r[0]).catch(() => null))) : Promise.resolve([]),
     base44.entities.Profile.list("-created_date", 200),
   ]);
 
   const leagueMap = Object.fromEntries(allLeagues.map((l) => [l.id, l]));
+  const podMap = Object.fromEntries(allPods.filter(Boolean).map((p) => [p.id, p]));
   // Key profiles by Profile.id (primary join key)
   const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
 
