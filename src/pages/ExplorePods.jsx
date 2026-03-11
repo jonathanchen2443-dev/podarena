@@ -86,8 +86,7 @@ export default function ExplorePods() {
         id: p.id,
         count: allMemberships.filter((m) => m.pod_id === p.id && m.membership_status === "active").length,
       }));
-      const counts = Object.fromEntries(countResults.map((r) => [r.id, r.count]));
-      setMemberCounts(counts);
+      setMemberCounts(Object.fromEntries(countResults.map((r) => [r.id, r.count])));
       setPods(explorePods);
     } finally {
       setLoading(false);
