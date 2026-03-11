@@ -6,7 +6,7 @@ import { ROUTES } from "@/components/utils/routes";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Layers, Plus, Search, Star, Users, ChevronRight, Compass, List } from "lucide-react";
+import { Layers, Plus, Search, Star, Users, ChevronRight, Compass, List, Mail } from "lucide-react";
 import { toggleFavorite } from "@/components/services/podService";
 import { toast } from "sonner";
 

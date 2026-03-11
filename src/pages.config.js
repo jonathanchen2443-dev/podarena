@@ -47,11 +47,14 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AllPods from './pages/AllPods';
 import Approvals from './pages/Approvals';
 import Badges from './pages/Badges';
 import CreateLeague from './pages/CreateLeague';
+import CreatePod from './pages/CreatePod';
 import Dashboard from './pages/Dashboard';
 import Decks from './pages/Decks';
+import ExplorePods from './pages/ExplorePods';
 import Founder from './pages/Founder';
 import Home from './pages/Home';
 import Inbox from './pages/Inbox';
@@ -59,26 +62,26 @@ import Invite from './pages/Invite';
 import LeagueDetails from './pages/LeagueDetails';
 import Leagues from './pages/Leagues';
 import LeaguesList from './pages/LeaguesList';
+import LogGame from './pages/LogGame';
+import MyPods from './pages/MyPods';
+import Pod from './pages/Pod';
 import Pods from './pages/Pods';
 import Profile from './pages/Profile';
 import ProfileDecks from './pages/ProfileDecks';
 import Register from './pages/Register';
 import UserProfile from './pages/UserProfile';
-import MyPods from './pages/MyPods';
-import AllPods from './pages/AllPods';
-import ExplorePods from './pages/ExplorePods';
-import CreatePod from './pages/CreatePod';
-import Pod from './pages/Pod';
-import LogGame from './pages/LogGame';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AllPods": AllPods,
     "Approvals": Approvals,
     "Badges": Badges,
     "CreateLeague": CreateLeague,
+    "CreatePod": CreatePod,
     "Dashboard": Dashboard,
     "Decks": Decks,
+    "ExplorePods": ExplorePods,
     "Founder": Founder,
     "Home": Home,
     "Inbox": Inbox,
@@ -86,17 +89,14 @@ export const PAGES = {
     "LeagueDetails": LeagueDetails,
     "Leagues": Leagues,
     "LeaguesList": LeaguesList,
+    "LogGame": LogGame,
+    "MyPods": MyPods,
+    "Pod": Pod,
     "Pods": Pods,
     "Profile": Profile,
     "ProfileDecks": ProfileDecks,
     "Register": Register,
     "UserProfile": UserProfile,
-    "MyPods": MyPods,
-    "AllPods": AllPods,
-    "ExplorePods": ExplorePods,
-    "CreatePod": CreatePod,
-    "Pod": Pod,
-    "LogGame": LogGame,
 }
 
 export const pagesConfig = {
