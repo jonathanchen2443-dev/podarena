@@ -204,25 +204,24 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
 
         {/* Sticky footer — always visible above bottom nav */}
         <div className="flex-shrink-0 border-t border-gray-800/50 px-5 py-4 bg-gray-900">
-          <form onSubmit={handleSave}>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={onClose}
-                variant="outline"
-                className="flex-1 h-11 rounded-xl border-gray-700 text-gray-300 hover:bg-gray-800"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={saving}
-                className="flex-1 h-11 rounded-xl ds-btn-primary font-semibold"
-              >
-                {saving ? "Saving…" : "Save Changes"}
-              </Button>
-            </div>
-          </form>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={onClose}
+              variant="outline"
+              className="flex-1 h-11 rounded-xl border-gray-700 text-gray-300 hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={saving}
+              onClick={handleSave}
+              className="flex-1 h-11 rounded-xl ds-btn-primary font-semibold"
+            >
+              {saving ? "Saving…" : "Save Changes"}
+            </Button>
+          </div>
         </div>
 
       </div>
