@@ -11,7 +11,7 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 
 // Pages that use the app shell (bottom nav + top bar) — authenticated only
-const SHELL_PAGES = ["home", "dashboard", "loggame", "inbox", "profile", "pods"];
+const SHELL_PAGES = ["home", "dashboard", "loggame", "inbox", "profile", "pods", "mypods", "allpods", "explorepods", "pod", "createpod"];
 // Sub-pages that belong to a shell tab and should also show the nav
 const SHELL_SUB_PAGES = ["dashboard", "approvals", "decks", "profiledecks", "userprofile", "founder",
   // DEPRECATED league sub-pages kept so old deep-links render safely inside the shell
