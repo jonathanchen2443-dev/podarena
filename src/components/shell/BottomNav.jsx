@@ -16,6 +16,14 @@ const ICON_MAP = {
   Network,
 };
 
+// Force LEAGUES -> PODS label+icon migration regardless of what's stored in DB
+function normalizePODsTab(tab) {
+  if (tab.routeKey === "LEAGUES" || tab.routeKey === "PODS") {
+    return { ...tab, label: "PODS", icon: "Network", routeKey: "PODS" };
+  }
+  return tab;
+}
+
 // Route key -> href
 const ROUTE_MAP = {
   PODS:     ROUTES.MY_PODS,
