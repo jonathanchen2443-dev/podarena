@@ -48,12 +48,14 @@ export default function BottomNav() {
     }).catch(() => {});
   }, []);
 
-  const podRoutePatterns = ["/mypods", "/allpods", "/explorepods", "/pod", "/createpod", "/pods"];
+  const POD_PATHS = ["/mypods", "/allpods", "/explorepods", "/pod", "/createpod", "/pods"];
   const isActive = (tab) => {
     const path = location.pathname.toLowerCase();
-    // Treat all POD sub-pages as PODS tab active
-    if (podRoutePatterns.some((p) => path.startsWith(p)) && podRoutePatterns.some((p) => tab.href.toLowerCase().includes(p.slice(1)))) return true;
-    return path.startsWith(tab.href.toLowerCase());
+    const tabHref = tab.href.toLowerCase();
+    // All POD-related pages highlight the PODS tab
+    const isPodsTab = POD_PATHS.some((p) => tabHref.includes(p.replace("/", "")));
+    if (isPodsTab && POD_PATHS.some((p) => path.startsWith(p))) return true;
+    return path.startsWith(tabHref);
   };
 
   return (
