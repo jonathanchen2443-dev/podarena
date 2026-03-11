@@ -6,7 +6,8 @@ import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createPOD } from "@/components/services/podService";
-import { ArrowLeft, Layers, Search, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, Layers, X, AlertCircle } from "lucide-react";
+import PlayerSearchInput from "@/components/pods/PlayerSearchInput";
 import { toast } from "sonner";
 
 export default function CreatePod() {
@@ -16,10 +17,7 @@ export default function CreatePod() {
   const [description, setDescription] = useState("");
   const [maxMembers, setMaxMembers] = useState(8);
   const [isPublic, setIsPublic] = useState(true);
-  const [inviteSearch, setInviteSearch] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
   const [invitedUsers, setInvitedUsers] = useState([]);
-  const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -32,25 +30,9 @@ export default function CreatePod() {
     );
   }
 
-  async function handleSearch(q) {
-    setInviteSearch(q);
-    if (q.trim().length < 2) { setSearchResults([]); return; }
-    setSearching(true);
-    try {
-      const results = await base44.entities.Profile.filter({ display_name_lc: q.toLowerCase() }, "-created_date", 10);
-      const filtered = results.filter(
-        (p) => p.id !== currentUser.id && !invitedUsers.find((u) => u.id === p.id)
-      );
-      setSearchResults(filtered.slice(0, 5));
-    } finally {
-      setSearching(false);
-    }
-  }
-
   function addInvite(profile) {
+    if (invitedUsers.find((u) => u.id === profile.id)) return;
     setInvitedUsers((prev) => [...prev, profile]);
-    setInviteSearch("");
-    setSearchResults([]);
   }
 
   function removeInvite(id) {
