@@ -23,7 +23,7 @@ export function invalidateDashboardCache(userId) {
   }
 }
 
-const EMPTY = { myLeaguesCount: 0, pendingApprovalsCount: 0, myDecksCount: 0, recentGames: [] };
+const EMPTY = { myLeaguesCount: 0, myPodsCount: 0, pendingApprovalsCount: 0, myDecksCount: 0, recentGames: [] };
 
 export async function getDashboardData(auth) {
   if (auth.isGuest || !auth.currentUser) return null;
