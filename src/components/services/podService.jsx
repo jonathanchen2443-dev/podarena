@@ -197,38 +197,36 @@ export async function validatePODMembership(podId, profileId) {
 // ── LEADERBOARD ──────────────────────────────────────────────────────────────
 
 export async function getPODLeaderboard(podId) {
-  // Fetch all approved POD games for this POD
-  const allGames = await base44.entities.Game.filter({ pod_id: podId, status: "approved" });
-  if (allGames.length === 0) return [];
-
-  const gameIds = allGames.map((g) => g.id);
-
-  // Fetch all participants for these games
-  const participantArrays = await Promise.all(
-    gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }).catch(() => []))
-  );
-  const allParticipants = participantArrays.flat();
-
-  // Fetch active members only for leaderboard display
+  // Always start from active members — every active member must appear
   const activeMembers = await base44.entities.PODMembership.filter({ pod_id: podId, membership_status: "active" });
-  const activeMemberProfileIds = new Set(activeMembers.map((m) => m.profile_id));
+  if (activeMembers.length === 0) return [];
 
-  // Aggregate stats per profile_id
+  // Seed statsMap with zeroes for every active member
   const statsMap = {};
-  for (const p of allParticipants) {
-    const pid = p.participant_profile_id;
-    if (!pid) continue;
-    if (!statsMap[pid]) statsMap[pid] = { profileId: pid, games: 0, wins: 0, points: 0 };
-    statsMap[pid].games += 1;
-    if (p.placement === 1 || p.result === "win") {
-      statsMap[pid].wins += 1;
-      statsMap[pid].points += 1;
+  for (const m of activeMembers) {
+    if (!m.profile_id) continue;
+    statsMap[m.profile_id] = { profileId: m.profile_id, games: 0, wins: 0, points: 0 };
+  }
+
+  // Fetch approved games and enrich stats
+  const allGames = await base44.entities.Game.filter({ pod_id: podId, status: "approved" });
+  if (allGames.length > 0) {
+    const participantArrays = await Promise.all(
+      allGames.map((g) => base44.entities.GameParticipant.filter({ game_id: g.id }).catch(() => []))
+    );
+    const allParticipants = participantArrays.flat();
+    for (const p of allParticipants) {
+      const pid = p.participant_profile_id;
+      if (!pid || !statsMap[pid]) continue; // skip non-active members
+      statsMap[pid].games += 1;
+      if (p.placement === 1 || p.result === "win") {
+        statsMap[pid].wins += 1;
+        statsMap[pid].points += 1;
+      }
     }
   }
 
-  // Only show active members
-  const leaderboard = Object.values(statsMap)
-    .filter((s) => activeMemberProfileIds.has(s.profileId))
+  return Object.values(statsMap)
     .map((s) => ({
       ...s,
       winRate: s.games > 0 ? ((s.wins / s.games) * 100).toFixed(1) : "0.0",
@@ -240,8 +238,6 @@ export async function getPODLeaderboard(podId) {
       if (b.games !== a.games) return b.games - a.games;
       return 0;
     });
-
-  return leaderboard;
 }
 
 // ── ACTIVE MEMBER COUNT ───────────────────────────────────────────────────────
