@@ -55,7 +55,7 @@ export default function Inbox() {
       await approveGame(item.game.id, authUserId, currentUser.id, null);
       toast.success("Game approved!");
       await load();
-      emitInboxUpdated();
+      notifyInboxUpdated();
     } catch (err) {
       toast.error(err.message || "Failed to approve.");
     } finally {
@@ -69,7 +69,7 @@ export default function Inbox() {
       await rejectGame(item.game.id, authUserId, currentUser.id, "");
       toast.success("Game rejected.");
       await load();
-      emitInboxUpdated();
+      notifyInboxUpdated();
     } catch (err) {
       toast.error(err.message || "Failed to reject.");
     } finally {
@@ -93,7 +93,7 @@ export default function Inbox() {
       });
       toast.success(`Joined ${notif.metadata?.pod_name || "POD"}!`);
       await load();
-      emitInboxUpdated();
+      notifyInboxUpdated();
     } catch (err) {
       toast.error(err.message || "Failed to accept invite.");
     } finally {
@@ -115,7 +115,7 @@ export default function Inbox() {
       });
       toast.success("Invite declined.");
       await load();
-      emitInboxUpdated();
+      notifyInboxUpdated();
     } catch (err) {
       toast.error(err.message || "Failed to decline invite.");
     } finally {
