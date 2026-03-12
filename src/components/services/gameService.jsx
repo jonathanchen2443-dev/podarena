@@ -400,7 +400,7 @@ export async function listMyPendingApprovals(auth) {
   const gameIds = [...new Set(myApprovals.map((a) => a.game_id))];
 
   const [games, allApprovalArrays, participantArrays] = await Promise.all([
-    Promise.all(gameIds.map((gid) => base44.entities.Game.filter({ id: gid }).then((r) => r[0]))),
+    Promise.all(gameIds.map((gid) => base44.entities.Game.get(gid).catch(() => null))),
     Promise.all(gameIds.map((gid) => base44.entities.GameApproval.filter({ game_id: gid }))),
     Promise.all(gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }))),
   ]);
