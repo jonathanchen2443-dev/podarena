@@ -88,7 +88,7 @@ function DashboardSkeleton() {
 
 // ── Authenticated view ────────────────────────────────────────────────────────
 function AuthDashboard({ data, displayName, auth }) {
-  const { pendingApprovalsCount, myDecksCount, recentGames } = data;
+  const { pendingApprovalsCount, myPodsCount, myDecksCount, recentGames } = data;
   const [casualModal, setCasualModal] = useState(null);
 
   function handleGameClick(game) {
