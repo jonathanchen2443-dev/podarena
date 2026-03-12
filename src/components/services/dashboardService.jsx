@@ -78,6 +78,7 @@ export async function getDashboardData(auth) {
 
     const result = {
       myLeaguesCount: memberships.length,
+      myPodsCount: podMemberships.length,
       pendingApprovalsCount: pendingApprovals.length,
       myDecksCount: decks.length,
       recentGames,
