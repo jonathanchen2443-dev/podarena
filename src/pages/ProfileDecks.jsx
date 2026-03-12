@@ -35,8 +35,7 @@ function applyFilters(decks, filters) {
     if (filters.status === "retired" && d.is_active !== false) return false;
     if (filters.colors.length > 0) {
       const dc = d.color_identity || [];
-      // EXACT match: deck's color identity must be exactly the selected set
-      if (dc.length !== filters.colors.length) return false;
+      // AND-inclusion: deck must contain ALL selected colors (may have more)
       if (!filters.colors.every((c) => dc.includes(c))) return false;
     }
     return true;
