@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { listMyPendingApprovals, approveGame, rejectGame } from "@/components/services/gameService";
-import { emitInboxUpdated } from "@/components/services/inboxBus";
+import { notifyInboxUpdated } from "@/components/services/inboxBus";
 import { Button } from "@/components/ui/button";
 import { Bell, CheckCircle2, XCircle, Layers, Users, Clock } from "lucide-react";
 import { toast } from "sonner";
