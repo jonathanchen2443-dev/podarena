@@ -35,8 +35,9 @@ function applyFilters(decks, filters) {
     if (filters.status === "retired" && d.is_active !== false) return false;
     if (filters.colors.length > 0) {
       const dc = d.color_identity || [];
-      // ANY match: deck must include at least one selected color
-      if (!filters.colors.some((c) => dc.includes(c))) return false;
+      // EXACT match: deck's color identity must be exactly the selected set
+      if (dc.length !== filters.colors.length) return false;
+      if (!filters.colors.every((c) => dc.includes(c))) return false;
     }
     return true;
   });

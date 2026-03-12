@@ -238,28 +238,27 @@ export default function Inbox() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const isActive = filter === f;
-          // Badge counts per filter
           const badge = f === "All" ? totalUnread
             : f === "Unread" ? totalUnread
             : f === "Game Approvals" ? unreadApprovals
             : f === "POD Invites" ? unreadInvites
             : f === "System" ? unreadSystem
             : 0;
+          // Shorten long labels for mobile
+          const label = f === "Game Approvals" ? "Approvals" : f;
           return (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
-                isActive
-                  ? "text-white"
-                  : "bg-gray-800/60 text-gray-400 hover:bg-gray-800"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                isActive ? "text-white" : "bg-gray-800/60 text-gray-400 hover:bg-gray-800"
               }`}
               style={isActive ? { backgroundColor: "rgb(var(--ds-primary-rgb))" } : {}}
             >
-              {f}
+              {label}
               {badge > 0 && (
                 <span
                   className={`min-w-[16px] h-4 rounded-full text-[10px] font-bold flex items-center justify-center px-0.5 ${
