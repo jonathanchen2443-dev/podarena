@@ -127,6 +127,67 @@ export async function toggleFavorite(membershipId, currentValue) {
 }
 
 export async function createInviteMembership(podId, authUserId, profileId, inviterAuthUserId, inviterProfileId) {
+  const allRows = await base44.entities.PODMembership.list("-created_date", 200);
+  const existing = allRows.filter((r) => r.pod_id === podId && r.user_id === authUserId);
+  const liveRow = existing.find((r) => ["active", "invited_pending"].includes(r.membership_status));
+  if (liveRow) return liveRow;
+
+  return base44.entities.PODMembership.create({
+    pod_id: podId,
+    user_id: authUserId,
+    profile_id: profileId,
+    role: "member",
+    membership_status: "invited_pending",
+    source: "invite",
+    invited_at: new Date().toISOString(),
+    invited_by_user_id: inviterAuthUserId || null,
+    invited_by_profile_id: inviterProfileId || null,
+    is_favorite: false,
+  });
+}
+
+export async function inviteUserToPOD(pod, invitee, inviterAuthUserId, inviterProfileId) {
+  const inviteeAuthUserId = invitee.user_id || null;
+  const inviteeProfileId = invitee.id;
+
+  const membership = await createInviteMembership(
+    pod.id,
+    inviteeAuthUserId || "",
+    inviteeProfileId,
+    inviterAuthUserId,
+    inviterProfileId
+  );
+
+  if (inviteeAuthUserId) {
+    const existingNotifs = await base44.entities.Notification.list("-created_date", 50);
+    const alreadySent = existingNotifs.find(
+      (n) =>
+        n.type === "pod_invite" &&
+        n.recipient_user_id === inviteeAuthUserId &&
+        n.metadata?.pod_id === pod.id &&
+        !n.read_at
+    );
+    if (!alreadySent) {
+      await base44.entities.Notification.create({
+        type: "pod_invite",
+        pod_id: pod.id,
+        actor_user_id: inviterAuthUserId,
+        recipient_user_id: inviteeAuthUserId,
+        metadata: {
+          pod_id: pod.id,
+          pod_name: pod.pod_name,
+          pod_code: pod.pod_code,
+          pod_description: pod.description || "",
+          membership_id: membership.id,
+        },
+      });
+    }
+  }
+
+  return membership;
+}
+
+export async function createInviteMembership(podId, authUserId, profileId, inviterAuthUserId, inviterProfileId) {
   // Check for existing live row first
   const allRows = await base44.entities.PODMembership.list("-created_date", 200);
   const existing = allRows.filter((r) => r.pod_id === podId && r.user_id === authUserId);
