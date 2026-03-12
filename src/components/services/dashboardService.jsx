@@ -58,7 +58,7 @@ export async function getDashboardData(auth) {
     let recentGames = [];
     if (gameIds.length > 0) {
       const games = await Promise.all(
-        gameIds.map((gid) => base44.entities.Game.filter({ id: gid }).then((r) => r[0]).catch(() => null))
+        gameIds.map((gid) => base44.entities.Game.get(gid).catch(() => null))
       );
       recentGames = games
         .filter(Boolean)
