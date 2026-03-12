@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Layers, Trophy, Clock, Info, Users, PlusCircle } from "lucide-react";
+import { Layers, Trophy, Clock, Info, Users, PlusCircle } from "lucide-react";
 import PodLeaderboardTab from "@/components/pods/PodLeaderboardTab";
 import PodActivityTab from "@/components/pods/PodActivityTab";
 import PodInfoTab from "@/components/pods/PodInfoTab";
@@ -122,14 +122,6 @@ export default function Pod() {
 
   return (
     <div className="space-y-0 pb-4">
-      {/* Back button */}
-      <div className="flex items-center gap-2 py-3">
-        <button onClick={() => navigate(createPageUrl("MyPods"))} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-800">
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <span className="text-gray-400 text-sm">PODS</span>
-      </div>
-
       {/* POD Identity Card */}
       <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4 mb-4">
         <div className="flex gap-4 items-start">
@@ -174,17 +166,6 @@ export default function Pod() {
           </Button>
         )}
 
-        {/* Log Game CTA for active members */}
-        {isActiveMember && (
-          <Button
-            onClick={() => navigate(`${ROUTES.LOG_GAME}?podId=${podId}`)}
-            className="w-full h-10 rounded-xl text-sm font-semibold mt-3 flex items-center gap-2"
-            style={{ backgroundColor: "rgb(var(--ds-primary-rgb))", color: "#fff" }}
-          >
-            <PlusCircle className="w-4 h-4" />
-            Log Game
-          </Button>
-        )}
       </div>
 
       {/* Tabs */}
