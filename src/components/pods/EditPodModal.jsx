@@ -12,7 +12,7 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
   const { currentUser } = useAuth();
   const [podName, setPodName] = useState(pod.pod_name || "");
   const [description, setDescription] = useState(pod.description || "");
-  const [maxMembers, setMaxMembers] = useState(pod.max_members || 8);
+  const [maxMembers, setMaxMembers] = useState(Math.min(6, Math.max(2, pod.max_members || 4)));
   const [isPublic, setIsPublic] = useState(pod.is_public !== false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -125,36 +125,49 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
             />
           </div>
 
-          <div>
-            <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">Max Members</label>
-            <select
-              value={maxMembers}
-              onChange={(e) => setMaxMembers(Number(e.target.value))}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 h-10 text-sm focus:outline-none"
-            >
-              {[2,3,4,5,6,7,8,10,12,15,20].map((n) => (
-                <option key={n} value={n}>{n} members</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Public toggle */}
-          <div className="flex items-center justify-between bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-white font-medium">Public POD</p>
-              <p className="text-xs text-gray-500">Discoverable in Explore</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsPublic((v) => !v)}
-              className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200"
-              style={{ backgroundColor: isPublic ? "rgb(var(--ds-primary-rgb))" : "#4B5563" }}
-            >
-              <span
-                className="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
-                style={{ transform: isPublic ? "translateX(22px)" : "translateX(4px)" }}
+          {/* Max Members + Visibility */}
+          <div className="bg-gray-800/60 border border-gray-700/50 rounded-xl p-4 space-y-4">
+            {/* Max Members slider */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs text-gray-400 font-medium uppercase tracking-wider">Max Members</label>
+                <span className="text-sm font-semibold text-white">{maxMembers} members</span>
+              </div>
+              <input
+                type="range"
+                min={2}
+                max={6}
+                step={1}
+                value={maxMembers}
+                onChange={(e) => setMaxMembers(Number(e.target.value))}
+                className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                style={{ accentColor: "rgb(var(--ds-primary-rgb))" }}
               />
-            </button>
+              <div className="flex justify-between text-[10px] text-gray-600 mt-1">
+                {[2,3,4,5,6].map((n) => <span key={n}>{n}</span>)}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-700/50" />
+
+            {/* Public / Private toggle */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white font-medium">{isPublic ? "Public POD" : "Private POD"}</p>
+                <p className="text-xs text-gray-500">{isPublic ? "Discoverable in Explore" : "Not listed publicly. Invite only."}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPublic((v) => !v)}
+                className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200"
+                style={{ backgroundColor: isPublic ? "rgb(var(--ds-primary-rgb))" : "#4B5563" }}
+              >
+                <span
+                  className="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
+                  style={{ transform: isPublic ? "translateX(22px)" : "translateX(4px)" }}
+                />
+              </button>
+            </div>
           </div>
 
           {/* Add Players */}
