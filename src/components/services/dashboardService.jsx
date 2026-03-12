@@ -36,8 +36,9 @@ export async function getDashboardData(auth) {
 
   try {
     // Parallel: memberships, decks, pending approvals — all independent
-    const [memberships, decks, pendingApprovals] = await Promise.all([
+    const [memberships, podMemberships, decks, pendingApprovals] = await Promise.all([
       base44.entities.LeagueMember.filter({ user_id: userId, status: "active" }).catch(() => []),
+      base44.entities.PODMembership.filter({ user_id: userId, membership_status: "active" }).catch(() => []),
       base44.entities.Deck.filter({ owner_id: userId }).catch(() => []),
       listMyPendingApprovals(auth).catch(() => []),
     ]);
