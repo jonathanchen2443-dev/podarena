@@ -4,12 +4,13 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Layers, Trophy, Clock, Info, Users } from "lucide-react";
+import { ArrowLeft, Layers, Trophy, Clock, Info, Users, PlusCircle } from "lucide-react";
 import PodLeaderboardTab from "@/components/pods/PodLeaderboardTab";
 import PodActivityTab from "@/components/pods/PodActivityTab";
 import PodInfoTab from "@/components/pods/PodInfoTab";
 import EditPodModal from "@/components/pods/EditPodModal";
 import { getMyMembership, requestJoinPOD } from "@/components/services/podService";
+import { ROUTES } from "@/components/utils/routes";
 import { toast } from "sonner";
 
 const TABS = [
@@ -170,6 +171,18 @@ export default function Pod() {
         {isGuest && (
           <Button onClick={() => base44.auth.redirectToLogin()} className="w-full ds-btn-primary h-10 rounded-xl text-sm font-semibold mt-3">
             Sign in to Join
+          </Button>
+        )}
+
+        {/* Log Game CTA for active members */}
+        {isActiveMember && (
+          <Button
+            onClick={() => navigate(`${ROUTES.LOG_GAME}?podId=${podId}`)}
+            className="w-full h-10 rounded-xl text-sm font-semibold mt-3 flex items-center gap-2"
+            style={{ backgroundColor: "rgb(var(--ds-primary-rgb))", color: "#fff" }}
+          >
+            <PlusCircle className="w-4 h-4" />
+            Log Game
           </Button>
         )}
       </div>
