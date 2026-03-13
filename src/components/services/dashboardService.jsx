@@ -27,26 +27,33 @@ const EMPTY = { myLeaguesCount: 0, myPodsCount: 0, pendingApprovalsCount: 0, myD
 
 export async function getDashboardData(auth) {
   if (auth.isGuest || !auth.currentUser) return null;
-  const userId = auth.currentUser.id;
-  if (!userId) return EMPTY;
+  // profileId  = Profile entity UUID  → used for profile joins, deck lookups, game participant lookups
+  // authUserId = Auth User ID         → used for RLS-sensitive queries (*_user_id fields)
+  const profileId = auth.currentUser.id;
+  const authUserId = auth.authUserId || auth.currentUser.user_id || null;
+  if (!profileId) return EMPTY;
 
-  const cKey = `dashboard::${userId}`;
+  const cKey = `dashboard::${profileId}`;
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
 
   try {
     // Parallel: memberships, decks, pending approvals — all independent
+    // NOTE: PODMembership.user_id = Auth User ID (RLS field) → must use authUserId
+    //       LeagueMember.user_id  = Profile ID (legacy schema) → uses profileId
+    //       Deck.owner_id         = Profile ID → uses profileId
     const [memberships, podMemberships, decks, pendingApprovals] = await Promise.all([
-      base44.entities.LeagueMember.filter({ user_id: userId, status: "active" }).catch(() => []),
-      base44.entities.PODMembership.filter({ user_id: userId, membership_status: "active" }).catch(() => []),
-      base44.entities.Deck.filter({ owner_id: userId }).catch(() => []),
+      base44.entities.LeagueMember.filter({ user_id: profileId, status: "active" }).catch(() => []),
+      authUserId
+        ? base44.entities.PODMembership.filter({ user_id: authUserId, membership_status: "active" }).catch(() => [])
+        : Promise.resolve([]),
+      base44.entities.Deck.filter({ owner_id: profileId }).catch(() => []),
       listMyPendingApprovals(auth).catch(() => []),
     ]);
 
-    // Recent games: fetch my participations, sort by newest, then fetch game records
-    // Use participant_profile_id (Profile.id) for the lookup — matches auth.currentUser.id
+    // Recent games: GameParticipant.participant_profile_id = Profile ID → correct
     const participations = await base44.entities.GameParticipant.filter(
-      { participant_profile_id: userId }, "-created_date", 20
+      { participant_profile_id: profileId }, "-created_date", 20
     ).catch(() => []);
 
     // Sort newest first before slicing
