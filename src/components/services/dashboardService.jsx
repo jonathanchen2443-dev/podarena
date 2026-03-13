@@ -16,10 +16,12 @@ function cacheGet(key) {
 }
 function cacheSet(key, value) { _cache.set(key, { ts: Date.now(), value }); return value; }
 
-export function invalidateDashboardCache(userId) {
-  if (!userId) return;
+// Pass either profileId or authUserId — both will match the cache key correctly
+// since the cache is keyed on profileId and invalidation checks for substring inclusion.
+export function invalidateDashboardCache(profileId) {
+  if (!profileId) return;
   for (const key of _cache.keys()) {
-    if (key.includes(userId)) _cache.delete(key);
+    if (key.includes(profileId)) _cache.delete(key);
   }
 }
 
