@@ -28,7 +28,7 @@ export function invalidateDashboardCache(profileId) {
   }
 }
 
-const EMPTY = { myLeaguesCount: 0, myPodsCount: 0, pendingApprovalsCount: 0, myDecksCount: 0, recentGames: [] };
+const EMPTY = { myPodsCount: 0, pendingApprovalsCount: 0, myDecksCount: 0, recentGames: [] };
 
 export async function getDashboardData(auth) {
   if (auth.isGuest || !auth.currentUser) return null;
@@ -43,12 +43,10 @@ export async function getDashboardData(auth) {
   if (cached !== null) return cached;
 
   try {
-    // Parallel: memberships, decks, pending approvals — all independent
-    // NOTE: PODMembership.user_id = Auth User ID (RLS field) → must use authUserId
-    //       LeagueMember.user_id  = Profile ID (legacy schema) → uses profileId
-    //       Deck.owner_id         = Profile ID → uses profileId
-    const [memberships, podMemberships, decks, pendingApprovals] = await Promise.all([
-      base44.entities.LeagueMember.filter({ user_id: profileId, status: "active" }).catch(() => []),
+    // Parallel: POD memberships, decks, pending approvals — all independent
+    // PODMembership.user_id = Auth User ID (RLS field) → must use authUserId
+    // Deck.owner_id         = Profile ID → uses profileId
+    const [podMemberships, decks, pendingApprovals] = await Promise.all([
       authUserId
         ? base44.entities.PODMembership.filter({ user_id: authUserId, membership_status: "active" }).catch(() => [])
         : Promise.resolve([]),
@@ -89,7 +87,6 @@ export async function getDashboardData(auth) {
     }
 
     const result = {
-      myLeaguesCount: memberships.length,
       myPodsCount: podMemberships.length,
       pendingApprovalsCount: pendingApprovals.length,
       myDecksCount: decks.length,
