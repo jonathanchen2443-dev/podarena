@@ -372,17 +372,13 @@ export async function listMyPendingApprovals(auth) {
   const validGames = games.filter(Boolean).filter((g) => g.status === "pending");
   const validGameIds = new Set(validGames.map((g) => g.id));
 
-  const leagueIds = [...new Set(validGames.map((g) => g.league_id).filter(Boolean))];
   const podIds = [...new Set(validGames.map((g) => g.pod_id).filter(Boolean))];
-  const allParticipants = participantArrays.flat();
 
-  const [allLeagues, allPods, allProfiles] = await Promise.all([
-    leagueIds.length > 0 ? base44.entities.League.list("-created_date", 200) : Promise.resolve([]),
+  const [allPods, allProfiles] = await Promise.all([
     podIds.length > 0 ? Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null))) : Promise.resolve([]),
     base44.entities.Profile.list("-created_date", 200),
   ]);
 
-  const leagueMap = Object.fromEntries(allLeagues.map((l) => [l.id, l]));
   const podMap = Object.fromEntries(allPods.filter(Boolean).map((p) => [p.id, p]));
   // Key profiles by Profile.id (primary join key)
   const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
@@ -393,7 +389,6 @@ export async function listMyPendingApprovals(auth) {
       if (!game || !validGameIds.has(gid)) return null;
 
       const approval = myApprovals.find((a) => a.game_id === gid);
-      const league = game.league_id ? leagueMap[game.league_id] : null;
 
       const participants = participantArrays[i].map((p) => {
         const profile = profileMap[p.participant_profile_id];
@@ -437,28 +432,13 @@ export async function listMyPendingApprovals(auth) {
           participants,
           approvalSummary,
         },
-        leagueId: game.league_id || null,
         podId: game.pod_id || null,
-        leagueName: game.context_type === "casual"
-          ? "Casual Game"
-          : game.context_type === "pod"
-            ? (podMap[game.pod_id]?.pod_name || "POD Game")
-            : (league?.name || "Unknown League"),
+        leagueName: game.context_type === "pod"
+          ? (podMap[game.pod_id]?.pod_name || "POD Game")
+          : "Casual Game",
         contextType: game.context_type || "casual",
         submittedByName: submitterProfile?.display_name || null,
       };
     })
     .filter(Boolean);
-}
-
-export function canReadLeague(league, membership) {
-  if (league.is_public) return true;
-  return !!membership;
-}
-
-export function canReadGame(game, league, { isMember, isParticipant, isGuest }) {
-  if (isGuest) return league.is_public && game.status === "approved";
-  if (isMember) return true;
-  if (isParticipant) return true;
-  return league.is_public && game.status === "approved";
 }
