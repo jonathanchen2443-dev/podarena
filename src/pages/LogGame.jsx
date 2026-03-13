@@ -61,8 +61,8 @@ export default function LogGame() {
   useEffect(() => {
     if (authLoading || !currentUser || mode !== "casual") return;
     const selfData = {
-      profileId: currentUser.id,                          // Profile ID (entity UUID)
-      authUserId: contextAuthUserId || authUserId || null, // Auth User ID (for RLS / approvals)
+      profileId: currentUser.id,   // Profile ID (entity UUID) — for display/deck joins
+      authUserId: authUserId || null, // Auth User ID — for GameParticipant.participant_user_id / RLS
       display_name: currentUser.display_name,
       avatar_url: currentUser.avatar_url || null,
     };
@@ -71,16 +71,6 @@ export default function LogGame() {
     setPlacements({});
     setDeckSelections({});
   }, [authLoading, currentUser?.id, mode]);
-
-  // Patch self authUserId once it loads
-  useEffect(() => {
-    if (!authUserId || !currentUser) return;
-    setMemberData((prev) =>
-      prev[currentUser.id]
-        ? { ...prev, [currentUser.id]: { ...prev[currentUser.id], authUserId } }
-        : prev
-    );
-  }, [authUserId]);
 
   // ── Load locked POD ────────────────────────────────────────────────────────
   useEffect(() => {
