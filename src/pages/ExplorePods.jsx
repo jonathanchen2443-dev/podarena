@@ -92,7 +92,7 @@ export default function ExplorePods() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, authUserId]);
 
   useEffect(() => {
     if (!authLoading) load();
