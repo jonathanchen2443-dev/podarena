@@ -10,7 +10,14 @@ const PROFILE_RETRY_DELAY_MS = 1500;
 export function AuthProvider({ children }) {
   const [authLoading, setAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null); // profile record
+  const [currentUser, setCurrentUser] = useState(null); // Profile entity record
+  /**
+   * authUserId = Auth User ID (base44.auth.me().id / {{user.id}})
+   * Derived from profile.user_id which is stamped at registration.
+   * Use this for all RLS-sensitive fields: *_user_id, recipient_user_id, etc.
+   * NEVER use currentUser.id (which is Profile entity UUID) for RLS queries.
+   */
+  const [authUserId, setAuthUserId] = useState(null);
   // profileError = true only for genuine unrecoverable failures (auth check itself failed)
   const [profileError, setProfileError] = useState(false);
   // profileBootstrapError = non-null only after all retry attempts are exhausted
