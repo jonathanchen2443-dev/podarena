@@ -5,7 +5,6 @@ import { ROUTES } from "@/components/utils/routes";
 import { base44 } from "@/api/base44Client";
 import { getSettings, DEFAULT_FEATURE_FLAGS, DEFAULT_NAV_CONFIG } from "@/components/services/appSettingsService";
 import { isFounder } from "@/components/services/founderService";
-import { listVisibleLeagues } from "@/components/services/leagueService";
 
 /**
  * Scan LeagueMember and GameParticipant rows for phantom user_ids (no matching Profile).
