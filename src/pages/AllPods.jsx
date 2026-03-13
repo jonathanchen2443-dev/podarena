@@ -61,23 +61,25 @@ export default function AllPods() {
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !authUserId) return;
     setLoading(true);
     try {
-      const authUser = await base44.auth.me().catch(() => null);
-      if (!authUser?.id) return;
-      const myMemberships = await base44.entities.PODMembership.filter({ user_id: authUser.id, membership_status: "active" });
+      // user_id = Auth User ID (RLS field) — use authUserId from context, no extra me() call needed
+      const myMemberships = await base44.entities.PODMembership.filter({
+        user_id: authUserId,
+        membership_status: "active",
+      }).catch(() => []);
       if (myMemberships.length === 0) { setPods([]); setMemberships([]); return; }
       const podIds = [...new Set(myMemberships.map((m) => m.pod_id))];
       const podResults = await Promise.all(
-        podIds.map((id) => base44.entities.POD.filter({ id }).then((r) => r[0]).catch(() => null))
+        podIds.map((id) => base44.entities.POD.get(id).catch(() => null))
       );
       setPods(podResults.filter(Boolean).filter((p) => p.status === "active"));
       setMemberships(myMemberships);
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, authUserId]);
 
   useEffect(() => {
     if (!authLoading && !isGuest) load();
