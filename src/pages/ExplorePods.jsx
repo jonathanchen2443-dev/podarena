@@ -55,7 +55,7 @@ function ExplorePodCard({ pod, activeMemberCount, onClick }) {
 }
 
 export default function ExplorePods() {
-  const { currentUser, isGuest, authLoading } = useAuth();
+  const { currentUser, authUserId, isGuest, authLoading } = useAuth();
   const navigate = useNavigate();
   const [pods, setPods] = useState([]);
   const [memberCounts, setMemberCounts] = useState({});
