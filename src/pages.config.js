@@ -50,7 +50,6 @@
 import AllPods from './pages/AllPods';
 import Approvals from './pages/Approvals';
 import Badges from './pages/Badges';
-import CreateLeague from './pages/CreateLeague';
 import CreatePod from './pages/CreatePod';
 import Dashboard from './pages/Dashboard';
 import Decks from './pages/Decks';
@@ -58,10 +57,6 @@ import ExplorePods from './pages/ExplorePods';
 import Founder from './pages/Founder';
 import Home from './pages/Home';
 import Inbox from './pages/Inbox';
-import Invite from './pages/Invite';
-import LeagueDetails from './pages/LeagueDetails';
-import Leagues from './pages/Leagues';
-import LeaguesList from './pages/LeaguesList';
 import LogGame from './pages/LogGame';
 import MyPods from './pages/MyPods';
 import Pod from './pages/Pod';
@@ -77,7 +72,6 @@ export const PAGES = {
     "AllPods": AllPods,
     "Approvals": Approvals,
     "Badges": Badges,
-    "CreateLeague": CreateLeague,
     "CreatePod": CreatePod,
     "Dashboard": Dashboard,
     "Decks": Decks,
@@ -85,10 +79,6 @@ export const PAGES = {
     "Founder": Founder,
     "Home": Home,
     "Inbox": Inbox,
-    "Invite": Invite,
-    "LeagueDetails": LeagueDetails,
-    "Leagues": Leagues,
-    "LeaguesList": LeaguesList,
     "LogGame": LogGame,
     "MyPods": MyPods,
     "Pod": Pod,
