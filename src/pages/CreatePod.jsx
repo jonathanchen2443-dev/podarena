@@ -11,7 +11,7 @@ import PlayerSearchInput from "@/components/pods/PlayerSearchInput";
 import { toast } from "sonner";
 
 export default function CreatePod() {
-  const { currentUser, isAuthenticated } = useAuth();
+  const { currentUser, authUserId, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [podName, setPodName] = useState("");
   const [description, setDescription] = useState("");
