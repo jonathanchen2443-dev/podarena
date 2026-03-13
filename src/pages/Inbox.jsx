@@ -13,8 +13,7 @@ import SystemNotifCard from "@/components/inbox/SystemNotifCard";
 const FILTERS = ["All", "Unread", "Game Approvals", "POD Invites", "System"];
 
 export default function Inbox() {
-  const { currentUser, isGuest, authLoading } = useAuth();
-  const [authUserId, setAuthUserId] = useState(null);
+  const { currentUser, authUserId, isGuest, authLoading } = useAuth();
 
   // data
   const [approvals, setApprovals] = useState([]);
