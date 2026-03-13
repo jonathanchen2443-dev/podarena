@@ -69,8 +69,8 @@ export default function LogGame() {
   useEffect(() => {
     if (authLoading || !currentUser || mode !== "casual") return;
     const selfData = {
-      profileId: currentUser.id,
-      authUserId: authUserId || null,
+      profileId: currentUser.id,                          // Profile ID (entity UUID)
+      authUserId: contextAuthUserId || authUserId || null, // Auth User ID (for RLS / approvals)
       display_name: currentUser.display_name,
       avatar_url: currentUser.avatar_url || null,
     };
