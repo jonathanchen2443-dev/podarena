@@ -72,7 +72,7 @@ export default function Pod() {
     } finally {
       setLoading(false);
     }
-  }, [podId, isGuest, currentUser, inviteFlag]);
+  }, [podId, isGuest, currentUser, authUserId, inviteFlag]);
 
   useEffect(() => {
     if (!authLoading) load();
