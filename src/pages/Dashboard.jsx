@@ -232,6 +232,7 @@ export default function Dashboard() {
     if (authLoading || !currentUser) return;
     const unsubscribe = base44.entities.Game.subscribe((event) => {
       if (event.type === "update" && event.data?.status === "approved") {
+        // currentUser.id = Profile ID — dashboard/stats caches are keyed on Profile ID
         invalidateDashboardCache(currentUser.id);
         invalidateProfileStatsCache(currentUser.id);
         invalidateProfileInsightsCache(currentUser.id);
