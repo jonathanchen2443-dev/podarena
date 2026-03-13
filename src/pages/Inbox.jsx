@@ -40,7 +40,7 @@ export default function Inbox() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, isGuest]);
+  }, [currentUser, authUserId, isGuest]);
 
   useEffect(() => {
     if (!authLoading) load();
