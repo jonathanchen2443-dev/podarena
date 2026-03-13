@@ -205,7 +205,6 @@ export default function LogGame() {
       });
 
       await createGameWithParticipants({
-        leagueId: null,
         podId: mode === "pod" ? (pod?.id || null) : null,
         contextType: mode,
         creatorProfileId: currentUser.id,   // Profile ID (entity UUID) — for display joins
