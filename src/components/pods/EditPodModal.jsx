@@ -9,7 +9,7 @@ import PlayerSearchInput from "@/components/pods/PlayerSearchInput";
 import { toast } from "sonner";
 
 export default function EditPodModal({ pod, onClose, onUpdated }) {
-  const { currentUser } = useAuth();
+  const { currentUser, authUserId } = useAuth();
   const [podName, setPodName] = useState(pod.pod_name || "");
   const [description, setDescription] = useState(pod.description || "");
   const [maxMembers, setMaxMembers] = useState(Math.min(6, Math.max(2, pod.max_members || 4)));
