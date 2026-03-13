@@ -16,8 +16,6 @@ export const DEFAULT_FEATURE_FLAGS = {
   enableCasualGames: true,
   enableDeckInsightsModal: true,
   requireDeckOnApprove: true,
-  enableLeagueInvites: true,
-  enableLeagueCapacity: true,
   enableInboxNotifications: true,
 };
 
@@ -93,9 +91,7 @@ export async function ensureSettings(auth) {
     founder_user_ids: INITIAL_FOUNDER_USER_IDS,
     bottom_nav_config: DEFAULT_NAV_CONFIG,
     feature_flags: DEFAULT_FEATURE_FLAGS,
-    templates: {
-      invite_message: `You're invited to join "{{leagueName}}" on PodArea.\nInvited by: {{inviterName}}\n\nTap to join:\n{{inviteUrl}}`,
-    },
+    templates: {},
   });
   _cache = created;
   _cacheTs = Date.now();
