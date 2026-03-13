@@ -2,7 +2,7 @@
  * Dashboard Service — aggregates stats for the home dashboard.
  *
  * IDENTITY: see components/auth/IDENTITY_CONTRACT.md
- *   profileId  = auth.currentUser.id    — Deck.owner_id, LeagueMember.user_id (legacy)
+ *   profileId  = auth.currentUser.id    — Deck.owner_id, GameParticipant.participant_profile_id
  *   authUserId = auth.authUserId        — PODMembership.user_id, listMyPendingApprovals
  */
 import { base44 } from "@/api/base44Client";
