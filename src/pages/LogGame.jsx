@@ -50,17 +50,12 @@ export default function LogGame() {
   const [myDecks, setMyDecks] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Load auth + decks ──────────────────────────────────────────────────────
+  // ── Load decks on mount ────────────────────────────────────────────────────
   useEffect(() => {
     if (authLoading || !currentUser) return;
-    // Sync authUserId from context; only call me() if context didn't resolve it yet
-    if (contextAuthUserId) {
-      setAuthUserId(contextAuthUserId);
-    } else {
-      base44.auth.me().then((u) => setAuthUserId(u?.id || null)).catch(() => {});
-    }
+    // owner_id = Profile ID (Deck schema uses Profile ID for ownership lookups)
     base44.entities.Deck.filter({ owner_id: currentUser.id }).then(setMyDecks).catch(() => {});
-  }, [authLoading, currentUser, contextAuthUserId]);
+  }, [authLoading, currentUser]);
 
   // ── Auto-add self (casual mode) ────────────────────────────────────────────
   useEffect(() => {
