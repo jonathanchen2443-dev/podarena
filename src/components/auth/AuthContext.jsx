@@ -1,3 +1,13 @@
+/**
+ * AuthContext — single source of truth for current-user identity.
+ *
+ * Exposes:
+ *   authUserId  = Auth User ID (profile.user_id / {{user.id}})  — use for *_user_id RLS fields
+ *   profileId   = Profile entity UUID (currentUser?.id)          — use for joins, display, decks
+ *   currentUser = full Profile record                            — use for display_name, avatar_url, etc.
+ *
+ * See components/auth/IDENTITY_CONTRACT.md for the full contract.
+ */
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { getOrCreateProfile } from "@/components/services/gameService";
