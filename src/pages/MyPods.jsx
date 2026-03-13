@@ -66,13 +66,14 @@ export default function MyPods() {
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !authUserId) return;
     setLoading(true);
     try {
-      const authUser = await base44.auth.me().catch(() => null);
-      if (!authUser?.id) return;
-      const allMemberships = await base44.entities.PODMembership.list();
-      const myMemberships = allMemberships.filter((m) => m.membership_status === "active");
+      // Filter by user_id (Auth User ID) + status — RLS-safe, returns only my memberships
+      const myMemberships = await base44.entities.PODMembership.filter({
+        user_id: authUserId,
+        membership_status: "active",
+      }).catch(() => []);
 
       if (myMemberships.length > 0) {
         const podIds = [...new Set(myMemberships.map((m) => m.pod_id))];
