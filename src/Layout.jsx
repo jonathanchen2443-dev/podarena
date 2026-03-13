@@ -144,12 +144,12 @@ function AuthActionSlot() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !authUserId) return;
     fetchUnread();
     const interval = setInterval(fetchUnread, 60_000);
     const unsub = onInboxUpdated(fetchUnread);
     return () => { clearInterval(interval); unsub(); };
-  }, [currentUser, fetchUnread]);
+  }, [currentUser, authUserId, fetchUnread]);
 
   if (authLoading) return null;
 
