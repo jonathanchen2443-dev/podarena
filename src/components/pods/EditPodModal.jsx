@@ -57,7 +57,6 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
       });
 
       if (toAdd.length > 0) {
-        const authUser = await base44.auth.me();
         const updatedPodData = {
           id: pod.id,
           pod_name: podName.trim(),
@@ -65,7 +64,7 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
           description: description.trim(),
         };
         for (const u of toAdd) {
-          await inviteUserToPOD(updatedPodData, u, authUser.id, currentUser?.id || null);
+          await inviteUserToPOD(updatedPodData, u, authUserId, currentUser?.id || null);
         }
       }
 
