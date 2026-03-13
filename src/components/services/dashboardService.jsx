@@ -1,6 +1,9 @@
 /**
- * Dashboard Service — Phase 1 simplified version.
- * Returns safe defaults on any missing data. No chained enrichments.
+ * Dashboard Service — aggregates stats for the home dashboard.
+ *
+ * IDENTITY: see components/auth/IDENTITY_CONTRACT.md
+ *   profileId  = auth.currentUser.id    — Deck.owner_id, LeagueMember.user_id (legacy)
+ *   authUserId = auth.authUserId        — PODMembership.user_id, listMyPendingApprovals
  */
 import { base44 } from "@/api/base44Client";
 import { listMyPendingApprovals } from "@/components/services/gameService";
