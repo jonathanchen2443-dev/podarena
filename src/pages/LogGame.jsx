@@ -189,7 +189,7 @@ export default function LogGame() {
 
     setSubmitting(true);
     try {
-      const aUid = authUserId || (await base44.auth.me().then((u) => u?.id));
+      // authUserId is sourced from AuthContext (profile.user_id = Auth User ID) — no me() needed
       const participantList = participants.map((profileId) => {
         const data = memberData[profileId] || {};
         const deckId = deckSelections[profileId] || null;
