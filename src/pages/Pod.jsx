@@ -46,30 +46,27 @@ export default function Pod() {
       const activeMembers = await base44.entities.PODMembership.filter({ pod_id: podId, membership_status: "active" });
       setActiveMemberCount(activeMembers.length);
 
-      if (!isGuest && currentUser) {
-        const authUser = await base44.auth.me().catch(() => null);
-        if (authUser?.id) {
-          const membership = await getMyMembership(podId, authUser.id);
-          setMyMembership(membership);
+      if (!isGuest && currentUser && authUserId) {
+        const membership = await getMyMembership(podId, authUserId);
+        setMyMembership(membership);
 
-          // Handle invite flow
-          if (inviteFlag && (!membership || ["rejected", "left", "removed"].includes(membership?.membership_status))) {
-            try {
-              await base44.entities.PODMembership.create({
-                pod_id: podId,
-                user_id: authUser.id,
-                profile_id: currentUser.id,
-                role: "member",
-                membership_status: "invited_pending",
-                source: "invite",
-                invited_at: new Date().toISOString(),
-                is_favorite: false,
-              });
-              const updated = await getMyMembership(podId, authUser.id);
-              setMyMembership(updated);
-              toast.success("Invite received! Waiting for admin approval.");
-            } catch (_) {}
-          }
+        // Handle invite flow
+        if (inviteFlag && (!membership || ["rejected", "left", "removed"].includes(membership?.membership_status))) {
+          try {
+            await base44.entities.PODMembership.create({
+              pod_id: podId,
+              user_id: authUserId,       // Auth User ID — for RLS
+              profile_id: currentUser.id, // Profile ID — for display/joins
+              role: "member",
+              membership_status: "invited_pending",
+              source: "invite",
+              invited_at: new Date().toISOString(),
+              is_favorite: false,
+            });
+            const updated = await getMyMembership(podId, authUserId);
+            setMyMembership(updated);
+            toast.success("Invite received! Waiting for admin approval.");
+          } catch (_) {}
         }
       }
     } finally {
