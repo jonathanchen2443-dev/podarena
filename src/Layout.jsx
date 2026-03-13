@@ -123,22 +123,19 @@ const CSS_VARS = `
 `;
 
 function AuthActionSlot() {
-  const { currentUser, authLoading } = useAuth();
+  const { currentUser, authUserId, authLoading } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchUnread = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !authUserId) return;
     try {
-      // Fetch Auth User ID separately — Notification RLS uses {{user.id}} (Auth UID),
-      // not the Profile entity ID stored in currentUser.id
-      const authUser = await base44.auth.me().catch(() => null);
+      // authUserId = Auth User ID from context (profile.user_id) — no extra me() call needed
+      // Notification.recipient_user_id uses Auth User ID for RLS
       const [notifs, approvals] = await Promise.all([
-        authUser?.id
-          ? base44.entities.Notification.list("-created_date", 100).then(
-              (list) => list.filter((n) => n.recipient_user_id === authUser.id)
-            )
-          : Promise.resolve([]),
-        listMyPendingApprovals({ isGuest: false, currentUser, isAuthenticated: true }),
+        base44.entities.Notification.list("-created_date", 100).then(
+          (list) => list.filter((n) => n.recipient_user_id === authUserId)
+        ),
+        listMyPendingApprovals({ isGuest: false, currentUser, authUserId, isAuthenticated: true }),
       ]);
       const unreadNotifs = notifs.filter((n) => !n.read_at).length;
       const count = unreadNotifs + approvals.length;
