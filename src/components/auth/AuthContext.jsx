@@ -97,7 +97,8 @@ export function AuthProvider({ children }) {
     authLoading,
     isAuthenticated,
     isGuest: !isAuthenticated,
-    currentUser,
+    currentUser,         // Profile entity record — use .id for Profile ID joins
+    authUserId,          // Auth User ID (profile.user_id) — use for RLS fields / *_user_id queries
     profileError,
     profileBootstrapError,
     login,
