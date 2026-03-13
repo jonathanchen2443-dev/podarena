@@ -6,7 +6,7 @@
  * authUserId / *_user_id    = Auth User ID ({{user.id}}) — RLS fields, approval matching
  * profileId  / *_profile_id = Profile entity UUID        — display, joins, deck ownership
  *
- * ⚠️ LEGACY: LeagueMember.user_id stores Profile ID — intentional exception, do not "fix".
+ * ⚠️ NOTE: Game.league_id field still exists in the schema but is no longer set by any active flow.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { base44 } from "@/api/base44Client";
@@ -127,21 +127,6 @@ async function _doGetOrCreate(user) {
 }
 
 /**
- * Validate that the user is an active member of the given league.
- * Uses Profile.id as that's what LeagueMember.user_id stores.
- */
-export async function validateLeagueMembership(leagueId, profileId) {
-  const allMembers = await base44.entities.LeagueMember.filter({ league_id: leagueId }, "-created_date", 200);
-  const members = allMembers.filter((m) => m.user_id === profileId && m.status === "active");
-  return members.length > 0 ? members[0] : null;
-}
-
-export async function isLeagueAdmin(leagueId, profileId) {
-  const membership = await validateLeagueMembership(leagueId, profileId);
-  return membership?.role === "admin";
-}
-
-/**
  * Build a deck snapshot from a live deck object for historical preservation.
  */
 function _buildDeckSnapshot(deck) {
@@ -156,11 +141,10 @@ function _buildDeckSnapshot(deck) {
 }
 
 /**
- * Create a casual or league game with participants and approval records.
+ * Create a casual or POD game with participants and approval records.
  *
  * @param {object} params
- * @param {string|null}  params.leagueId
- * @param {string}       params.contextType         - "league" or "casual"
+ * @param {string}       params.contextType         - "casual" or "pod"
  * @param {string}       params.creatorProfileId    - Profile.id of the creator
  * @param {string}       params.creatorAuthUserId   - Auth User ID of the creator
  * @param {string}       params.playedAt
@@ -175,7 +159,6 @@ function _buildDeckSnapshot(deck) {
  * }>} params.participants
  */
 export async function createGameWithParticipants({
-  leagueId,
   podId,
   contextType = "casual",
   creatorProfileId,
@@ -184,15 +167,6 @@ export async function createGameWithParticipants({
   notes,
   participants,
 }) {
-  if (contextType === "league") {
-    const creatorMembership = await validateLeagueMembership(leagueId, creatorProfileId);
-    if (!creatorMembership) throw new Error("You must be an active member of this league to create a game.");
-    for (const p of participants) {
-      const membership = await validateLeagueMembership(leagueId, p.profileId);
-      if (!membership) throw new Error(`Participant is not an active member of this league.`);
-    }
-  }
-
   // Validate all profile IDs exist
   const allProfiles = await base44.entities.Profile.list("-created_date", 200);
   const profileIdSet = new Set(allProfiles.map((p) => p.id));
@@ -204,7 +178,7 @@ export async function createGameWithParticipants({
 
   // Create the game
   const game = await base44.entities.Game.create({
-    league_id: leagueId || null,
+    league_id: null,
     pod_id: podId || null,
     context_type: contextType,
     played_at: playedAt || new Date().toISOString(),
