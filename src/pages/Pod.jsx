@@ -79,12 +79,11 @@ export default function Pod() {
   }, [authLoading, load]);
 
   async function handleRequestJoin() {
-    if (!currentUser || isGuest) { base44.auth.redirectToLogin(); return; }
+    if (!currentUser || isGuest || !authUserId) { base44.auth.redirectToLogin(); return; }
     setRequesting(true);
     try {
-      const authUser = await base44.auth.me();
-      await requestJoinPOD(podId, authUser.id, currentUser.id);
-      const updated = await getMyMembership(podId, authUser.id);
+      await requestJoinPOD(podId, authUserId, currentUser.id);
+      const updated = await getMyMembership(podId, authUserId);
       setMyMembership(updated);
       toast.success("Join request sent! Waiting for admin approval.");
     } catch (err) {
