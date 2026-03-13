@@ -56,9 +56,14 @@ export default function LogGame() {
   // ── Load auth + decks ──────────────────────────────────────────────────────
   useEffect(() => {
     if (authLoading || !currentUser) return;
-    base44.auth.me().then((u) => setAuthUserId(u?.id || null)).catch(() => {});
+    // Sync authUserId from context; only call me() if context didn't resolve it yet
+    if (contextAuthUserId) {
+      setAuthUserId(contextAuthUserId);
+    } else {
+      base44.auth.me().then((u) => setAuthUserId(u?.id || null)).catch(() => {});
+    }
     base44.entities.Deck.filter({ owner_id: currentUser.id }).then(setMyDecks).catch(() => {});
-  }, [authLoading, currentUser]);
+  }, [authLoading, currentUser, contextAuthUserId]);
 
   // ── Auto-add self (casual mode) ────────────────────────────────────────────
   useEffect(() => {
