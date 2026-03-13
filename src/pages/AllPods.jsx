@@ -82,9 +82,9 @@ export default function AllPods() {
   }, [currentUser, authUserId]);
 
   useEffect(() => {
-    if (!authLoading && !isGuest) load();
+    if (!authLoading && !isGuest && authUserId) load();
     else if (!authLoading) setLoading(false);
-  }, [authLoading, isGuest, load]);
+  }, [authLoading, isGuest, authUserId, load]);
 
   async function handleFavoriteToggle(membershipId, currentValue) {
     await toggleFavorite(membershipId, currentValue);
