@@ -88,7 +88,7 @@ export default function MyPods() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, authUserId]);
 
   useEffect(() => {
     if (!authLoading && !isGuest) load();
