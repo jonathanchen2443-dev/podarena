@@ -6,7 +6,7 @@
  * authUserId / *_user_id    = Auth User ID ({{user.id}}) — RLS fields, approval matching
  * profileId  / *_profile_id = Profile entity UUID        — display, joins, deck ownership
  *
- * ⚠️ NOTE: Game.league_id field still exists in the schema but is no longer set by any active flow.
+ * ⚠️ NOTE: Game.league_id column is retained in the schema for historical data only. Active flows set it to null.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { base44 } from "@/api/base44Client";
