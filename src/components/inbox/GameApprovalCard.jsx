@@ -15,7 +15,7 @@ export default function GameApprovalCard({ item, acting, onApprove, onReject }) 
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-white text-sm font-semibold">{item.leagueName}</span>
+            <span className="text-white text-sm font-semibold">{item.contextLabel}</span>
             <span className="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-wider">
               {item.contextType}
             </span>

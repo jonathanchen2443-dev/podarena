@@ -433,7 +433,7 @@ export async function listMyPendingApprovals(auth) {
           approvalSummary,
         },
         podId: game.pod_id || null,
-        leagueName: game.context_type === "pod"
+        contextLabel: game.context_type === "pod"
           ? (podMap[game.pod_id]?.pod_name || "POD Game")
           : "Casual Game",
         contextType: game.context_type || "casual",
