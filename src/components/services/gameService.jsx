@@ -398,7 +398,7 @@ export async function listMyPendingApprovals(auth) {
 
   const allMyApprovals = await base44.entities.GameApproval.list("-created_date", 200);
   const myApprovals = allMyApprovals.filter(
-    (a) => a.approver_user_id === authUser.id && a.status === "pending"
+    (a) => a.approver_user_id === authUid && a.status === "pending"
   );
   if (myApprovals.length === 0) return [];
 
