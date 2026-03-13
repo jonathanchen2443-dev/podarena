@@ -16,9 +16,9 @@ const ICON_MAP = {
   Network,
 };
 
-// Force LEAGUES -> PODS label+icon migration regardless of what's stored in DB
+// Normalize legacy LEAGUES routeKey to PODS
 function normalizePODsTab(tab) {
-  if (tab.routeKey === "LEAGUES" || tab.routeKey === "PODS") {
+  if (tab.routeKey === "LEAGUES") {
     return { ...tab, label: "PODS", icon: "Network", routeKey: "PODS" };
   }
   return tab;
@@ -27,7 +27,7 @@ function normalizePODsTab(tab) {
 // Route key -> href
 const ROUTE_MAP = {
   PODS:     ROUTES.MY_PODS,
-  LEAGUES:  ROUTES.MY_PODS,   // deprecated — redirect to PODS
+
   LOG_GAME: ROUTES.LOG_GAME,
   HOME:     ROUTES.HOME,
   INBOX:    ROUTES.INBOX,
