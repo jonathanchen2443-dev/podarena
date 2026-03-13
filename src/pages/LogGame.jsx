@@ -208,8 +208,8 @@ export default function LogGame() {
         leagueId: null,
         podId: mode === "pod" ? (pod?.id || null) : null,
         contextType: mode,
-        creatorProfileId: currentUser.id,
-        creatorAuthUserId: aUid,
+        creatorProfileId: currentUser.id,   // Profile ID (entity UUID) — for display joins
+        creatorAuthUserId: authUserId,       // Auth User ID — for RLS / created_by_user_id
         playedAt: new Date(playedAt).toISOString(),
         notes,
         participants: participantList,
