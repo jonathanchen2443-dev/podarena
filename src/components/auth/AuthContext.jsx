@@ -54,6 +54,8 @@ export function AuthProvider({ children }) {
     try {
       const profile = await getOrCreateProfile();
       setCurrentUser(profile);
+      // profile.user_id is the Auth User ID stamped at registration — use this for RLS queries
+      setAuthUserId(profile?.user_id || null);
       setProfileBootstrapError(null);
       hasRetriedRef.current = false;
     } catch (e) {
