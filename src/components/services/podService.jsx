@@ -1,9 +1,9 @@
 /**
  * POD Service — Business logic for POD creation, membership, and games.
  *
- * IDENTITY CONTRACT (same as gameService):
- *   user_id      = Auth User ID ({{user.id}}) — RLS permissions
- *   profile_id   = Profile entity UUID — display, joins, stats
+ * IDENTITY CONTRACT — see components/auth/IDENTITY_CONTRACT.md for full spec.
+ *   authUserId / *_user_id   = Auth User ID ({{user.id}}) — RLS permissions
+ *   profileId  / *_profile_id = Profile entity UUID       — display, joins, stats
  */
 import { base44 } from "@/api/base44Client";
 
