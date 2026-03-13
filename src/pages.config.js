@@ -57,10 +57,12 @@ import Decks from './pages/Decks';
 import ExplorePods from './pages/ExplorePods';
 import Founder from './pages/Founder';
 import Home from './pages/Home';
+import Inbox from './pages/Inbox';
 import Invite from './pages/Invite';
 import LeagueDetails from './pages/LeagueDetails';
 import Leagues from './pages/Leagues';
 import LeaguesList from './pages/LeaguesList';
+import LogGame from './pages/LogGame';
 import MyPods from './pages/MyPods';
 import Pod from './pages/Pod';
 import Pods from './pages/Pods';
@@ -82,10 +84,12 @@ export const PAGES = {
     "ExplorePods": ExplorePods,
     "Founder": Founder,
     "Home": Home,
+    "Inbox": Inbox,
     "Invite": Invite,
     "LeagueDetails": LeagueDetails,
     "Leagues": Leagues,
     "LeaguesList": LeaguesList,
+    "LogGame": LogGame,
     "MyPods": MyPods,
     "Pod": Pod,
     "Pods": Pods,

@@ -22,17 +22,14 @@ function defaultPlayedAt() {
 }
 
 export default function LogGame() {
-  const { currentUser, authUserId: contextAuthUserId, isGuest, authLoading } = useAuth();
+  // authUserId = Auth User ID (profile.user_id) — for RLS fields, GameParticipant.participant_user_id
+  // currentUser.id = Profile ID (Profile entity UUID) — for display joins, deck lookups
+  const { currentUser, authUserId, isGuest, authLoading } = useAuth();
   const navigate = useNavigate();
 
   const urlParams = new URLSearchParams(window.location.search);
   const podIdFromUrl = urlParams.get("podId");
   const lockedPodMode = !!podIdFromUrl;
-
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  // Use authUserId from context (Auth User ID = profile.user_id). Falls back to a me() call
-  // for the rare edge case where context hasn't resolved yet at form submit time.
-  const [authUserId, setAuthUserId] = useState(contextAuthUserId);
 
   // ── Mode ──────────────────────────────────────────────────────────────────
   const [mode, setMode] = useState(lockedPodMode ? "pod" : "casual");
