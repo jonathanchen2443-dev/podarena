@@ -45,14 +45,13 @@ export default function CreatePod() {
     setError(null);
     setSubmitting(true);
     try {
-      const authUser = await base44.auth.me();
       const pod = await createPOD({
         podName: podName.trim(),
         description: description.trim(),
         maxMembers,
         isPublic,
-        creatorProfileId: currentUser.id,
-        creatorAuthUserId: authUser.id,
+        creatorProfileId: currentUser.id,  // Profile ID for display/joins
+        creatorAuthUserId: authUserId,      // Auth User ID for RLS fields
       });
 
       // Invite selected users: creates PODMembership + Notification in one call
@@ -60,8 +59,8 @@ export default function CreatePod() {
         await inviteUserToPOD(
           { id: pod.id, pod_name: pod.pod_name, pod_code: pod.pod_code, description: pod.description || "" },
           u,
-          authUser.id,
-          currentUser.id
+          authUserId,       // inviter Auth User ID
+          currentUser.id    // inviter Profile ID
         );
       }
 
