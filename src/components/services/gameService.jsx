@@ -1,22 +1,12 @@
 /**
  * Game Service — Business logic for creating games and handling approvals.
  *
- * ── IDENTITY CONTRACT ─────────────────────────────────────────────────────────
+ * IDENTITY CONTRACT — see components/auth/IDENTITY_CONTRACT.md for full spec.
  *
- * Auth User ID  = {{user.id}} from base44.auth.me()
- *   → Used for: RLS permissions, current-user matching, approval/update rights
- *   → Fields:   *_user_id  (e.g. participant_user_id, approver_user_id)
+ * authUserId / *_user_id    = Auth User ID ({{user.id}}) — RLS fields, approval matching
+ * profileId  / *_profile_id = Profile entity UUID        — display, joins, deck ownership
  *
- * Profile ID    = Profile entity UUID (base44 entity row .id)
- *   → Used for: app-level joins, UI display, stats, search, deck ownership
- *   → Fields:   *_profile_id  (e.g. participant_profile_id, approver_profile_id)
- *
- * auth.currentUser = Profile record
- * auth.currentUser.id = Profile.id  (Profile entity UUID)
- * auth.currentUser.user_id = Auth User ID (stored on profile at registration)
- *
- * RULE: Never use Profile.id as approver_user_id or any *_user_id permission field.
- *       Never use Auth User ID as a join key for profiles/decks.
+ * ⚠️ LEGACY: LeagueMember.user_id stores Profile ID — intentional exception, do not "fix".
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { base44 } from "@/api/base44Client";
