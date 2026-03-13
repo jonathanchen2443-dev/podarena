@@ -25,20 +25,15 @@ export default function Inbox() {
 
   // ── Load ─────────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
-    if (!currentUser || isGuest) { setLoading(false); return; }
+    if (!currentUser || isGuest || !authUserId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const authUser = await base44.auth.me().catch(() => null);
-      const aUid = authUser?.id || null;
-      if (aUid) setAuthUserId(aUid);
-
+      // authUserId comes from context (profile.user_id = Auth User ID) — no extra me() call needed
       const [approvalsData, allNotifs] = await Promise.all([
-        listMyPendingApprovals({ isGuest: false, currentUser, isAuthenticated: true }),
-        aUid
-          ? base44.entities.Notification.list("-created_date", 200).then((list) =>
-              list.filter((n) => n.recipient_user_id === aUid)
-            )
-          : Promise.resolve([]),
+        listMyPendingApprovals({ isGuest: false, currentUser, authUserId, isAuthenticated: true }),
+        base44.entities.Notification.list("-created_date", 200).then((list) =>
+          list.filter((n) => n.recipient_user_id === authUserId)
+        ),
       ]);
       setApprovals(approvalsData);
       setNotifications(allNotifs);
