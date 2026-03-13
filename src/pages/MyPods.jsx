@@ -58,7 +58,7 @@ function PodCard({ pod, membership, onFavoriteToggle, onClick }) {
 }
 
 export default function MyPods() {
-  const { currentUser, isAuthenticated, authLoading, isGuest } = useAuth();
+  const { currentUser, authUserId, isAuthenticated, authLoading, isGuest } = useAuth();
   const navigate = useNavigate();
   const [pods, setPods] = useState([]);
   const [memberships, setMemberships] = useState([]);
