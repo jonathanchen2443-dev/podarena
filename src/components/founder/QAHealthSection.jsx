@@ -15,15 +15,6 @@ async function repairOrphanRows() {
   const allProfiles = await base44.entities.Profile.list("-created_date", 200);
   const profileIdSet = new Set(allProfiles.map((p) => p.id));
 
-  // --- LeagueMember ---
-  const allMembers = await base44.entities.LeagueMember.list("-created_date", 500);
-  const orphanMembers = allMembers.filter(
-    (m) => m.status === "active" && !profileIdSet.has(m.user_id)
-  );
-  for (const m of orphanMembers) {
-    await base44.entities.LeagueMember.update(m.id, { status: "removed" });
-  }
-
   // --- GameParticipant ---
   const allParts = await base44.entities.GameParticipant.list("-created_date", 500);
   const orphanParts = allParts.filter(
@@ -33,7 +24,7 @@ async function repairOrphanRows() {
     await base44.entities.GameParticipant.update(p.id, { result: "orphaned" });
   }
 
-  return { orphanMembers: orphanMembers.length, orphanParticipants: orphanParts.length };
+  return { orphanParticipants: orphanParts.length };
 }
 
 function CheckRow({ name, status, detail }) {
@@ -61,9 +52,9 @@ async function runChecks(auth) {
     return `→ ${ROUTES.HOME}`;
   });
 
-  add("ROUTES.LEAGUES resolves", async () => {
-    if (!ROUTES.LEAGUES) throw new Error("empty");
-    return `→ ${ROUTES.LEAGUES}`;
+  add("ROUTES.PODS resolves", async () => {
+    if (!ROUTES.PODS) throw new Error("empty");
+    return `→ ${ROUTES.PODS}`;
   });
 
   add("ROUTES.LOG_GAME resolves", async () => {
@@ -99,11 +90,6 @@ async function runChecks(auth) {
     const ok = await isFounder(auth);
     if (!ok) throw new Error("Not in founder_user_ids");
     return "confirmed";
-  });
-
-  add("Can fetch leagues list", async () => {
-    const leagues = await listVisibleLeagues(auth);
-    return `${leagues.length} visible leagues`;
   });
 
   add("Can fetch profiles", async () => {
@@ -200,7 +186,7 @@ export default function QAHealthSection({ auth }) {
         </Button>
         {repairResult && (
           <p className="text-[11px] text-emerald-400 text-center">
-            Done — {repairResult.orphanMembers} LeagueMember(s) removed, {repairResult.orphanParticipants} GameParticipant(s) marked orphaned.
+            Done — {repairResult.orphanParticipants} GameParticipant(s) marked orphaned.
           </p>
         )}
       </div>
