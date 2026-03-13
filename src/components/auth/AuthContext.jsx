@@ -99,6 +99,7 @@ export function AuthProvider({ children }) {
     isGuest: !isAuthenticated,
     currentUser,         // Profile entity record — use .id for Profile ID joins
     authUserId,          // Auth User ID (profile.user_id) — use for RLS fields / *_user_id queries
+    profileId: currentUser?.id || null, // Explicit alias for currentUser.id — Profile entity UUID
     profileError,
     profileBootstrapError,
     login,
