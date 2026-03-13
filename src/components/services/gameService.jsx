@@ -377,13 +377,8 @@ export async function setMyDeckForGame(auth, gameId, deckId) {
 export async function listMyPendingApprovals(auth) {
   if (auth.isGuest || !auth.currentUser) return [];
 
-  // Prefer authUserId passed directly on auth object (from AuthContext), fall back to me() call
-  // auth.authUserId = Auth User ID (profile.user_id) — used for RLS approval lookup
-  let authUid = auth.authUserId || auth.currentUser?.user_id || null;
-  if (!authUid) {
-    const authUser = await base44.auth.me().catch(() => null);
-    authUid = authUser?.id || null;
-  }
+  // auth.authUserId = Auth User ID (profile.user_id) from AuthContext — always use this, no me() needed
+  const authUid = auth.authUserId || auth.currentUser?.user_id || null;
   if (!authUid) return [];
 
   const allMyApprovals = await base44.entities.GameApproval.list("-created_date", 200);

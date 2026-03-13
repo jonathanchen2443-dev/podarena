@@ -19,8 +19,8 @@ function cacheGet(key) {
 }
 function cacheSet(key, value) { _cache.set(key, { ts: Date.now(), value }); return value; }
 
-// Pass either profileId or authUserId — both will match the cache key correctly
-// since the cache is keyed on profileId and invalidation checks for substring inclusion.
+// Must pass Profile ID (currentUser.id) — cache key is dashboard::${profileId}.
+// Passing authUserId will NOT match and invalidation will silently no-op.
 export function invalidateDashboardCache(profileId) {
   if (!profileId) return;
   for (const key of _cache.keys()) {
