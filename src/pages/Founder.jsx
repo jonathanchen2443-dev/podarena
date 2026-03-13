@@ -11,7 +11,6 @@ import FeatureFlagsSection from "@/components/founder/FeatureFlagsSection";
 import DevSeederSection from "@/components/founder/DevSeederSection";
 import OverviewSection from "@/components/founder/OverviewSection";
 import EntityBrowserSection from "@/components/founder/EntityBrowserSection";
-import LeagueOverridesSection from "@/components/founder/LeagueOverridesSection";
 import NotificationSenderSection from "@/components/founder/NotificationSenderSection";
 import ConfigEditorSection from "@/components/founder/ConfigEditorSection";
 import QAHealthSection from "@/components/founder/QAHealthSection";
@@ -22,7 +21,6 @@ const TABS = [
   { key: "nav",         label: "Navigation" },
   { key: "flags",       label: "Flags" },
   { key: "browser",     label: "Browser" },
-  { key: "leagues",     label: "Leagues" },
   { key: "notifs",      label: "Notifs" },
   { key: "config",      label: "Config" },
   { key: "qa",          label: "QA" },
@@ -161,7 +159,6 @@ export default function Founder() {
       {activeTab === "nav"       && <NavBuilderSection settings={settings} onRefresh={handleRefresh} />}
       {activeTab === "flags"     && <FeatureFlagsSection settings={settings} onRefresh={handleRefresh} />}
       {activeTab === "browser"   && <EntityBrowserSection />}
-      {activeTab === "leagues"   && <LeagueOverridesSection />}
       {activeTab === "notifs"    && <NotificationSenderSection auth={auth} />}
       {activeTab === "config"    && <ConfigEditorSection settings={settings} onRefresh={handleRefresh} />}
       {activeTab === "qa"        && <QAHealthSection auth={auth} />}
