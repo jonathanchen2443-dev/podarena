@@ -66,13 +66,14 @@ export default function ExplorePods() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const authUser = currentUser ? await base44.auth.me().catch(() => null) : null;
+      // Use authUserId from context (Auth User ID) — no redundant me() call needed
       const myActivePodIds = new Set();
-      if (authUser?.id) {
-        const myMemberships = await base44.entities.PODMembership.list("-created_date", 200);
-        myMemberships
-          .filter((m) => m.user_id === authUser.id && m.membership_status === "active")
-          .forEach((m) => myActivePodIds.add(m.pod_id));
+      if (authUserId) {
+        const myMemberships = await base44.entities.PODMembership.filter({
+          user_id: authUserId,
+          membership_status: "active",
+        }).catch(() => []);
+        myMemberships.forEach((m) => myActivePodIds.add(m.pod_id));
       }
 
       // Public active PODs
