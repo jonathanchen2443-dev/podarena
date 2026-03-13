@@ -20,7 +20,7 @@ const TABS = [
 ];
 
 export default function Pod() {
-  const { currentUser, isGuest, authLoading } = useAuth();
+  const { currentUser, authUserId, isGuest, authLoading } = useAuth();
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
   const podId = params.get("podId");
