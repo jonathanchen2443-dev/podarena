@@ -197,7 +197,6 @@ function AuthDashboard({ data, displayName, auth }) {
       {casualModal && (
         <MatchDetailsModal
           gameId={casualModal.gameId}
-          leagueId={null}
           onClose={() => setCasualModal(null)}
           auth={auth}
         />
