@@ -56,23 +56,17 @@ export default function Inbox() {
     });
   }
 
-  // ── Game Approval actions ─────────────────────────────────────────────────
-  async function handleApprove(item) {
-    setItemActing(item.approvalId, true);
-    try {
-      await approveGame(item.game.id, authUserId, currentUser.id, null);
-      toast.success("Game approved!");
-      await load();
-      notifyInboxUpdated();
-    } catch (err) {
-      toast.error(err.message || "Failed to approve.");
-    } finally {
-      setItemActing(item.approvalId, false);
-    }
+  // ── Game Review actions ───────────────────────────────────────────────────
+  // "Review & Approve" opens the full modal where the user must pick their deck first.
+  // "Reject" is a quick action directly from the card (no deck needed).
+  function handleApprove(item) {
+    // Open the review modal so user can select their deck before approving
+    setReviewModal({ gameId: item.game.id });
   }
 
   async function handleReject(item) {
-    setItemActing(item.approvalId, true);
+    const { rejectGame } = await import("@/components/services/gameService");
+    setItemActing(item.approvalId || item.gameParticipantId, true);
     try {
       await rejectGame(item.game.id, authUserId, currentUser.id, "");
       toast.success("Game rejected.");
@@ -81,7 +75,7 @@ export default function Inbox() {
     } catch (err) {
       toast.error(err.message || "Failed to reject.");
     } finally {
-      setItemActing(item.approvalId, false);
+      setItemActing(item.approvalId || item.gameParticipantId, false);
     }
   }
 
