@@ -1,12 +1,17 @@
 /**
- * Game Service — Business logic for creating games and handling approvals.
+ * Game Service — Business logic for creating games and handling participant review.
  *
  * IDENTITY CONTRACT — see components/auth/IDENTITY_CONTRACT.md for full spec.
  *
  * authUserId / *_user_id    = Auth User ID ({{user.id}}) — RLS fields, approval matching
  * profileId  / *_profile_id = Profile entity UUID        — display, joins, deck ownership
  *
- * ⚠️ NOTE: Game.league_id column is retained in the schema for historical data only. Active flows set it to null.
+ * ARCHITECTURE (post-cutover):
+ * - GameApproval is DEPRECATED from live runtime flow.
+ * - GameParticipant.approval_status is the single source of truth for participant review state.
+ * - Notification (type: game_review_request) is the inbox prompt layer only.
+ * - Game.status is recalculated from GameParticipant approval states.
+ * - Game is readable by participants (via RLS) so non-founders can access pending reviews.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { base44 } from "@/api/base44Client";
@@ -141,7 +146,8 @@ function _buildDeckSnapshot(deck) {
 }
 
 /**
- * Create a casual or POD game with participants and approval records.
+ * Create a casual or POD game with participants and review notifications.
+ * GameApproval records are NOT created — GameParticipant is the sole source of truth.
  *
  * @param {object} params
  * @param {string}       params.contextType         - "casual" or "pod"
@@ -152,8 +158,8 @@ function _buildDeckSnapshot(deck) {
  * @param {Array<{
  *   profileId: string,       Profile.id
  *   authUserId: string,      Auth User ID
- *   deck_id?: string,
- *   deckData?: object,       live deck object for snapshot
+ *   deck_id?: string,        Only for creator — others choose at review time
+ *   deckData?: object,       live deck object for snapshot (creator only)
  *   result?: string,
  *   placement?: number,
  * }>} params.participants
@@ -178,7 +184,6 @@ export async function createGameWithParticipants({
 
   // Create the game
   const game = await base44.entities.Game.create({
-    league_id: null,
     pod_id: podId || null,
     context_type: contextType,
     played_at: playedAt || new Date().toISOString(),
@@ -188,199 +193,227 @@ export async function createGameWithParticipants({
     created_by_profile_id: creatorProfileId || null,
   });
 
-  // Create participant records with dual IDs + deck snapshots
+  const nonCreators = participants.filter((p) => p.profileId !== creatorProfileId);
+
+  // Create participant records
   const participantRecords = participants.map((p) => {
     const isCreator = p.profileId === creatorProfileId;
-    const snapshot = p.deckData ? _buildDeckSnapshot(p.deckData) : null;
+    // Only snapshot deck for the creator — others choose at review time
+    const snapshot = isCreator && p.deckData ? _buildDeckSnapshot(p.deckData) : null;
     return {
       game_id: game.id,
       participant_user_id: p.authUserId || null,
       participant_profile_id: p.profileId,
       is_creator: isCreator,
-      selected_deck_id: p.deck_id || null,
+      selected_deck_id: isCreator ? (p.deck_id || null) : null,
       deck_snapshot_json: snapshot,
       deck_name_at_time: snapshot?.name || null,
       commander_name_at_time: snapshot?.commander_name || null,
       commander_image_at_time: snapshot?.commander_image_url || null,
       result: p.result || null,
       placement: p.placement || null,
-      // Creator is auto-approved; others start pending
+      // Creator is auto-approved; non-creators start pending
       approval_status: isCreator ? "approved" : "pending",
       approved_at: isCreator ? new Date().toISOString() : null,
+      rejected_at: null,
     };
   });
   await base44.entities.GameParticipant.bulkCreate(participantRecords);
 
-  // Create GameApproval records for each non-creator participant
-  const approvalRecords = participants
-    .filter((p) => p.profileId !== creatorProfileId)
-    .map((p) => ({
-      game_id: game.id,
-      approver_user_id: p.authUserId || null,   // Auth User ID — for RLS
-      approver_profile_id: p.profileId,          // Profile ID — for display
-      requester_user_id: creatorAuthUserId || null,
-      requester_profile_id: creatorProfileId || null,
-      status: "pending",
-    }));
-
-  if (approvalRecords.length > 0) {
-    await base44.entities.GameApproval.bulkCreate(approvalRecords);
-  } else {
-    // Solo or only creator — auto-approve
+  if (nonCreators.length === 0) {
+    // Solo game — auto-approve
     await base44.entities.Game.update(game.id, { status: "approved" });
+  } else {
+    // Create a Notification (inbox prompt) for each non-creator participant
+    // metadata carries game_id + participant identity so the review modal can open directly
+    const podName = podId ? (await base44.entities.POD.get(podId).catch(() => null))?.pod_name || null : null;
+    const reviewNotifications = nonCreators
+      .filter((p) => !!p.authUserId)
+      .map((p) => ({
+        type: "game_review_request",
+        actor_user_id: creatorAuthUserId,
+        recipient_user_id: p.authUserId,
+        metadata: {
+          game_id: game.id,
+          // game_participant_id will be populated after we fetch the newly created records
+          context_type: contextType,
+          pod_name: podName || null,
+        },
+      }));
+
+    if (reviewNotifications.length > 0) {
+      // Fetch created participant rows to get their IDs for metadata
+      const createdParticipants = await base44.entities.GameParticipant.filter({ game_id: game.id });
+      const participantByProfile = Object.fromEntries(
+        createdParticipants.map((p) => [p.participant_profile_id, p])
+      );
+
+      const notificationsWithIds = reviewNotifications.map((notif) => {
+        const matchingParticipant = nonCreators.find((p) => p.authUserId === notif.recipient_user_id);
+        const participantRow = matchingParticipant ? participantByProfile[matchingParticipant.profileId] : null;
+        return {
+          ...notif,
+          metadata: {
+            ...notif.metadata,
+            game_participant_id: participantRow?.id || null,
+          },
+        };
+      });
+
+      await base44.entities.Notification.bulkCreate(notificationsWithIds);
+    }
   }
 
   return game;
 }
 
 /**
- * Approve a game.
+ * Approve a game — updates the participant's own GameParticipant row.
+ * Deck selection is required and saved as a snapshot on the participant row.
+ *
  * @param {string} gameId
  * @param {string} approverAuthUserId  - Auth User ID ({{user.id}})
  * @param {string} approverProfileId   - Profile.id (for participant row update)
- * @param {string} deckId              - optional deck selected at approval time
+ * @param {string} deckId              - required: the deck this participant played
  */
 export async function approveGame(gameId, approverAuthUserId, approverProfileId, deckId) {
-  // 1. Update GameApproval by auth user id
-  const approvals = await base44.entities.GameApproval.filter({ game_id: gameId });
-  const approval = approvals.find((a) => a.approver_user_id === approverAuthUserId && a.status === "pending");
-  if (!approval) throw new Error("You are not listed as an approver for this game.");
+  // Find the participant row by auth user id (RLS ensures only own row is visible)
+  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId });
+  const myParticipant = participants.find(
+    (p) => p.participant_user_id === approverAuthUserId && p.approval_status === "pending"
+  );
+  if (!myParticipant) throw new Error("No pending review found for you on this game.");
 
-  await base44.entities.GameApproval.update(approval.id, {
-    status: "approved",
-    responded_at: new Date().toISOString(),
-  });
+  const participantUpdate = {
+    approval_status: "approved",
+    approved_at: new Date().toISOString(),
+    rejected_at: null,
+  };
 
-  // 2. Update this participant's row (by profile_id for the join key)
-  if (approverProfileId) {
-    const participants = await base44.entities.GameParticipant.filter({ game_id: gameId });
-    const myParticipant = participants.find((p) => p.participant_profile_id === approverProfileId);
-    if (myParticipant) {
-      const participantUpdate = {
-        approval_status: "approved",
-        approved_at: new Date().toISOString(),
-      };
-      if (deckId) {
-        participantUpdate.selected_deck_id = deckId;
-        // Fetch and snapshot the chosen deck
-        const decks = await base44.entities.Deck.filter({ id: deckId });
-        if (decks[0]) {
-          const snap = _buildDeckSnapshot(decks[0]);
-          participantUpdate.deck_snapshot_json = snap;
-          participantUpdate.deck_name_at_time = snap.name;
-          participantUpdate.commander_name_at_time = snap.commander_name;
-          participantUpdate.commander_image_at_time = snap.commander_image_url;
-        }
-      }
-      await base44.entities.GameParticipant.update(myParticipant.id, participantUpdate);
+  if (deckId) {
+    participantUpdate.selected_deck_id = deckId;
+    const decks = await base44.entities.Deck.filter({ id: deckId });
+    if (decks[0]) {
+      const snap = _buildDeckSnapshot(decks[0]);
+      participantUpdate.deck_snapshot_json = snap;
+      participantUpdate.deck_name_at_time = snap.name;
+      participantUpdate.commander_name_at_time = snap.commander_name;
+      participantUpdate.commander_image_at_time = snap.commander_image_url;
     }
   }
+
+  await base44.entities.GameParticipant.update(myParticipant.id, participantUpdate);
+
+  // Mark the review notification as read
+  await _markReviewNotificationRead(gameId, approverAuthUserId);
 
   await recalculateGameStatus(gameId);
 }
 
 /**
- * Reject a game.
+ * Reject a game — updates the participant's own GameParticipant row.
+ * No deck selection required for rejection.
+ *
  * @param {string} gameId
  * @param {string} approverAuthUserId  - Auth User ID
  * @param {string} approverProfileId   - Profile.id
- * @param {string} reason
+ * @param {string} reason              - optional reason (stored in notes-style, no dedicated field)
  */
 export async function rejectGame(gameId, approverAuthUserId, approverProfileId, reason) {
-  const approvals = await base44.entities.GameApproval.filter({ game_id: gameId });
-  const approval = approvals.find((a) => a.approver_user_id === approverAuthUserId && a.status === "pending");
-  if (!approval) throw new Error("You are not listed as an approver for this game.");
+  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId });
+  const myParticipant = participants.find(
+    (p) => p.participant_user_id === approverAuthUserId && p.approval_status === "pending"
+  );
+  if (!myParticipant) throw new Error("No pending review found for you on this game.");
 
-  await base44.entities.GameApproval.update(approval.id, {
-    status: "rejected",
-    responded_at: new Date().toISOString(),
-    reason: reason || "",
+  await base44.entities.GameParticipant.update(myParticipant.id, {
+    approval_status: "rejected",
+    rejected_at: new Date().toISOString(),
+    approved_at: null,
   });
 
-  if (approverProfileId) {
-    const participants = await base44.entities.GameParticipant.filter({ game_id: gameId });
-    const myParticipant = participants.find((p) => p.participant_profile_id === approverProfileId);
-    if (myParticipant) {
-      await base44.entities.GameParticipant.update(myParticipant.id, {
-        approval_status: "rejected",
-        approved_at: new Date().toISOString(),
-      });
-    }
-  }
+  // Mark the review notification as read
+  await _markReviewNotificationRead(gameId, approverAuthUserId);
 
   await recalculateGameStatus(gameId);
 }
 
-async function recalculateGameStatus(gameId) {
-  const allApprovals = await base44.entities.GameApproval.filter({ game_id: gameId });
-  const hasRejection = allApprovals.some((a) => a.status === "rejected");
-  const allApproved = allApprovals.every((a) => a.status === "approved");
+async function _markReviewNotificationRead(gameId, recipientAuthUserId) {
+  try {
+    const notifs = await base44.entities.Notification.list("-created_date", 50);
+    const pending = notifs.find(
+      (n) =>
+        n.type === "game_review_request" &&
+        n.recipient_user_id === recipientAuthUserId &&
+        n.metadata?.game_id === gameId &&
+        !n.read_at
+    );
+    if (pending) {
+      await base44.entities.Notification.update(pending.id, { read_at: new Date().toISOString() });
+    }
+  } catch (_) {
+    // Non-critical — don't block the approval
+  }
+}
+
+export async function recalculateGameStatus(gameId) {
+  const allParticipants = await base44.entities.GameParticipant.filter({ game_id: gameId });
+  // Only non-creator participants gate the status
+  const reviewable = allParticipants.filter((p) => !p.is_creator);
+  if (reviewable.length === 0) {
+    // Solo or all-creator (shouldn't happen, but handle gracefully)
+    await base44.entities.Game.update(gameId, { status: "approved" });
+    return;
+  }
+  const hasRejection = reviewable.some((p) => p.approval_status === "rejected");
+  const allApproved = reviewable.every((p) => p.approval_status === "approved");
   let newStatus = "pending";
   if (hasRejection) newStatus = "rejected";
-  else if (allApproved && allApprovals.length > 0) newStatus = "approved";
+  else if (allApproved) newStatus = "approved";
   await base44.entities.Game.update(gameId, { status: newStatus });
 }
 
 /**
- * Update the deck for the current user's participant row.
- * @deprecated Use approveGame(…, deckId) instead which snapshots at approval time.
- */
-export async function setMyDeckForGame(auth, gameId, deckId) {
-  if (auth.isGuest || !auth.currentUser) throw new Error("Must be signed in.");
-  const profileId = auth.currentUser.id;
-  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId });
-  const mine = participants.find((p) => p.participant_profile_id === profileId);
-  if (!mine) throw new Error("You are not a participant in this game.");
-
-  const updates = { selected_deck_id: deckId };
-  const decks = await base44.entities.Deck.filter({ id: deckId });
-  if (decks[0]) {
-    const snap = _buildDeckSnapshot(decks[0]);
-    updates.deck_snapshot_json = snap;
-    updates.deck_name_at_time = snap.name;
-    updates.commander_name_at_time = snap.commander_name;
-    updates.commander_image_at_time = snap.commander_image_url;
-  }
-  await base44.entities.GameParticipant.update(mine.id, updates);
-}
-
-/**
- * List all pending GameApproval records assigned to the current user,
- * enriched with game/league/participant context for Inbox display.
+ * List all pending game review requests for the current user.
+ * Source of truth: GameParticipant.approval_status === "pending"
+ * Cross-referenced with Notification for inbox prompt context.
+ * GameApproval is NOT used.
  */
 export async function listMyPendingApprovals(auth) {
   if (auth.isGuest || !auth.currentUser) return [];
 
-  // auth.authUserId = Auth User ID (profile.user_id) from AuthContext — always use this, no me() needed
   const authUid = auth.authUserId || auth.currentUser?.user_id || null;
   if (!authUid) return [];
 
-  const allMyApprovals = await base44.entities.GameApproval.list("-created_date", 200);
-  const myApprovals = allMyApprovals.filter(
-    (a) => a.approver_user_id === authUid && a.status === "pending"
+  // Find participant rows where this user has a pending review
+  // GameParticipant RLS allows this — user can read their own rows
+  const allMyParticipations = await base44.entities.GameParticipant.list("-created_date", 200);
+  const myPendingRows = allMyParticipations.filter(
+    (p) => p.participant_user_id === authUid && p.approval_status === "pending" && !p.is_creator
   );
-  if (myApprovals.length === 0) return [];
+  if (myPendingRows.length === 0) return [];
 
-  const gameIds = [...new Set(myApprovals.map((a) => a.game_id))];
+  const gameIds = [...new Set(myPendingRows.map((p) => p.game_id))];
 
-  const [games, allApprovalArrays, participantArrays] = await Promise.all([
+  // Fetch games (now readable via RLS since user is a participant)
+  const [games, allParticipantArrays] = await Promise.all([
     Promise.all(gameIds.map((gid) => base44.entities.Game.get(gid).catch(() => null))),
-    Promise.all(gameIds.map((gid) => base44.entities.GameApproval.filter({ game_id: gid }))),
-    Promise.all(gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }))),
+    Promise.all(gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }).catch(() => []))),
   ]);
 
+  // Only show games still pending overall
   const validGames = games.filter(Boolean).filter((g) => g.status === "pending");
   const validGameIds = new Set(validGames.map((g) => g.id));
 
   const podIds = [...new Set(validGames.map((g) => g.pod_id).filter(Boolean))];
-
   const [allPods, allProfiles] = await Promise.all([
-    podIds.length > 0 ? Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null))) : Promise.resolve([]),
+    podIds.length > 0
+      ? Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null)))
+      : Promise.resolve([]),
     base44.entities.Profile.list("-created_date", 200),
   ]);
 
   const podMap = Object.fromEntries(allPods.filter(Boolean).map((p) => [p.id, p]));
-  // Key profiles by Profile.id (primary join key)
   const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
 
   return gameIds
@@ -388,41 +421,48 @@ export async function listMyPendingApprovals(auth) {
       const game = games[i];
       if (!game || !validGameIds.has(gid)) return null;
 
-      const approval = myApprovals.find((a) => a.game_id === gid);
+      const myRow = myPendingRows.find((p) => p.game_id === gid);
+      const allParticipants = allParticipantArrays[i];
 
-      const participants = participantArrays[i].map((p) => {
+      const participants = allParticipants.map((p) => {
         const profile = profileMap[p.participant_profile_id];
         return {
-          userId: p.participant_profile_id,   // Profile.id — used as key for display/joins
-          authUserId: p.participant_user_id,   // Auth UID — available if needed
+          userId: p.participant_profile_id,
+          authUserId: p.participant_user_id,
           display_name: profile?.display_name || profile?.username || "Unknown",
           avatar_url: profile?.avatar_url || null,
           result: p.result || null,
           placement: p.placement || null,
-          deck: p.selected_deck_id ? {
-            id: p.selected_deck_id,
-            name: p.deck_name_at_time || null,
-            color_identity: p.deck_snapshot_json?.color_identity || [],
-          } : null,
+          approval_status: p.approval_status || "pending",
+          is_creator: p.is_creator || false,
+          // Historical deck display uses snapshot — never reads another user's live Deck entity
+          deck: p.deck_name_at_time
+            ? {
+                id: p.selected_deck_id,
+                name: p.deck_name_at_time,
+                color_identity: p.deck_snapshot_json?.color_identity || [],
+                commander_name: p.commander_name_at_time || null,
+                commander_image: p.commander_image_at_time || null,
+              }
+            : null,
         };
       });
 
-      const approvalRecords = allApprovalArrays[i];
       const approvalSummary = {
-        total: approvalRecords.length,
-        approved: approvalRecords.filter((a) => a.status === "approved").length,
-        rejected: approvalRecords.filter((a) => a.status === "rejected").length,
-        pending: approvalRecords.filter((a) => a.status === "pending").length,
-        records: approvalRecords,
+        total: allParticipants.filter((p) => !p.is_creator).length,
+        approved: allParticipants.filter((p) => !p.is_creator && p.approval_status === "approved").length,
+        rejected: allParticipants.filter((p) => !p.is_creator && p.approval_status === "rejected").length,
+        pending: allParticipants.filter((p) => !p.is_creator && p.approval_status === "pending").length,
       };
 
-      // Who submitted? use created_by_profile_id if available, else fall back to email
       const submitterProfile = game.created_by_profile_id
         ? profileMap[game.created_by_profile_id]
         : allProfiles.find((p) => p.email === game.created_by);
 
       return {
-        approvalId: approval?.id,
+        // game_participant_id for the current user's pending row — used as the item key
+        approvalId: myRow?.id,
+        gameParticipantId: myRow?.id,
         game: {
           id: game.id,
           status: game.status,
