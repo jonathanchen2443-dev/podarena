@@ -163,7 +163,7 @@ export default function Inbox() {
 
   // ── Derived lists ─────────────────────────────────────────────────────────
   const podInvites = notifications.filter((n) => n.type === "pod_invite");
-  const systemNotifs = notifications.filter((n) => n.type === "system_message" || n.type === "league_join" || !n.type);
+  const systemNotifs = notifications.filter((n) => n.type === "system_message" || !n.type);
 
   // Unread counts — approvals are always "unread" until handled; invites/system by read_at
   const unreadApprovals = approvals.length;
