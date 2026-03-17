@@ -77,9 +77,7 @@ export async function getDashboardData(auth) {
         .slice(0, 5)
         .map((game) => ({
           id: game.id,
-          league_id: game.league_id || null,
-          context_type: game.context_type || (game.league_id ? "league" : "casual"),
-          leagueName: (game.context_type === "casual" || !game.league_id) ? "Casual Game" : "League Game",
+          context_type: game.context_type || "casual",
           status: game.status,
           played_at: game.played_at || game.created_date,
           participantsSummary: "",
