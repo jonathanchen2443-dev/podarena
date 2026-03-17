@@ -167,9 +167,9 @@ function AuthDashboard({ data, displayName, auth }) {
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
                           isCasual
                             ? "bg-sky-500/10 text-sky-400 border-sky-500/20"
-                            : "bg-gray-800 text-gray-400 border-gray-700"
+                            : "bg-purple-500/10 text-purple-400 border-purple-500/20"
                         }`}>
-                          {isCasual ? "🎲 Casual" : "⚔️ Game"}
+                          {isCasual ? "🎲 Casual" : "⚔️ POD Game"}
                         </span>
                         <StatusBadge status={game.status} />
                       </div>
