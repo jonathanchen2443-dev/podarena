@@ -23,6 +23,7 @@ export default function Inbox() {
   const [filter, setFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState({});
+  const [reviewModal, setReviewModal] = useState(null); // { gameId }
 
   // ── Load ─────────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
