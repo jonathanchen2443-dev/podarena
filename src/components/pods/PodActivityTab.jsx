@@ -43,6 +43,7 @@ export default function PodActivityTab({ podId, onOpenGame }) {
     async function load() {
       setLoading(true);
       try {
+        // Fetch all statuses — pending games are now readable by participants via RLS
         const podGames = await base44.entities.Game.filter({ pod_id: podId }, "-played_at", 100);
         if (podGames.length === 0) { setGames([]); return; }
 
