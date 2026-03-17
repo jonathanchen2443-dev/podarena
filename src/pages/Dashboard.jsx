@@ -159,7 +159,7 @@ function AuthDashboard({ data, displayName, auth }) {
           <Card className="bg-gray-900/60 border-gray-800/50">
             <CardContent className="p-0">
               {recentGames.map((game) => {
-                const isCasual = game.context_type === "casual";
+                const isCasual = !game.context_type || game.context_type === "casual";
                 const inner = (
                   <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors border-b border-gray-800/50 last:border-0 cursor-pointer">
                     <div className="flex-1 min-w-0">
