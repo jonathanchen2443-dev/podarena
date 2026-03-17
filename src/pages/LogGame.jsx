@@ -192,8 +192,11 @@ export default function LogGame() {
       // authUserId is sourced from AuthContext (profile.user_id = Auth User ID) — no me() needed
       const participantList = participants.map((profileId) => {
         const data = memberData[profileId] || {};
-        const deckId = deckSelections[profileId] || null;
-        const deckObj = deckId ? myDecks.find((d) => d.id === deckId) : null;
+        const isCreator = profileId === currentUser.id;
+        // Only the recorder/creator sets their own deck at log time
+        // Other participants choose their deck during their own review flow
+        const deckId = isCreator ? (deckSelections[profileId] || null) : null;
+        const deckObj = isCreator && deckId ? myDecks.find((d) => d.id === deckId) : null;
         return {
           profileId,
           authUserId: data.authUserId || null,
