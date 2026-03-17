@@ -1,20 +1,38 @@
 /**
- * publicProfiles — service-role backend for cross-user public profile access.
- * Uses asServiceRole to bypass RLS, returns only sanitized public fields.
+ * publicProfiles — service-role backend for cross-user public profile access,
+ * scoped pod history, and scoped user history.
+ *
+ * All entity reads use asServiceRole (bypasses RLS).
+ * All responses are sanitized — no private fields (email, user_id, *_lc) are returned.
+ *
+ * ACTIONS:
+ *   search        — profile search by display name or public_user_id
+ *   get           — single profile by id
+ *   getDecks      — active decks for a profile (public display only, snapshot-safe fields)
+ *   getStats      — game/deck stats for a profile (approved games only)
+ *   podHistory    — pod-scoped game history for active pod members
+ *                   Requires: podId, callerProfileId
+ *                   Gate: caller must be an active member of the pod
+ *   userHistory   — personal game history for own profile (own view)
+ *                   Requires: profileId, callerProfileId
+ *                   Gate: callerProfileId must equal profileId (own history only)
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
+// ── Sanitizers ────────────────────────────────────────────────────────────────
+
+/** Safe public identity fields only. Never leaks email, user_id, or internal lc fields. */
 function sanitizeProfile(raw) {
   return {
     id: raw.id,
     display_name: raw.display_name || "Unknown",
-    display_name_lc: raw.display_name_lc || (raw.display_name || "").toLowerCase(),
     public_user_id: raw.public_user_id || null,
     avatar_url: raw.avatar_url || null,
     created_date: raw.created_date || null,
   };
 }
 
+/** Public-facing deck display fields. Does NOT expose owner_id or any user linkage. */
 function sanitizeDeck(raw) {
   return {
     id: raw.id,
@@ -27,36 +45,59 @@ function sanitizeDeck(raw) {
   };
 }
 
+/**
+ * Sanitized participant row for game history displays.
+ * Exposes only snapshot deck fields — never raw selected_deck_id or owner-linked data.
+ */
+function sanitizeParticipant(raw) {
+  return {
+    participant_profile_id: raw.participant_profile_id,
+    is_creator: raw.is_creator || false,
+    result: raw.result || null,
+    placement: raw.placement || null,
+    approval_status: raw.approval_status || "pending",
+    deck_name_at_time: raw.deck_name_at_time || null,
+    commander_name_at_time: raw.commander_name_at_time || null,
+    commander_image_at_time: raw.commander_image_at_time || null,
+    color_identity: raw.deck_snapshot_json?.color_identity || [],
+  };
+}
+
+/** Sanitized game row for history surfaces. Omits internal user_id fields. */
+function sanitizeGame(raw) {
+  return {
+    id: raw.id,
+    pod_id: raw.pod_id || null,
+    context_type: raw.context_type || "casual",
+    played_at: raw.played_at || raw.created_date || null,
+    status: raw.status || "pending",
+    notes: raw.notes || "",
+    created_by_profile_id: raw.created_by_profile_id || null,
+  };
+}
+
+// ── Main handler ──────────────────────────────────────────────────────────────
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
-    const { action, query, profileId } = body;
+    const { action, query, profileId, podId, callerProfileId } = body;
 
     // Auth gate: only authenticated app users may call this function.
-    // NOTE: The Base44 builder test tool does not forward a real session token,
-    // so test_backend_function calls will return 401 here. This is expected and
-    // correct — the gate is intentionally enforced at runtime only.
-    // To smoke-test via the test tool, temporarily comment this block out;
-    // re-enable before committing.
     const isAuth = await base44.auth.isAuthenticated().catch(() => false);
     if (!isAuth) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // ── search ────────────────────────────────────────────────────────────────
     if (action === 'search') {
       if (!query || query.trim().length < 3) return Response.json({ results: [] });
       const q = query.trim().toLowerCase();
 
-      // Use server-side regex filtering to avoid fetching all profiles (CPU limit)
       const [byName, byUid] = await Promise.all([
-        base44.asServiceRole.entities.Profile.filter(
-          { display_name_lc: { $regex: q } }, '-created_date', 20
-        ),
-        base44.asServiceRole.entities.Profile.filter(
-          { public_user_id: { $regex: q } }, '-created_date', 20
-        ),
+        base44.asServiceRole.entities.Profile.filter({ display_name_lc: { $regex: q } }, '-created_date', 20),
+        base44.asServiceRole.entities.Profile.filter({ public_user_id: { $regex: q } }, '-created_date', 20),
       ]);
 
-      // Merge and deduplicate by id
       const seen = new Set();
       const matched = [];
       for (const p of [...byName, ...byUid]) {
@@ -66,6 +107,7 @@ Deno.serve(async (req) => {
       return Response.json({ results: matched.slice(0, 20).map(sanitizeProfile) });
     }
 
+    // ── get ───────────────────────────────────────────────────────────────────
     if (action === 'get') {
       if (!profileId) return Response.json({ error: 'profileId required' }, { status: 400 });
       const results = await base44.asServiceRole.entities.Profile.filter({ id: profileId });
@@ -73,12 +115,15 @@ Deno.serve(async (req) => {
       return Response.json({ profile: sanitizeProfile(results[0]) });
     }
 
+    // ── getDecks ──────────────────────────────────────────────────────────────
     if (action === 'getDecks') {
       if (!profileId) return Response.json({ error: 'profileId required' }, { status: 400 });
       const decks = await base44.asServiceRole.entities.Deck.filter({ owner_id: profileId });
-      return Response.json({ decks: decks.filter((d) => d.is_active !== false).map(sanitizeDeck) });
+      const activeDecks = decks.filter((d) => d.is_active !== false).map(sanitizeDeck);
+      return Response.json({ decks: activeDecks });
     }
 
+    // ── getStats ──────────────────────────────────────────────────────────────
     if (action === 'getStats') {
       if (!profileId) return Response.json({ error: 'profileId required' }, { status: 400 });
 
@@ -87,11 +132,9 @@ Deno.serve(async (req) => {
         base44.asServiceRole.entities.Deck.filter({ owner_id: profileId }, '-created_date', 100),
       ]);
 
-      // Only count games that have been fully approved — fetch those game statuses
       const gameIds = [...new Set(participations.map((p) => p.game_id))];
       let approvedGameIds = new Set();
       if (gameIds.length > 0) {
-        // Batch: fetch games in chunks of 50 to avoid payload limits
         const chunks = [];
         for (let i = 0; i < gameIds.length; i += 50) chunks.push(gameIds.slice(i, i + 50));
         const gameResults = await Promise.all(
@@ -113,6 +156,128 @@ Deno.serve(async (req) => {
           decksCount: decks.length,
           activeDecksCount: decks.filter((d) => d.is_active !== false).length,
         }
+      });
+    }
+
+    // ── podHistory ────────────────────────────────────────────────────────────
+    // Returns all pod games for a pod, for active pod members only.
+    // Broader than personal history — explicitly pod-scoped.
+    // callerProfileId must be an active member of the pod.
+    if (action === 'podHistory') {
+      if (!podId) return Response.json({ error: 'podId required' }, { status: 400 });
+      if (!callerProfileId) return Response.json({ error: 'callerProfileId required' }, { status: 400 });
+
+      // Gate: verify caller is an active member of this pod
+      const membership = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId,
+        profile_id: callerProfileId,
+        membership_status: 'active',
+      });
+      if (membership.length === 0) {
+        return Response.json({ error: 'Forbidden: not an active pod member' }, { status: 403 });
+      }
+
+      // Fetch all pod games (all statuses — pod members see full history)
+      const podGames = await base44.asServiceRole.entities.Game.filter(
+        { pod_id: podId, context_type: 'pod' }, '-played_at', 100
+      );
+      if (podGames.length === 0) return Response.json({ games: [], participants: {} });
+
+      const gameIds = podGames.map((g) => g.id);
+
+      // Fetch all participant rows for these games in batches
+      const participantArrays = await Promise.all(
+        gameIds.map((gid) =>
+          base44.asServiceRole.entities.GameParticipant.filter({ game_id: gid }, '-created_date', 20).catch(() => [])
+        )
+      );
+
+      const participantMap = {};
+      gameIds.forEach((gid, i) => {
+        participantMap[gid] = participantArrays[i].map(sanitizeParticipant);
+      });
+
+      // Collect all profile IDs needed for display
+      const allProfileIds = [...new Set(
+        participantArrays.flat().map((p) => p.participant_profile_id).filter(Boolean)
+      )];
+
+      let profileMap = {};
+      if (allProfileIds.length > 0) {
+        const profiles = await base44.asServiceRole.entities.Profile.filter(
+          { id: { $in: allProfileIds } }, '-created_date', 200
+        );
+        profileMap = Object.fromEntries(profiles.map((p) => [p.id, sanitizeProfile(p)]));
+      }
+
+      return Response.json({
+        games: podGames.map(sanitizeGame),
+        participants: participantMap,
+        profiles: profileMap,
+      });
+    }
+
+    // ── userHistory ───────────────────────────────────────────────────────────
+    // Returns game history for the authenticated user's own profile only.
+    // callerProfileId must equal profileId (enforced — no cross-user personal history).
+    // Returns only games where the user was a direct participant.
+    // Does NOT include pod games where the user was only a pod member, not a participant.
+    if (action === 'userHistory') {
+      if (!profileId) return Response.json({ error: 'profileId required' }, { status: 400 });
+      if (!callerProfileId) return Response.json({ error: 'callerProfileId required' }, { status: 400 });
+
+      // Strict gate: own history only
+      if (callerProfileId !== profileId) {
+        return Response.json({ error: 'Forbidden: can only view own history' }, { status: 403 });
+      }
+
+      // Find all games where this profile was a direct participant
+      const myParticipations = await base44.asServiceRole.entities.GameParticipant.filter(
+        { participant_profile_id: profileId }, '-created_date', 200
+      );
+      if (myParticipations.length === 0) return Response.json({ games: [], participants: {} });
+
+      const gameIds = [...new Set(myParticipations.map((p) => p.game_id))];
+
+      // Fetch games in batches
+      const chunks = [];
+      for (let i = 0; i < gameIds.length; i += 50) chunks.push(gameIds.slice(i, i + 50));
+      const gameResults = await Promise.all(
+        chunks.map((chunk) =>
+          base44.asServiceRole.entities.Game.filter({ id: { $in: chunk } }, '-played_at', 50).catch(() => [])
+        )
+      );
+      const games = gameResults.flat();
+
+      // Fetch all participant rows per game
+      const participantArrays = await Promise.all(
+        games.map((g) =>
+          base44.asServiceRole.entities.GameParticipant.filter({ game_id: g.id }, '-created_date', 20).catch(() => [])
+        )
+      );
+
+      const participantMap = {};
+      games.forEach((g, i) => {
+        participantMap[g.id] = participantArrays[i].map(sanitizeParticipant);
+      });
+
+      // Profiles for co-participants
+      const allProfileIds = [...new Set(
+        participantArrays.flat().map((p) => p.participant_profile_id).filter(Boolean)
+      )];
+
+      let profileMap = {};
+      if (allProfileIds.length > 0) {
+        const profiles = await base44.asServiceRole.entities.Profile.filter(
+          { id: { $in: allProfileIds } }, '-created_date', 200
+        );
+        profileMap = Object.fromEntries(profiles.map((p) => [p.id, sanitizeProfile(p)]));
+      }
+
+      return Response.json({
+        games: games.map(sanitizeGame),
+        participants: participantMap,
+        profiles: profileMap,
       });
     }
 
