@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Clock, ChevronRight, Trophy } from "lucide-react";
 import { format } from "date-fns";
