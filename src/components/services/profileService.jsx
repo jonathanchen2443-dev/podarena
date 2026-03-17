@@ -98,6 +98,37 @@ export async function getPublicProfileDecks(profileId) {
 }
 
 /**
+ * getPodHistory — fetches scoped pod game history for an active pod member.
+ * Gated server-side: callerProfileId must be an active member of podId.
+ * Returns sanitized games + participant snapshots + profiles for that pod.
+ * Do NOT use for personal history — this is intentionally broader.
+ */
+export async function getPodHistory(podId, callerProfileId) {
+  if (!podId || !callerProfileId) return { games: [], participants: {}, profiles: {} };
+  const data = await callBackend({ action: 'podHistory', podId, callerProfileId });
+  return {
+    games: data.games || [],
+    participants: data.participants || {},
+    profiles: data.profiles || {},
+  };
+}
+
+/**
+ * getMyHistory — fetches personal game history for the authenticated user's own profile.
+ * Gated server-side: callerProfileId must equal profileId (own history only).
+ * Returns only games where the user was a direct participant — NOT all pod games.
+ */
+export async function getMyHistory(profileId, callerProfileId) {
+  if (!profileId || !callerProfileId) return { games: [], participants: {}, profiles: {} };
+  const data = await callBackend({ action: 'userHistory', profileId, callerProfileId });
+  return {
+    games: data.games || [],
+    participants: data.participants || {},
+    profiles: data.profiles || {},
+  };
+}
+
+/**
  * getPublicProfileStats — fetches game/deck stats for a public profile.
  * Uses backend service role to bypass RLS on GameParticipant and Deck.
  */
