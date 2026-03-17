@@ -329,6 +329,20 @@ export default function Inbox() {
           ))}
         </section>
       )}
+
+      {/* Game review modal — opened when user clicks "Review & Approve" */}
+      {reviewModal && (
+        <MatchDetailsModal
+          gameId={reviewModal.gameId}
+          auth={{ currentUser, authUserId, isGuest }}
+          onClose={() => setReviewModal(null)}
+          onActionComplete={async () => {
+            setReviewModal(null);
+            await load();
+            notifyInboxUpdated();
+          }}
+        />
+      )}
     </div>
   );
 }
