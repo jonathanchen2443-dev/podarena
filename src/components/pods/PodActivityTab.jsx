@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Button } from "@/components/ui/button";
-import { Clock, Filter, ChevronRight, Trophy } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthContext";
+import { Clock, ChevronRight, Trophy } from "lucide-react";
 import { format } from "date-fns";
 
 function GameRow({ game, participants, profiles, onClick }) {
@@ -32,6 +32,7 @@ function GameRow({ game, participants, profiles, onClick }) {
 }
 
 export default function PodActivityTab({ podId, onOpenGame }) {
+  const { currentUser } = useAuth();
   const [games, setGames] = useState([]);
   const [participantMap, setParticipantMap] = useState({});
   const [profiles, setProfiles] = useState({});
@@ -40,29 +41,28 @@ export default function PodActivityTab({ podId, onOpenGame }) {
   const [filterWinner, setFilterWinner] = useState("");
 
   useEffect(() => {
+    if (!currentUser?.id) return;
     async function load() {
       setLoading(true);
       try {
-        // Fetch all statuses — pending games are now readable by participants via RLS
-        const podGames = await base44.entities.Game.filter({ pod_id: podId }, "-played_at", 100);
-        if (podGames.length === 0) { setGames([]); return; }
-
-        const participantArrays = await Promise.all(
-          podGames.map((g) => base44.entities.GameParticipant.filter({ game_id: g.id }).catch(() => []))
-        );
-        const pMap = {};
-        podGames.forEach((g, i) => { pMap[g.id] = participantArrays[i]; });
-        setParticipantMap(pMap);
-
-        const allProfiles = await base44.entities.Profile.list("-created_date", 200);
-        setProfiles(Object.fromEntries(allProfiles.map((p) => [p.id, p])));
+        // Use scoped backend function — pod history for active members only.
+        // This is intentionally broader than personal history (all pod games visible)
+        // but is gated server-side to active pod members only.
+        const res = await base44.functions.invoke('publicProfiles', {
+          action: 'podHistory',
+          podId,
+          callerProfileId: currentUser.id,
+        });
+        const { games: podGames = [], participants = {}, profiles: profileMap = {} } = res.data || {};
+        setParticipantMap(participants);
+        setProfiles(profileMap);
         setGames(podGames.sort((a, b) => new Date(b.played_at || b.created_date) - new Date(a.played_at || a.created_date)));
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [podId]);
+  }, [podId, currentUser?.id]);
 
   const filteredGames = games.filter((g) => {
     const participants = participantMap[g.id] || [];
