@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
-import { listMyPendingApprovals, approveGame, rejectGame } from "@/components/services/gameService";
+import { listMyPendingApprovals } from "@/components/services/gameService";
 import { notifyInboxUpdated } from "@/components/services/inboxBus";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import GameApprovalCard from "@/components/inbox/GameApprovalCard";
 import PodInviteCard from "@/components/inbox/PodInviteCard";
 import SystemNotifCard from "@/components/inbox/SystemNotifCard";
+import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 
 const FILTERS = ["All", "Unread", "Game Approvals", "POD Invites", "System"];
 
