@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { approveGame, rejectGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
 import { base44 } from "@/api/base44Client";
-import { getPodGameDetails } from "@/components/services/profileService.jsx";
+import { getPodGameDetails, getGameDetailsForParticipant } from "@/components/services/profileService.jsx";
 import { ROUTES } from "@/components/utils/routes";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
 import { toast } from "sonner";
@@ -105,8 +105,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
     setFetchLoading(true);
     (async () => {
       try {
-        // Pod-scoped path: use podGameDetails backend — works for any active pod member,
-        // including non-participants. No raw Game/GameParticipant reads needed.
+        // Pod-scoped path: use podGameDetails backend — works for any active pod member.
         if (podId && callerProfileId) {
           const assembled = await getPodGameDetails(gameId, podId, callerProfileId);
           if (!assembled) { onClose(); return; }
@@ -114,53 +113,11 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
           return;
         }
 
-        // Participant path: caller is a direct participant — readable via RLS.
-        const [gameArr, participantArr] = await Promise.all([
-          base44.entities.Game.filter({ id: gameId }),
-          base44.entities.GameParticipant.filter({ game_id: gameId }),
-        ]);
-        const g = gameArr[0];
-        if (!g) { onClose(); return; }
-
-        const allProfiles = await base44.entities.Profile.list("-created_date", 200);
-        const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
-
-        const participants = participantArr.map((p) => {
-          const profile = profileMap[p.participant_profile_id];
-          return {
-            userId: p.participant_profile_id,
-            authUserId: p.participant_user_id || null,
-            display_name: profile?.display_name || "Unknown",
-            avatar_url: profile?.avatar_url || null,
-            result: p.result,
-            placement: p.placement,
-            approval_status: p.approval_status || "pending",
-            is_creator: p.is_creator || false,
-            deck: p.deck_name_at_time
-              ? {
-                  name: p.deck_name_at_time,
-                  color_identity: p.deck_snapshot_json?.color_identity || [],
-                  commander_name: p.commander_name_at_time || null,
-                }
-              : null,
-          };
-        });
-
-        const nonCreators = participantArr.filter((p) => !p.is_creator);
-        setFetchedGame({
-          id: g.id,
-          status: g.status,
-          played_at: g.played_at || g.created_date,
-          notes: g.notes || "",
-          context_type: g.context_type || "casual",
-          participants,
-          approvalSummary: {
-            total: nonCreators.length,
-            approved: nonCreators.filter((p) => p.approval_status === "approved").length,
-            rejected: nonCreators.filter((p) => p.approval_status === "rejected").length,
-            pending: nonCreators.filter((p) => p.approval_status === "pending").length,
-          },
-        });
+        // Participant path: use backend so asServiceRole reads all participant rows safely.
+        const callerAuthUserId = auth?.currentUser?.user_id || null;
+        const assembled = await getGameDetailsForParticipant(gameId, callerAuthUserId);
+        if (!assembled) { onClose(); return; }
+        setFetchedGame(assembled);
       } catch (e) {
         toast.error("Could not load game details.");
         onClose();
