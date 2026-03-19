@@ -34,7 +34,7 @@ export default function Pod() {
   const [activeTab, setActiveTab] = useState("leaderboard");
   const [showEditModal, setShowEditModal] = useState(false);
   const [requesting, setRequesting] = useState(false);
-  const [selectedGameId, setSelectedGameId] = useState(null);
+  const [selectedGame, setSelectedGame] = useState(null); // { gameId, podId }
 
   const load = useCallback(async () => {
     if (!podId) return;
