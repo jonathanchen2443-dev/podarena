@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/components/auth/AuthContext";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Swords, Trophy, Clock } from "lucide-react";
@@ -8,19 +8,17 @@ import { getPODLeaderboard } from "@/components/services/podService";
 
 export default function PodLeaderboardTab({ pod, myMembership, podId }) {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [leaderboard, setLeaderboard] = useState([]);
   const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!currentUser?.id) return;
     async function load() {
       setLoading(true);
       try {
-        const [lb, allProfiles] = await Promise.all([
-          getPODLeaderboard(podId),
-          base44.entities.Profile.list("-created_date", 200),
-        ]);
-        const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
+        const { leaderboard: lb, profiles: profileMap } = await getPODLeaderboard(podId, currentUser.id);
         setProfiles(profileMap);
         setLeaderboard(lb);
       } finally {
@@ -28,7 +26,7 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
       }
     }
     load();
-  }, [podId]);
+  }, [podId, currentUser?.id]);
 
   const isActiveMember = myMembership?.membership_status === "active";
   const hasPendingOrInvite = myMembership && ["pending_request", "invited_pending"].includes(myMembership.membership_status);
