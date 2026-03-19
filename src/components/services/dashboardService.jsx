@@ -65,10 +65,14 @@ export async function getDashboardData(auth) {
         .catch((e) => { console.warn("[dashboardService] listMyPendingApprovals failed:", e?.message); return []; }),
     ]);
 
-    // Recent games: GameParticipant.participant_profile_id = Profile ID → correct
-    const participations = await base44.entities.GameParticipant.filter(
-      { participant_profile_id: profileId }, "-created_date", 20
-    ).catch((e) => { console.warn("[dashboardService] GameParticipant query failed:", e?.message); return []; });
+    // Recent games: must filter by participant_user_id (Auth User ID) — GameParticipant RLS is
+    // keyed on participant_user_id = {{user.id}}, so filtering by participant_profile_id causes
+    // an "invalid query" rejection for normal (non-admin) users.
+    const participations = authUserId
+      ? await base44.entities.GameParticipant.filter(
+          { participant_user_id: authUserId }, "-created_date", 20
+        ).catch((e) => { console.warn("[dashboardService] GameParticipant query failed:", e?.message); return []; })
+      : (console.warn("[dashboardService] GameParticipant query skipped: authUserId is missing."), []);
 
     // Sort newest first before slicing
     const sortedParticipations = participations
