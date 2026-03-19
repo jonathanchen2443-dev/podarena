@@ -193,7 +193,7 @@ export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onL
             <MemberRow
               key={m.id}
               membership={m}
-              profile={profiles[m.profile_id]}
+              profile={{ display_name: m.display_name, avatar_url: m.avatar_url }}
               isAdmin={m.role === "admin"}
               canManage={isAdmin && m.user_id !== myMembership?.user_id}
               onRemove={handleRemoveMember}
