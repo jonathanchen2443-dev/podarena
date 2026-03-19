@@ -127,10 +127,18 @@ export async function toggleFavorite(membershipId, currentValue) {
 }
 
 export async function createInviteMembership(podId, authUserId, profileId, inviterAuthUserId, inviterProfileId) {
-  const allRows = await base44.entities.PODMembership.list("-created_date", 200);
-  const existing = allRows.filter((r) => r.pod_id === podId && r.user_id === authUserId);
-  const liveRow = existing.find((r) => ["active", "invited_pending"].includes(r.membership_status));
-  if (liveRow) return liveRow;
+  // Check for existing live membership via backend (RLS blocks cross-user reads)
+  // callerProfileId = inviterProfileId (the admin doing the inviting)
+  if (inviterProfileId) {
+    const check = await base44.functions.invoke('publicProfiles', {
+      action: 'checkMembership',
+      podId,
+      targetAuthUserId: authUserId,
+      callerProfileId: inviterProfileId,
+    });
+    const liveRow = check.data?.membership;
+    if (liveRow) return liveRow;
+  }
 
   return base44.entities.PODMembership.create({
     pod_id: podId,
