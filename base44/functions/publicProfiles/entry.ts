@@ -229,10 +229,23 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Forbidden: can only view own history' }, { status: 403 });
       }
 
-      // Find all games where this profile was a direct participant
-      const myParticipations = await base44.asServiceRole.entities.GameParticipant.filter(
-        { participant_profile_id: profileId }, '-created_date', 200
-      );
+      // Resolve the caller's auth user_id from their Profile record so we can
+      // query GameParticipant by participant_user_id — the stable RLS/linkage field.
+      // This is safer than filtering by participant_profile_id and is consistent
+      // with the confirmed correct query pattern used on the client-side dashboard.
+      const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: profileId });
+      const callerAuthUserId = callerProfileRows[0]?.user_id || null;
+
+      // Find all games where this profile was a direct participant.
+      // Use participant_user_id (auth user id) rather than participant_profile_id
+      // for consistent, reliable matching — same field used on the client-side fix.
+      const myParticipations = callerAuthUserId
+        ? await base44.asServiceRole.entities.GameParticipant.filter(
+            { participant_user_id: callerAuthUserId }, '-created_date', 200
+          )
+        : await base44.asServiceRole.entities.GameParticipant.filter(
+            { participant_profile_id: profileId }, '-created_date', 200
+          );
       if (myParticipations.length === 0) return Response.json({ games: [], participants: {} });
 
       const gameIds = [...new Set(myParticipations.map((p) => p.game_id))];
