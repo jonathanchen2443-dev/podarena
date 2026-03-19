@@ -102,9 +102,9 @@ export default function Pod() {
     navigate(createPageUrl("MyPods"));
   }
 
-  // Open match details if MatchDetailsModal is available
-  function handleOpenGame(gameId) {
-    setSelectedGameId(gameId);
+  // Open pod-scoped match details — passes podId so the modal uses the secure backend path
+  function handleOpenGame(gameId, gamePodId) {
+    setSelectedGame({ gameId, podId: gamePodId || podId });
   }
 
   if (authLoading || loading) {
