@@ -196,48 +196,26 @@ export async function validatePODMembership(podId, profileId) {
 
 // ── LEADERBOARD ──────────────────────────────────────────────────────────────
 
-export async function getPODLeaderboard(podId) {
-  // Always start from active members — every active member must appear
-  const activeMembers = await base44.entities.PODMembership.filter({ pod_id: podId, membership_status: "active" });
-  if (activeMembers.length === 0) return [];
-
-  // Seed statsMap with zeroes for every active member
-  const statsMap = {};
-  for (const m of activeMembers) {
-    if (!m.profile_id) continue;
-    statsMap[m.profile_id] = { profileId: m.profile_id, games: 0, wins: 0, points: 0 };
-  }
-
-  // Fetch approved games and enrich stats
-  const allGames = await base44.entities.Game.filter({ pod_id: podId, status: "approved" });
-  if (allGames.length > 0) {
-    const participantArrays = await Promise.all(
-      allGames.map((g) => base44.entities.GameParticipant.filter({ game_id: g.id }).catch(() => []))
-    );
-    const allParticipants = participantArrays.flat();
-    for (const p of allParticipants) {
-      const pid = p.participant_profile_id;
-      if (!pid || !statsMap[pid]) continue; // skip non-active members
-      statsMap[pid].games += 1;
-      if (p.placement === 1 || p.result === "win") {
-        statsMap[pid].wins += 1;
-        statsMap[pid].points += 1;
-      }
-    }
-  }
-
-  return Object.values(statsMap)
-    .map((s) => ({
-      ...s,
-      winRate: s.games > 0 ? ((s.wins / s.games) * 100).toFixed(1) : "0.0",
-    }))
-    .sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      if (parseFloat(b.winRate) !== parseFloat(a.winRate)) return parseFloat(b.winRate) - parseFloat(a.winRate);
-      if (b.games !== a.games) return b.games - a.games;
-      return 0;
-    });
+/**
+ * getPODLeaderboard — delegates to the publicProfiles backend (service role).
+ * Cross-user reads (PODMembership, Game, GameParticipant) are blocked by RLS for
+ * normal users, so all computation is done server-side via asServiceRole.
+ *
+ * @param {string} podId
+ * @param {string} callerProfileId — Profile entity UUID of the requesting user (gate check)
+ * @returns {{ leaderboard: array, profiles: object }}
+ */
+export async function getPODLeaderboard(podId, callerProfileId) {
+  const res = await base44.functions.invoke('publicProfiles', {
+    action: 'podLeaderboard',
+    podId,
+    callerProfileId,
+  });
+  const data = res.data || {};
+  return {
+    leaderboard: data.leaderboard || [],
+    profiles: data.profiles || {},
+  };
 }
 
 // ── ACTIVE MEMBER COUNT ───────────────────────────────────────────────────────
