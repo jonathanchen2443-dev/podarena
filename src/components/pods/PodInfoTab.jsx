@@ -116,11 +116,12 @@ export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onL
 
   async function handleAccept(membershipId) {
     await acceptJoinRequest(membershipId);
-    setPendingRequests((prev) => prev.filter((m) => m.id !== membershipId));
-    const updated = await base44.entities.PODMembership.filter({ id: membershipId });
-    if (updated[0]) setMembers((prev) => [...prev, updated[0]]);
     toast.success("Member approved!");
     onPodUpdated?.();
+    // Re-fetch to get updated member list from backend
+    const res = await base44.functions.invoke('publicProfiles', { action: 'podMembers', podId, callerProfileId: currentUser.id });
+    setMembers(res.data?.members || []);
+    setPendingRequests(res.data?.pendingRequests || []);
   }
 
   async function handleReject(membershipId) {
