@@ -63,8 +63,8 @@ export default function Inbox() {
   // "Review & Approve" opens the full modal where the user must pick their deck first.
   // "Reject" is a quick action directly from the card (no deck needed).
   function handleApprove(item) {
-    // Open the review modal so user can select their deck before approving
-    setReviewModal({ gameId: item.game.id });
+    // Pass full pre-loaded game + podId so modal skips self-fetch entirely
+    setReviewModal({ gameId: item.game.id, game: item.game, podId: item.podId || null });
   }
 
   async function handleReject(item) {
@@ -88,11 +88,8 @@ export default function Inbox() {
     if (!membershipId) { toast.error("Invite data missing — cannot accept."); return; }
     setItemActing(notif.id, true);
     try {
-      await base44.entities.PODMembership.update(membershipId, {
-        membership_status: "active",
-        joined_at: new Date().toISOString(),
-        decided_at: new Date().toISOString(),
-      });
+      // Route through backend so asServiceRole can update the membership (created by inviter, not invitee)
+      await base44.functions.invoke('publicProfiles', { action: 'acceptPodInvite', membershipId, callerAuthUserId: authUserId });
       await base44.entities.Notification.update(notif.id, { read_at: new Date().toISOString() });
       toast.success(`Joined ${notif.metadata?.pod_name || "POD"}!`);
       await load();
@@ -109,10 +106,7 @@ export default function Inbox() {
     if (!membershipId) { toast.error("Invite data missing — cannot decline."); return; }
     setItemActing(notif.id, true);
     try {
-      await base44.entities.PODMembership.update(membershipId, {
-        membership_status: "rejected",
-        decided_at: new Date().toISOString(),
-      });
+      await base44.functions.invoke('publicProfiles', { action: 'declinePodInvite', membershipId, callerAuthUserId: authUserId });
       await base44.entities.Notification.update(notif.id, { read_at: new Date().toISOString() });
       toast.success("Invite declined.");
       await load();
@@ -337,6 +331,8 @@ export default function Inbox() {
       {reviewModal && (
         <MatchDetailsModal
           gameId={reviewModal.gameId}
+          game={reviewModal.game}
+          podId={reviewModal.podId}
           auth={{ currentUser, authUserId, isGuest }}
           onClose={() => setReviewModal(null)}
           onActionComplete={async () => {

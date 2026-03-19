@@ -92,7 +92,7 @@ function AuthDashboard({ data, displayName, auth }) {
   const [casualModal, setCasualModal] = useState(null);
 
   function handleGameClick(game) {
-    setCasualModal({ gameId: game.id });
+    setCasualModal({ gameId: game.id, podId: game.pod_id || null });
   }
 
   return (
@@ -197,6 +197,7 @@ function AuthDashboard({ data, displayName, auth }) {
       {casualModal && (
         <MatchDetailsModal
           gameId={casualModal.gameId}
+          podId={casualModal.podId}
           onClose={() => setCasualModal(null)}
           auth={auth}
         />
