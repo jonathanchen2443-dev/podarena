@@ -43,21 +43,32 @@ export async function getDashboardData(auth) {
   if (cached !== null) return cached;
 
   try {
-    // Parallel: POD memberships, decks, pending approvals — all independent
+    // Guard: skip any query that requires a valid id to avoid "invalid query" errors.
+    // This can happen during post-submit navigation when auth state is briefly in flux.
+    if (!profileId) {
+      console.warn("[dashboardService] getDashboardData skipped: profileId is missing.");
+      return EMPTY;
+    }
+
+    // Parallel: POD memberships, decks, pending approvals — all independent.
+    // Each query is individually guarded and caught so one failure can't blank the dashboard.
     // PODMembership.user_id = Auth User ID (RLS field) → must use authUserId
     // Deck.owner_id         = Profile ID → uses profileId
     const [podMemberships, decks, pendingApprovals] = await Promise.all([
       authUserId
-        ? base44.entities.PODMembership.filter({ user_id: authUserId, membership_status: "active" }).catch(() => [])
-        : Promise.resolve([]),
-      base44.entities.Deck.filter({ owner_id: profileId }).catch(() => []),
-      listMyPendingApprovals(auth).catch(() => []),
+        ? base44.entities.PODMembership.filter({ user_id: authUserId, membership_status: "active" })
+            .catch((e) => { console.warn("[dashboardService] PODMembership query failed:", e?.message); return []; })
+        : (console.warn("[dashboardService] PODMembership query skipped: authUserId is missing."), Promise.resolve([])),
+      base44.entities.Deck.filter({ owner_id: profileId })
+        .catch((e) => { console.warn("[dashboardService] Deck query failed:", e?.message); return []; }),
+      listMyPendingApprovals(auth)
+        .catch((e) => { console.warn("[dashboardService] listMyPendingApprovals failed:", e?.message); return []; }),
     ]);
 
     // Recent games: GameParticipant.participant_profile_id = Profile ID → correct
     const participations = await base44.entities.GameParticipant.filter(
       { participant_profile_id: profileId }, "-created_date", 20
-    ).catch(() => []);
+    ).catch((e) => { console.warn("[dashboardService] GameParticipant query failed:", e?.message); return []; });
 
     // Sort newest first before slicing
     const sortedParticipations = participations

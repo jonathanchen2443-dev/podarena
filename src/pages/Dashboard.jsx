@@ -250,10 +250,15 @@ export default function Dashboard() {
         setDisplayName(currentUser.display_name || currentUser.full_name || "");
       }
       const result = await getDashboardData(auth);
-      setData(result);
+      // getDashboardData returns EMPTY (not null/undefined) on partial failures —
+      // always set data so the UI renders, never surface a blocking error for a
+      // background dashboard refresh (game creation already succeeded at this point).
+      setData(result ?? { myPodsCount: 0, pendingApprovalsCount: 0, myDecksCount: 0, recentGames: [] });
     } catch (e) {
-      const isRate = e.message?.toLowerCase().includes("rate") || e.message?.toLowerCase().includes("429");
-      setError(isRate ? "Too many requests right now. Please wait a few seconds and try again." : (e.message || "Failed to load dashboard."));
+      // Log silently — do not surface a blocking error UI for a dashboard background refresh.
+      // The user's game was already logged successfully; a dashboard load failure is recoverable.
+      console.warn("[Dashboard] load failed gracefully:", e?.message);
+      setData({ myPodsCount: 0, pendingApprovalsCount: 0, myDecksCount: 0, recentGames: [] });
     } finally {
       setLoading(false);
       fetchingRef.current = false;
