@@ -197,9 +197,21 @@ export async function inviteUserToPOD(pod, invitee, inviterAuthUserId, inviterPr
 
 // ── POD GAME ─────────────────────────────────────────────────────────────────
 
-export async function validatePODMembership(podId, profileId) {
-  const rows = await base44.entities.PODMembership.filter({ pod_id: podId, profile_id: profileId });
-  return rows.find((r) => r.membership_status === "active") || null;
+export async function validatePODMembership(podId, participantProfileId, callerProfileId) {
+  // callerProfileId = the user doing the check (must be active member of the pod)
+  // participantProfileId = the profile being validated
+  if (!callerProfileId) {
+    // Fallback: try direct query (works for own membership check)
+    const rows = await base44.entities.PODMembership.filter({ pod_id: podId, profile_id: participantProfileId });
+    return rows.find((r) => r.membership_status === "active") || null;
+  }
+  const res = await base44.functions.invoke('publicProfiles', {
+    action: 'validateParticipantMembership',
+    podId,
+    participantProfileId,
+    callerProfileId,
+  });
+  return res.data?.isActiveMember ? { membership_status: "active" } : null;
 }
 
 // ── LEADERBOARD ──────────────────────────────────────────────────────────────
