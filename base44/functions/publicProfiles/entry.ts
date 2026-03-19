@@ -618,6 +618,104 @@ Deno.serve(async (req) => {
       return Response.json({ approvals });
     }
 
+    // ── podMembers ────────────────────────────────────────────────────────────
+    // Returns active members of a pod. Gate: callerProfileId must be active member.
+    if (action === 'podMembers') {
+      if (!podId) return Response.json({ error: 'podId required' }, { status: 400 });
+      if (!callerProfileId) return Response.json({ error: 'callerProfileId required' }, { status: 400 });
+
+      const callerMembership = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId, profile_id: callerProfileId, membership_status: 'active',
+      });
+      if (callerMembership.length === 0) {
+        return Response.json({ error: 'Forbidden: not an active pod member' }, { status: 403 });
+      }
+
+      const allMemberships = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId,
+      });
+      const activeMembers = allMemberships.filter((m) => m.membership_status === 'active');
+      const pendingMembers = allMemberships.filter((m) => m.membership_status === 'pending_request');
+
+      const isAdmin = callerMembership[0]?.role === 'admin';
+      const profileIds = [...new Set(
+        (isAdmin ? allMemberships : activeMembers).map((m) => m.profile_id).filter(Boolean)
+      )];
+
+      let profileMap = {};
+      if (profileIds.length > 0) {
+        const profileRows = await base44.asServiceRole.entities.Profile.filter(
+          { id: { $in: profileIds } }, '-created_date', 200
+        );
+        profileMap = Object.fromEntries(profileRows.map((p) => [p.id, sanitizeProfile(p)]));
+      }
+
+      const mapMember = (m) => ({
+        id: m.id,
+        profileId: m.profile_id,
+        display_name: profileMap[m.profile_id]?.display_name || 'Unknown',
+        avatar_url: profileMap[m.profile_id]?.avatar_url || null,
+        public_user_id: profileMap[m.profile_id]?.public_user_id || null,
+        role: m.role || 'member',
+        membership_status: m.membership_status,
+        joined_at: m.joined_at || null,
+        is_favorite: m.is_favorite || false,
+        // user_id needed for canManage check (compare with current user) — safe, caller already authenticated
+        user_id: m.user_id || null,
+      });
+
+      return Response.json({
+        members: activeMembers.map(mapMember),
+        pendingRequests: isAdmin ? pendingMembers.map(mapMember) : [],
+      });
+    }
+
+    // ── checkMembership ───────────────────────────────────────────────────────
+    // Check if a target user already has a live membership. Gate: caller must be active admin.
+    if (action === 'checkMembership') {
+      const { targetAuthUserId } = body;
+      if (!podId || !targetAuthUserId) return Response.json({ error: 'podId and targetAuthUserId required' }, { status: 400 });
+      if (!callerProfileId) return Response.json({ error: 'callerProfileId required' }, { status: 400 });
+
+      const callerMembership = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId, profile_id: callerProfileId, membership_status: 'active', role: 'admin',
+      });
+      if (callerMembership.length === 0) {
+        return Response.json({ error: 'Forbidden: admin access required' }, { status: 403 });
+      }
+
+      const existing = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId, user_id: targetAuthUserId,
+      });
+      const liveRow = existing.find((r) => ['active', 'invited_pending'].includes(r.membership_status));
+
+      return Response.json({
+        exists: !!liveRow,
+        membership: liveRow ? { id: liveRow.id, membership_status: liveRow.membership_status } : null,
+      });
+    }
+
+    // ── validateParticipantMembership ─────────────────────────────────────────
+    // Check if a participant profile is an active pod member. Gate: caller must be active member.
+    if (action === 'validateParticipantMembership') {
+      const { participantProfileId } = body;
+      if (!podId || !participantProfileId) return Response.json({ error: 'podId and participantProfileId required' }, { status: 400 });
+      if (!callerProfileId) return Response.json({ error: 'callerProfileId required' }, { status: 400 });
+
+      const callerMembership = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId, profile_id: callerProfileId, membership_status: 'active',
+      });
+      if (callerMembership.length === 0) {
+        return Response.json({ error: 'Forbidden: not an active pod member' }, { status: 403 });
+      }
+
+      const participantMembership = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId, profile_id: participantProfileId, membership_status: 'active',
+      });
+
+      return Response.json({ isActiveMember: participantMembership.length > 0 });
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {
