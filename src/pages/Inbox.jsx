@@ -32,10 +32,13 @@ export default function Inbox() {
     try {
       // authUserId comes from context (profile.user_id = Auth User ID) — no extra me() call needed
       const [approvalsData, allNotifs] = await Promise.all([
-        listMyPendingApprovals({ isGuest: false, currentUser, authUserId, isAuthenticated: true }),
+        listMyPendingApprovals({ isGuest: false, currentUser, authUserId, isAuthenticated: true }).catch((e) => {
+          console.warn("[Inbox] listMyPendingApprovals failed:", e?.message);
+          return [];
+        }),
         base44.entities.Notification.list("-created_date", 200).then((list) =>
           list.filter((n) => n.recipient_user_id === authUserId)
-        ),
+        ).catch(() => []),
       ]);
       setApprovals(approvalsData);
       setNotifications(allNotifs);
