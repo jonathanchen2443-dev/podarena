@@ -716,6 +716,182 @@ Deno.serve(async (req) => {
       return Response.json({ isActiveMember: participantMembership.length > 0 });
     }
 
+    // ── createGame ────────────────────────────────────────────────────────────
+    // Full game creation flow via asServiceRole — bypasses RLS for participant/notification creates.
+    if (action === 'createGame') {
+      const { podId, contextType = 'casual', creatorProfileId, creatorAuthUserId, playedAt, notes, participants } = body;
+      if (!creatorProfileId || !creatorAuthUserId || !Array.isArray(participants)) {
+        return Response.json({ error: 'Missing required fields' }, { status: 400 });
+      }
+
+      // Validate all profile IDs exist
+      const profileIds = participants.map((p) => p.profileId).filter(Boolean);
+      if (profileIds.length > 0) {
+        const found = await base44.asServiceRole.entities.Profile.filter({ id: { $in: profileIds } });
+        const foundSet = new Set(found.map((p) => p.id));
+        const missing = profileIds.filter((id) => !foundSet.has(id));
+        if (missing.length > 0) {
+          return Response.json({ error: `Participant profile ID "${missing[0]}" has no matching Profile.` }, { status: 400 });
+        }
+      }
+
+      // Create the Game record (creator creates it — RLS allows this)
+      const game = await base44.asServiceRole.entities.Game.create({
+        pod_id: podId || null,
+        context_type: contextType,
+        played_at: playedAt || new Date().toISOString(),
+        status: 'pending',
+        notes: notes || '',
+        created_by_user_id: creatorAuthUserId,
+        created_by_profile_id: creatorProfileId,
+      });
+
+      const nonCreators = participants.filter((p) => p.profileId !== creatorProfileId);
+
+      // Build and create ALL participant records via asServiceRole
+      const participantRecords = participants.map((p) => {
+        const isCreator = p.profileId === creatorProfileId;
+        const snap = isCreator && p.deckData ? {
+          id: p.deckData.id, name: p.deckData.name,
+          commander_name: p.deckData.commander_name || null,
+          commander_image_url: p.deckData.commander_image_url || null,
+          color_identity: p.deckData.color_identity || [],
+        } : null;
+        return {
+          game_id: game.id,
+          participant_user_id: p.authUserId || null,
+          participant_profile_id: p.profileId,
+          is_creator: isCreator,
+          selected_deck_id: isCreator ? (p.deck_id || null) : null,
+          deck_snapshot_json: snap,
+          deck_name_at_time: snap?.name || null,
+          commander_name_at_time: snap?.commander_name || null,
+          commander_image_at_time: snap?.commander_image_url || null,
+          result: p.result || null,
+          placement: p.placement || null,
+          approval_status: isCreator ? 'approved' : 'pending',
+          approved_at: isCreator ? new Date().toISOString() : null,
+          rejected_at: null,
+        };
+      });
+      await base44.asServiceRole.entities.GameParticipant.bulkCreate(participantRecords);
+
+      if (nonCreators.length === 0) {
+        await base44.asServiceRole.entities.Game.update(game.id, { status: 'approved' });
+      } else {
+        // Get pod name if needed
+        let podName = null;
+        if (podId) {
+          const podArr = await base44.asServiceRole.entities.POD.filter({ id: podId });
+          podName = podArr[0]?.pod_name || null;
+        }
+
+        // Fetch created participants to get their IDs
+        const createdParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: game.id });
+        const participantByProfile = Object.fromEntries(createdParticipants.map((p) => [p.participant_profile_id, p]));
+
+        const notifications = nonCreators
+          .filter((p) => !!p.authUserId)
+          .map((p) => {
+            const participantRow = participantByProfile[p.profileId];
+            return {
+              type: 'game_review_request',
+              actor_user_id: creatorAuthUserId,
+              recipient_user_id: p.authUserId,
+              metadata: {
+                game_id: game.id,
+                game_participant_id: participantRow?.id || null,
+                context_type: contextType,
+                pod_name: podName || null,
+              },
+            };
+          });
+
+        if (notifications.length > 0) {
+          await base44.asServiceRole.entities.Notification.bulkCreate(notifications);
+        }
+      }
+
+      return Response.json({ game });
+    }
+
+    // ── dashboardData ─────────────────────────────────────────────────────────
+    if (action === 'dashboardData') {
+      const { callerAuthUserId, callerProfileId } = body;
+      if (!callerAuthUserId || !callerProfileId) return Response.json({ error: 'callerAuthUserId and callerProfileId required' }, { status: 400 });
+
+      // Gate: verify identity
+      const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+      if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      const [memberships, decks, recentParticipations] = await Promise.all([
+        base44.asServiceRole.entities.PODMembership.filter({ user_id: callerAuthUserId, membership_status: 'active' }),
+        base44.asServiceRole.entities.Deck.filter({ owner_id: callerProfileId }),
+        base44.asServiceRole.entities.GameParticipant.filter({ participant_user_id: callerAuthUserId }, '-created_date', 20),
+      ]);
+
+      const gameIds = [...new Set(recentParticipations.map((p) => p.game_id))].slice(0, 10);
+      let recentGames = [];
+      if (gameIds.length > 0) {
+        const games = await base44.asServiceRole.entities.Game.filter({ id: { $in: gameIds } }, '-played_at', 10);
+        recentGames = games
+          .sort((a, b) => new Date(b.played_at || b.created_date) - new Date(a.played_at || a.created_date))
+          .slice(0, 5)
+          .map((g) => ({ id: g.id, context_type: g.context_type || 'casual', pod_id: g.pod_id || null, status: g.status, played_at: g.played_at || g.created_date }));
+      }
+
+      // Pending approvals: my non-creator pending participant rows where game is still pending
+      const pendingParticipations = recentParticipations.filter((p) => p.approval_status === 'pending' && !p.is_creator);
+      let pendingApprovalsCount = 0;
+      if (pendingParticipations.length > 0) {
+        const pendingGameIds = [...new Set(pendingParticipations.map((p) => p.game_id))];
+        const pendingGames = await base44.asServiceRole.entities.Game.filter({ id: { $in: pendingGameIds }, status: 'pending' });
+        pendingApprovalsCount = pendingGames.length;
+      }
+
+      return Response.json({
+        myPodsCount: memberships.length,
+        myDecksCount: decks.length,
+        pendingApprovalsCount,
+        recentGames,
+      });
+    }
+
+    // ── myPods ────────────────────────────────────────────────────────────────
+    if (action === 'myPods') {
+      const { callerAuthUserId, callerProfileId } = body;
+      if (!callerAuthUserId || !callerProfileId) return Response.json({ error: 'callerAuthUserId and callerProfileId required' }, { status: 400 });
+
+      const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+      if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      const memberships = await base44.asServiceRole.entities.PODMembership.filter({ user_id: callerAuthUserId, membership_status: 'active' });
+      if (memberships.length === 0) return Response.json({ pods: [], memberships: [] });
+
+      const podIds = [...new Set(memberships.map((m) => m.pod_id))];
+      const pods = await base44.asServiceRole.entities.POD.filter({ id: { $in: podIds }, status: 'active' });
+
+      return Response.json({
+        pods: pods.map((p) => ({ id: p.id, pod_name: p.pod_name, pod_code: p.pod_code, description: p.description || null, image_url: p.image_url || null, max_members: p.max_members, status: p.status })),
+        memberships: memberships.map((m) => ({ id: m.id, pod_id: m.pod_id, is_favorite: m.is_favorite || false, role: m.role || 'member' })),
+      });
+    }
+
+    // ── myNotifications ───────────────────────────────────────────────────────
+    if (action === 'myNotifications') {
+      const { callerAuthUserId } = body;
+      if (!callerAuthUserId) return Response.json({ error: 'callerAuthUserId required' }, { status: 400 });
+
+      const notifications = await base44.asServiceRole.entities.Notification.filter(
+        { recipient_user_id: callerAuthUserId }, '-created_date', 100
+      );
+      return Response.json({ notifications });
+    }
+
     // ── validateProfileIds ────────────────────────────────────────────────────
     if (action === 'validateProfileIds') {
       const { profileIds } = body;

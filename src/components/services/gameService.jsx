@@ -173,97 +173,19 @@ export async function createGameWithParticipants({
   notes,
   participants,
 }) {
-  // Validate all profile IDs exist via backend (avoids RLS-blocked Profile.list)
-  const profileIds = participants.map((p) => p.profileId).filter(Boolean);
-  const validationRes = await base44.functions.invoke('publicProfiles', { action: 'validateProfileIds', profileIds });
-  if (!validationRes.data?.valid) {
-    const missing = validationRes.data?.missing || [];
-    throw new Error(`Cannot log game: participant profile ID "${missing[0]}" has no matching Profile.`);
-  }
-
-  // Create the game
-  const game = await base44.entities.Game.create({
-    pod_id: podId || null,
-    context_type: contextType,
-    played_at: playedAt || new Date().toISOString(),
-    status: "pending",
-    notes: notes || "",
-    created_by_user_id: creatorAuthUserId || null,
-    created_by_profile_id: creatorProfileId || null,
+  // Route entire creation through backend — asServiceRole bypasses RLS for all participant/notification writes
+  const res = await base44.functions.invoke('publicProfiles', {
+    action: 'createGame',
+    podId: podId || null,
+    contextType,
+    creatorProfileId,
+    creatorAuthUserId,
+    playedAt: playedAt || new Date().toISOString(),
+    notes: notes || '',
+    participants,
   });
-
-  const nonCreators = participants.filter((p) => p.profileId !== creatorProfileId);
-
-  // Create participant records
-  const participantRecords = participants.map((p) => {
-    const isCreator = p.profileId === creatorProfileId;
-    // Only snapshot deck for the creator — others choose at review time
-    const snapshot = isCreator && p.deckData ? _buildDeckSnapshot(p.deckData) : null;
-    return {
-      game_id: game.id,
-      participant_user_id: p.authUserId || null,
-      participant_profile_id: p.profileId,
-      is_creator: isCreator,
-      selected_deck_id: isCreator ? (p.deck_id || null) : null,
-      deck_snapshot_json: snapshot,
-      deck_name_at_time: snapshot?.name || null,
-      commander_name_at_time: snapshot?.commander_name || null,
-      commander_image_at_time: snapshot?.commander_image_url || null,
-      result: p.result || null,
-      placement: p.placement || null,
-      // Creator is auto-approved; non-creators start pending
-      approval_status: isCreator ? "approved" : "pending",
-      approved_at: isCreator ? new Date().toISOString() : null,
-      rejected_at: null,
-    };
-  });
-  await base44.entities.GameParticipant.bulkCreate(participantRecords);
-
-  if (nonCreators.length === 0) {
-    // Solo game — auto-approve
-    await base44.entities.Game.update(game.id, { status: "approved" });
-  } else {
-    // Create a Notification (inbox prompt) for each non-creator participant
-    // metadata carries game_id + participant identity so the review modal can open directly
-    const podName = podId ? (await base44.entities.POD.get(podId).catch(() => null))?.pod_name || null : null;
-    const reviewNotifications = nonCreators
-      .filter((p) => !!p.authUserId)
-      .map((p) => ({
-        type: "game_review_request",
-        actor_user_id: creatorAuthUserId,
-        recipient_user_id: p.authUserId,
-        metadata: {
-          game_id: game.id,
-          // game_participant_id will be populated after we fetch the newly created records
-          context_type: contextType,
-          pod_name: podName || null,
-        },
-      }));
-
-    if (reviewNotifications.length > 0) {
-      // Fetch created participant rows to get their IDs for metadata
-      const createdParticipants = await base44.entities.GameParticipant.filter({ game_id: game.id });
-      const participantByProfile = Object.fromEntries(
-        createdParticipants.map((p) => [p.participant_profile_id, p])
-      );
-
-      const notificationsWithIds = reviewNotifications.map((notif) => {
-        const matchingParticipant = nonCreators.find((p) => p.authUserId === notif.recipient_user_id);
-        const participantRow = matchingParticipant ? participantByProfile[matchingParticipant.profileId] : null;
-        return {
-          ...notif,
-          metadata: {
-            ...notif.metadata,
-            game_participant_id: participantRow?.id || null,
-          },
-        };
-      });
-
-      await base44.entities.Notification.bulkCreate(notificationsWithIds);
-    }
-  }
-
-  return game;
+  if (res.data?.error) throw new Error(res.data.error);
+  return res.data?.game;
 }
 
 /**

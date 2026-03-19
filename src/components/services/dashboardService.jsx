@@ -6,7 +6,12 @@
  *   authUserId = auth.authUserId        — PODMembership.user_id, listMyPendingApprovals
  */
 import { base44 } from "@/api/base44Client";
-import { listMyPendingApprovals } from "@/components/services/gameService";
+
+async function callBackend(payload) {
+  const res = await base44.functions.invoke('publicProfiles', payload);
+  if (res.status && res.status >= 400) throw new Error(res.data?.error || `Backend error (${res.status})`);
+  return res.data;
+}
 
 const CACHE_TTL_MS = 60_000;
 const _cache = new Map();
@@ -43,68 +48,14 @@ export async function getDashboardData(auth) {
   if (cached !== null) return cached;
 
   try {
-    // Guard: skip any query that requires a valid id to avoid "invalid query" errors.
-    // This can happen during post-submit navigation when auth state is briefly in flux.
-    if (!profileId) {
-      console.warn("[dashboardService] getDashboardData skipped: profileId is missing.");
-      return EMPTY;
-    }
+    if (!profileId || !authUserId) return EMPTY;
 
-    // Parallel: POD memberships, decks, pending approvals — all independent.
-    // Each query is individually guarded and caught so one failure can't blank the dashboard.
-    // PODMembership.user_id = Auth User ID (RLS field) → must use authUserId
-    // Deck.owner_id         = Profile ID → uses profileId
-    const [podMemberships, decks, pendingApprovals] = await Promise.all([
-      authUserId
-        ? base44.entities.PODMembership.filter({ user_id: authUserId, membership_status: "active" })
-            .catch((e) => { console.warn("[dashboardService] PODMembership query failed:", e?.message); return []; })
-        : (console.warn("[dashboardService] PODMembership query skipped: authUserId is missing."), Promise.resolve([])),
-      base44.entities.Deck.filter({ owner_id: profileId })
-        .catch((e) => { console.warn("[dashboardService] Deck query failed:", e?.message); return []; }),
-      listMyPendingApprovals(auth)
-        .catch((e) => { console.warn("[dashboardService] listMyPendingApprovals failed:", e?.message); return []; }),
-    ]);
-
-    // Recent games: must filter by participant_user_id (Auth User ID) — GameParticipant RLS is
-    // keyed on participant_user_id = {{user.id}}, so filtering by participant_profile_id causes
-    // an "invalid query" rejection for normal (non-admin) users.
-    const participations = authUserId
-      ? await base44.entities.GameParticipant.filter(
-          { participant_user_id: authUserId }, "-created_date", 20
-        ).catch((e) => { console.warn("[dashboardService] GameParticipant query failed:", e?.message); return []; })
-      : (console.warn("[dashboardService] GameParticipant query skipped: authUserId is missing."), []);
-
-    // Sort newest first before slicing
-    const sortedParticipations = participations
-      .slice()
-      .sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-    const gameIds = [...new Set(sortedParticipations.map((p) => p.game_id))].slice(0, 10);
-
-    let recentGames = [];
-    if (gameIds.length > 0) {
-      const games = await Promise.all(
-        gameIds.map((gid) => base44.entities.Game.get(gid).catch(() => null))
-      );
-      recentGames = games
-        .filter(Boolean)
-        // Include pending + approved + rejected so creator sees their own submissions immediately
-        .sort((a, b) => new Date(b.played_at || b.created_date) - new Date(a.played_at || a.created_date))
-        .slice(0, 5)
-        .map((game) => ({
-          id: game.id,
-          context_type: game.context_type || "casual",
-          pod_id: game.pod_id || null,
-          status: game.status,
-          played_at: game.played_at || game.created_date,
-          participantsSummary: "",
-        }));
-    }
-
+    const data = await callBackend({ action: 'dashboardData', callerAuthUserId: authUserId, callerProfileId: profileId });
     const result = {
-      myPodsCount: podMemberships.length,
-      pendingApprovalsCount: pendingApprovals.length,
-      myDecksCount: decks.length,
-      recentGames,
+      myPodsCount: data.myPodsCount || 0,
+      myDecksCount: data.myDecksCount || 0,
+      pendingApprovalsCount: data.pendingApprovalsCount || 0,
+      recentGames: (data.recentGames || []).map((g) => ({ ...g, participantsSummary: "" })),
     };
     return cacheSet(cKey, result);
   } catch (e) {
