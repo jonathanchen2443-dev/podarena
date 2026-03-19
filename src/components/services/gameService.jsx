@@ -383,103 +383,13 @@ export async function listMyPendingApprovals(auth) {
   if (auth.isGuest || !auth.currentUser) return [];
 
   const authUid = auth.authUserId || auth.currentUser?.user_id || null;
-  if (!authUid) return [];
+  const profileId = auth.currentUser?.id || null;
+  if (!authUid || !profileId) return [];
 
-  // Find participant rows where this user has a pending review
-  // GameParticipant RLS allows this — user can read their own rows
-  const allMyParticipations = await base44.entities.GameParticipant.list("-created_date", 200);
-  const myPendingRows = allMyParticipations.filter(
-    (p) => p.participant_user_id === authUid && p.approval_status === "pending" && !p.is_creator
-  );
-  if (myPendingRows.length === 0) return [];
-
-  const gameIds = [...new Set(myPendingRows.map((p) => p.game_id).filter(Boolean))];
-  if (gameIds.length === 0) return [];
-
-  // Fetch games (now readable via RLS since user is a participant)
-  const [games, allParticipantArrays] = await Promise.all([
-    Promise.all(gameIds.map((gid) => base44.entities.Game.get(gid).catch(() => null))),
-    Promise.all(gameIds.map((gid) => base44.entities.GameParticipant.filter({ game_id: gid }).catch(() => []))),
-  ]);
-
-  // Only show games still pending overall
-  const validGames = games.filter(Boolean).filter((g) => g.status === "pending");
-  const validGameIds = new Set(validGames.map((g) => g.id));
-
-  const podIds = [...new Set(validGames.map((g) => g.pod_id).filter(Boolean))];
-  const [allPods, allProfiles] = await Promise.all([
-    podIds.length > 0
-      ? Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null)))
-      : Promise.resolve([]),
-    base44.entities.Profile.list("-created_date", 200).catch(() => []),
-  ]);
-
-  const podMap = Object.fromEntries(allPods.filter(Boolean).map((p) => [p.id, p]));
-  const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
-
-  return gameIds
-    .map((gid, i) => {
-      const game = games[i];
-      if (!game || !validGameIds.has(gid)) return null;
-
-      const myRow = myPendingRows.find((p) => p.game_id === gid);
-      const allParticipants = allParticipantArrays[i];
-
-      const participants = allParticipants.map((p) => {
-        const profile = profileMap[p.participant_profile_id];
-        return {
-          userId: p.participant_profile_id,
-          authUserId: p.participant_user_id,
-          display_name: profile?.display_name || profile?.username || "Unknown",
-          avatar_url: profile?.avatar_url || null,
-          result: p.result || null,
-          placement: p.placement || null,
-          approval_status: p.approval_status || "pending",
-          is_creator: p.is_creator || false,
-          // Historical deck display uses snapshot — never reads another user's live Deck entity
-          deck: p.deck_name_at_time
-            ? {
-                id: p.selected_deck_id,
-                name: p.deck_name_at_time,
-                color_identity: p.deck_snapshot_json?.color_identity || [],
-                commander_name: p.commander_name_at_time || null,
-                commander_image: p.commander_image_at_time || null,
-              }
-            : null,
-        };
-      });
-
-      const approvalSummary = {
-        total: allParticipants.filter((p) => !p.is_creator).length,
-        approved: allParticipants.filter((p) => !p.is_creator && p.approval_status === "approved").length,
-        rejected: allParticipants.filter((p) => !p.is_creator && p.approval_status === "rejected").length,
-        pending: allParticipants.filter((p) => !p.is_creator && p.approval_status === "pending").length,
-      };
-
-      const submitterProfile = game.created_by_profile_id
-        ? profileMap[game.created_by_profile_id]
-        : allProfiles.find((p) => p.email === game.created_by);
-
-      return {
-        // game_participant_id for the current user's pending row — used as the item key
-        approvalId: myRow?.id,
-        gameParticipantId: myRow?.id,
-        game: {
-          id: game.id,
-          status: game.status,
-          played_at: game.played_at || game.created_date,
-          created_date: game.created_date,
-          notes: game.notes || "",
-          participants,
-          approvalSummary,
-        },
-        podId: game.pod_id || null,
-        contextLabel: game.context_type === "pod"
-          ? (podMap[game.pod_id]?.pod_name || "POD Game")
-          : "Casual Game",
-        contextType: game.context_type || "casual",
-        submittedByName: submitterProfile?.display_name || null,
-      };
-    })
-    .filter(Boolean);
+  const res = await base44.functions.invoke('publicProfiles', {
+    action: 'pendingApprovalDetails',
+    callerAuthUserId: authUid,
+    callerProfileId: profileId,
+  });
+  return res.data?.approvals || [];
 }
