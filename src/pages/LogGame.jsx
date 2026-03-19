@@ -85,17 +85,17 @@ export default function LogGame() {
   async function loadPodMembers(pId) {
     setPodMembersLoading(true);
     try {
-      const memberships = await base44.entities.PODMembership.filter({
-        pod_id: pId,
-        membership_status: "active",
-      }).catch(() => []);
-      const profiles = await base44.entities.Profile.list("-created_date", 200).catch(() => []);
-      const profileMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
-      const members = memberships.map((m) => ({
-        userId: m.profile_id,
+      const res = await base44.functions.invoke('publicProfiles', {
+        action: 'podMembers',
+        podId: pId,
+        callerProfileId: currentUser?.id,
+      });
+      const rawMembers = res.data?.members || [];
+      const members = rawMembers.map((m) => ({
+        userId: m.profileId,
         authUserId: m.user_id,
-        display_name: profileMap[m.profile_id]?.display_name || "Unknown",
-        avatar_url: profileMap[m.profile_id]?.avatar_url || null,
+        display_name: m.display_name,
+        avatar_url: m.avatar_url,
       }));
       setPodMembers(members);
 
