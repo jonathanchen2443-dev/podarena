@@ -376,6 +376,80 @@ Deno.serve(async (req) => {
       return Response.json({ game: assembled });
     }
 
+    // ── podLeaderboard ────────────────────────────────────────────────────────
+    // Returns computed leaderboard for a pod, for active pod members only.
+    // Gate: callerProfileId must be an active member of podId.
+    if (action === 'podLeaderboard') {
+      if (!podId) return Response.json({ error: 'podId required' }, { status: 400 });
+      if (!callerProfileId) return Response.json({ error: 'callerProfileId required' }, { status: 400 });
+
+      // Gate: verify caller is an active member of this pod
+      const callerMembership = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId,
+        profile_id: callerProfileId,
+        membership_status: 'active',
+      });
+      if (callerMembership.length === 0) {
+        return Response.json({ error: 'Forbidden: not an active pod member' }, { status: 403 });
+      }
+
+      // Fetch all active members
+      const activeMembers = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: podId,
+        membership_status: 'active',
+      });
+      if (activeMembers.length === 0) return Response.json({ leaderboard: [], profiles: {} });
+
+      // Seed stats map with zeroes for every active member
+      const statsMap = {};
+      for (const m of activeMembers) {
+        if (!m.profile_id) continue;
+        statsMap[m.profile_id] = { profileId: m.profile_id, games: 0, wins: 0, points: 0 };
+      }
+
+      // Fetch approved games for this pod and compute stats
+      const allGames = await base44.asServiceRole.entities.Game.filter(
+        { pod_id: podId, status: 'approved' }, '-played_at', 200
+      );
+      if (allGames.length > 0) {
+        const participantArrays = await Promise.all(
+          allGames.map((g) =>
+            base44.asServiceRole.entities.GameParticipant.filter({ game_id: g.id }, '-created_date', 20).catch(() => [])
+          )
+        );
+        for (const p of participantArrays.flat()) {
+          const pid = p.participant_profile_id;
+          if (!pid || !statsMap[pid]) continue;
+          statsMap[pid].games += 1;
+          if (p.placement === 1 || p.result === 'win') {
+            statsMap[pid].wins += 1;
+            statsMap[pid].points += 1;
+          }
+        }
+      }
+
+      const leaderboard = Object.values(statsMap)
+        .map((s) => ({ ...s, winRate: s.games > 0 ? ((s.wins / s.games) * 100).toFixed(1) : '0.0' }))
+        .sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          if (parseFloat(b.winRate) !== parseFloat(a.winRate)) return parseFloat(b.winRate) - parseFloat(a.winRate);
+          return b.games - a.games;
+        });
+
+      // Fetch profiles for all members
+      const memberProfileIds = activeMembers.map((m) => m.profile_id).filter(Boolean);
+      let profiles = {};
+      if (memberProfileIds.length > 0) {
+        const profileRows = await base44.asServiceRole.entities.Profile.filter(
+          { id: { $in: memberProfileIds } }, '-created_date', 200
+        );
+        profiles = Object.fromEntries(profileRows.map((p) => [p.id, sanitizeProfile(p)]));
+      }
+
+      return Response.json({ leaderboard, profiles });
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {
