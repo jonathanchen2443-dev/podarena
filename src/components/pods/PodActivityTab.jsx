@@ -132,7 +132,7 @@ export default function PodActivityTab({ podId, onOpenGame }) {
               game={game}
               participants={participantMap[game.id] || []}
               profiles={profiles}
-              onClick={() => onOpenGame(game.id)}
+              onClick={() => onOpenGame(game.id, podId)}
             />
           ))}
         </div>
