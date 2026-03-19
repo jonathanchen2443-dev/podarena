@@ -98,6 +98,19 @@ export async function getPublicProfileDecks(profileId) {
 }
 
 /**
+ * getPodGameDetails — fetches sanitized details for a single pod game.
+ * Gated server-side: callerProfileId must be an active member of the game's pod.
+ * Works for non-participant pod members — does not require raw Game/GameParticipant access.
+ * Returns assembled game object in the same shape as MatchDetailsModal expects.
+ */
+export async function getPodGameDetails(gameId, podId, callerProfileId) {
+  if (!gameId || !podId || !callerProfileId) return null;
+  const data = await callBackend({ action: 'podGameDetails', gameId, podId, callerProfileId });
+  if (data.error || !data.game) return null;
+  return data.game;
+}
+
+/**
  * getPodHistory — fetches scoped pod game history for an active pod member.
  * Gated server-side: callerProfileId must be an active member of podId.
  * Returns sanitized games + participant snapshots + profiles for that pod.
