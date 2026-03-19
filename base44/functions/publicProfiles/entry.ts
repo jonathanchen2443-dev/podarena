@@ -281,6 +281,90 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── podGameDetails ────────────────────────────────────────────────────────
+    // Returns sanitized details for a single pod game, for active pod members.
+    // Gate: callerProfileId must be an active member of the game's pod.
+    // Does NOT require the caller to be a direct participant in the game.
+    // Does NOT broaden raw Game access — uses service role projection only.
+    if (action === 'podGameDetails') {
+      const { gameId } = body;
+      if (!gameId) return Response.json({ error: 'gameId required' }, { status: 400 });
+      if (!callerProfileId) return Response.json({ error: 'callerProfileId required' }, { status: 400 });
+
+      // Fetch the game first (service role — bypasses RLS)
+      const gameArr = await base44.asServiceRole.entities.Game.filter({ id: gameId });
+      if (!gameArr.length) return Response.json({ error: 'not_found' }, { status: 404 });
+      const game = gameArr[0];
+
+      // Gate: must be a pod game with a pod_id
+      if (!game.pod_id || game.context_type !== 'pod') {
+        return Response.json({ error: 'Forbidden: not a pod game' }, { status: 403 });
+      }
+
+      // Gate: caller must be an active member of this pod
+      const membership = await base44.asServiceRole.entities.PODMembership.filter({
+        pod_id: game.pod_id,
+        profile_id: callerProfileId,
+        membership_status: 'active',
+      });
+      if (membership.length === 0) {
+        return Response.json({ error: 'Forbidden: not an active pod member' }, { status: 403 });
+      }
+
+      // Fetch participants
+      const participantArr = await base44.asServiceRole.entities.GameParticipant.filter(
+        { game_id: gameId }, '-created_date', 20
+      );
+
+      // Fetch profiles for all participants
+      const profileIds = [...new Set(participantArr.map((p) => p.participant_profile_id).filter(Boolean))];
+      let profileMap = {};
+      if (profileIds.length > 0) {
+        const profiles = await base44.asServiceRole.entities.Profile.filter(
+          { id: { $in: profileIds } }, '-created_date', 200
+        );
+        profileMap = Object.fromEntries(profiles.map((p) => [p.id, sanitizeProfile(p)]));
+      }
+
+      // Assemble sanitized participant rows with inlined profile display data
+      const participants = participantArr.map((p) => {
+        const profile = profileMap[p.participant_profile_id] || {};
+        return {
+          userId: p.participant_profile_id,
+          display_name: profile.display_name || "Unknown",
+          avatar_url: profile.avatar_url || null,
+          is_creator: p.is_creator || false,
+          result: p.result || null,
+          placement: p.placement || null,
+          approval_status: p.approval_status || "pending",
+          deck: p.deck_name_at_time ? {
+            name: p.deck_name_at_time,
+            color_identity: p.deck_snapshot_json?.color_identity || [],
+            commander_name: p.commander_name_at_time || null,
+          } : null,
+        };
+      });
+
+      const nonCreators = participantArr.filter((p) => !p.is_creator);
+      const assembled = {
+        id: game.id,
+        status: game.status,
+        played_at: game.played_at || game.created_date || null,
+        notes: game.notes || "",
+        context_type: game.context_type,
+        pod_id: game.pod_id,
+        participants,
+        approvalSummary: {
+          total: nonCreators.length,
+          approved: nonCreators.filter((p) => p.approval_status === 'approved').length,
+          rejected: nonCreators.filter((p) => p.approval_status === 'rejected').length,
+          pending: nonCreators.filter((p) => p.approval_status === 'pending').length,
+        },
+      };
+
+      return Response.json({ game: assembled });
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {
