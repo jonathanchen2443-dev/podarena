@@ -11,6 +11,7 @@ import PodInfoTab from "@/components/pods/PodInfoTab";
 import EditPodModal from "@/components/pods/EditPodModal";
 import { getMyMembership, requestJoinPOD } from "@/components/services/podService";
 import { ROUTES } from "@/components/utils/routes";
+import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 import { toast } from "sonner";
 
 const TABS = [
