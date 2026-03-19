@@ -81,11 +81,13 @@ function ParticipantRow({ p, onNavigate }) {
  * Historical deck display: uses snapshot fields on GameParticipant.
  * Deck selection for approval: loads only the current user's own active Deck records.
  *
- * Can be used in two ways:
+ * Can be used in three ways:
  * 1. With a pre-loaded `game` object (from Inbox/GamesTab)
- * 2. With just a `gameId` prop — the modal fetches its own data
+ * 2. With `gameId` — self-fetch via RLS (works for direct participants)
+ * 3. With `gameId` + `podId` — uses podGameDetails backend for pod-member access
+ *    (works even when the caller was NOT a direct participant in the game)
  */
-export default function MatchDetailsModal({ game: gameProp, gameId, auth, onClose, onActionComplete }) {
+export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth, onClose, onActionComplete }) {
   const navigate = useNavigate();
   const [actionLoading, setActionLoading] = useState(null);
   const [actionError, setActionError] = useState(null);
