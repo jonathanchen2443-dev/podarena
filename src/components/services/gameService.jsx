@@ -393,7 +393,8 @@ export async function listMyPendingApprovals(auth) {
   );
   if (myPendingRows.length === 0) return [];
 
-  const gameIds = [...new Set(myPendingRows.map((p) => p.game_id))];
+  const gameIds = [...new Set(myPendingRows.map((p) => p.game_id).filter(Boolean))];
+  if (gameIds.length === 0) return [];
 
   // Fetch games (now readable via RLS since user is a participant)
   const [games, allParticipantArrays] = await Promise.all([
