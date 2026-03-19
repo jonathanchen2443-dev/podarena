@@ -209,6 +209,15 @@ export default function Pod() {
           onUpdated={() => { setShowEditModal(false); load(); }}
         />
       )}
+
+      {selectedGame && (
+        <MatchDetailsModal
+          gameId={selectedGame.gameId}
+          podId={selectedGame.podId}
+          auth={{ currentUser, authUserId, isGuest }}
+          onClose={() => setSelectedGame(null)}
+        />
+      )}
     </div>
   );
 }
