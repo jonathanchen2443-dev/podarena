@@ -15,6 +15,7 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
 
   useEffect(() => {
     if (!currentUser?.id) return;
+    if (myMembership?.membership_status !== "active") { setLoading(false); return; }
     async function load() {
       setLoading(true);
       try {
@@ -26,7 +27,7 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
       }
     }
     load();
-  }, [podId, currentUser?.id]);
+  }, [podId, currentUser?.id, myMembership?.membership_status]);
 
   const isActiveMember = myMembership?.membership_status === "active";
   const hasPendingOrInvite = myMembership && ["pending_request", "invited_pending"].includes(myMembership.membership_status);
