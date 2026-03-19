@@ -101,10 +101,20 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
 
   useEffect(() => {
     if (gameProp || !gameId) return;
+    const callerProfileId = auth?.currentUser?.id;
     setFetchLoading(true);
     (async () => {
       try {
-        // Game is now readable by participants via RLS — no admin required
+        // Pod-scoped path: use podGameDetails backend — works for any active pod member,
+        // including non-participants. No raw Game/GameParticipant reads needed.
+        if (podId && callerProfileId) {
+          const assembled = await getPodGameDetails(gameId, podId, callerProfileId);
+          if (!assembled) { onClose(); return; }
+          setFetchedGame(assembled);
+          return;
+        }
+
+        // Participant path: caller is a direct participant — readable via RLS.
         const [gameArr, participantArr] = await Promise.all([
           base44.entities.Game.filter({ id: gameId }),
           base44.entities.GameParticipant.filter({ game_id: gameId }),
@@ -112,8 +122,6 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
         const g = gameArr[0];
         if (!g) { onClose(); return; }
 
-        // Resolve participant profiles
-        const profileIds = [...new Set(participantArr.map((p) => p.participant_profile_id).filter(Boolean))];
         const allProfiles = await base44.entities.Profile.list("-created_date", 200);
         const profileMap = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
 
@@ -128,10 +136,8 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
             placement: p.placement,
             approval_status: p.approval_status || "pending",
             is_creator: p.is_creator || false,
-            // Deck display uses snapshot — never reads another user's Deck entity
             deck: p.deck_name_at_time
               ? {
-                  id: p.selected_deck_id,
                   name: p.deck_name_at_time,
                   color_identity: p.deck_snapshot_json?.color_identity || [],
                   commander_name: p.commander_name_at_time || null,
@@ -141,7 +147,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
         });
 
         const nonCreators = participantArr.filter((p) => !p.is_creator);
-        const assembled = {
+        setFetchedGame({
           id: g.id,
           status: g.status,
           played_at: g.played_at || g.created_date,
@@ -154,8 +160,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
             rejected: nonCreators.filter((p) => p.approval_status === "rejected").length,
             pending: nonCreators.filter((p) => p.approval_status === "pending").length,
           },
-        };
-        setFetchedGame(assembled);
+        });
       } catch (e) {
         toast.error("Could not load game details.");
         onClose();
@@ -163,7 +168,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
         setFetchLoading(false);
       }
     })();
-  }, [gameId]);
+  }, [gameId, podId]);
 
   const game = gameProp || fetchedGame;
 
