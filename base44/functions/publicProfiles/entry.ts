@@ -450,6 +450,174 @@ Deno.serve(async (req) => {
       return Response.json({ leaderboard, profiles });
     }
 
+    // ── explorePublicPods ─────────────────────────────────────────────────────
+    // Returns public active pods with member counts, excluding pods the caller already belongs to.
+    if (action === 'explorePublicPods') {
+      const { callerAuthUserId } = body;
+
+      // Fetch all public active PODs
+      const allPods = await base44.asServiceRole.entities.POD.filter(
+        { is_public: true, status: 'active' }, '-created_date', 200
+      );
+      if (allPods.length === 0) return Response.json({ pods: [] });
+
+      const podIds = allPods.map((p) => p.id);
+
+      // Fetch all active memberships for these pods (to count members and exclude caller's pods)
+      const allMemberships = await base44.asServiceRole.entities.PODMembership.filter(
+        { pod_id: { $in: podIds }, membership_status: 'active' }, '-created_date', 1000
+      );
+
+      // Build member count map
+      const countMap = {};
+      for (const m of allMemberships) {
+        countMap[m.pod_id] = (countMap[m.pod_id] || 0) + 1;
+      }
+
+      // Determine which pods the caller is already an active member of
+      const callerPodIds = new Set();
+      if (callerAuthUserId) {
+        for (const m of allMemberships) {
+          if (m.user_id === callerAuthUserId) callerPodIds.add(m.pod_id);
+        }
+      }
+
+      const pods = allPods
+        .filter((p) => !callerPodIds.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          pod_name: p.pod_name,
+          pod_code: p.pod_code,
+          description: p.description || null,
+          image_url: p.image_url || null,
+          max_members: p.max_members,
+          is_public: p.is_public,
+          activeMemberCount: countMap[p.id] || 0,
+        }));
+
+      return Response.json({ pods });
+    }
+
+    // ── pendingApprovalDetails ────────────────────────────────────────────────
+    // Returns full pending approval data for the caller, with all participants visible.
+    // Gate: callerAuthUserId and callerProfileId must match a real profile.
+    if (action === 'pendingApprovalDetails') {
+      const { callerAuthUserId, callerProfileId } = body;
+      if (!callerAuthUserId || !callerProfileId) {
+        return Response.json({ error: 'callerAuthUserId and callerProfileId required' }, { status: 400 });
+      }
+
+      // Gate: verify callerProfileId matches callerAuthUserId
+      const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+      if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+        return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+      }
+
+      // Find all pending (non-creator) participant rows for this user
+      const myPendingRows = await base44.asServiceRole.entities.GameParticipant.filter({
+        participant_user_id: callerAuthUserId,
+        approval_status: 'pending',
+        is_creator: false,
+      }, '-created_date', 100);
+
+      if (myPendingRows.length === 0) return Response.json({ approvals: [] });
+
+      const gameIds = [...new Set(myPendingRows.map((p) => p.game_id).filter(Boolean))];
+
+      // Fetch games and all participants per game in parallel
+      const [gameResults, allParticipantArrays] = await Promise.all([
+        Promise.all(gameIds.map((gid) =>
+          base44.asServiceRole.entities.Game.filter({ id: gid }).then((r) => r[0] || null).catch(() => null)
+        )),
+        Promise.all(gameIds.map((gid) =>
+          base44.asServiceRole.entities.GameParticipant.filter({ game_id: gid }, '-created_date', 20).catch(() => [])
+        )),
+      ]);
+
+      // Only keep pending games
+      const validGames = gameResults.filter((g) => g && g.status === 'pending');
+      const validGameIds = new Set(validGames.map((g) => g.id));
+
+      // Collect all profile IDs and pod IDs needed
+      const allProfileIds = new Set();
+      const podIds = new Set();
+      for (const g of validGames) { if (g.pod_id) podIds.add(g.pod_id); if (g.created_by_profile_id) allProfileIds.add(g.created_by_profile_id); }
+      for (const arr of allParticipantArrays) { for (const p of arr) { if (p.participant_profile_id) allProfileIds.add(p.participant_profile_id); } }
+
+      const [profileRows, podRows] = await Promise.all([
+        allProfileIds.size > 0
+          ? base44.asServiceRole.entities.Profile.filter({ id: { $in: [...allProfileIds] } }, '-created_date', 200)
+          : Promise.resolve([]),
+        podIds.size > 0
+          ? base44.asServiceRole.entities.POD.filter({ id: { $in: [...podIds] } }, '-created_date', 50)
+          : Promise.resolve([]),
+      ]);
+
+      const profileMap = Object.fromEntries(profileRows.map((p) => [p.id, sanitizeProfile(p)]));
+      const podMap = Object.fromEntries(podRows.map((p) => [p.id, p]));
+
+      const approvals = gameIds
+        .map((gid, i) => {
+          const game = gameResults[i];
+          if (!game || !validGameIds.has(gid)) return null;
+
+          const myRow = myPendingRows.find((p) => p.game_id === gid);
+          const allParticipants = allParticipantArrays[i];
+
+          const participants = allParticipants.map((p) => {
+            const profile = profileMap[p.participant_profile_id] || {};
+            return {
+              userId: p.participant_profile_id,
+              authUserId: p.participant_user_id || null,
+              display_name: profile.display_name || 'Unknown',
+              avatar_url: profile.avatar_url || null,
+              result: p.result || null,
+              placement: p.placement || null,
+              approval_status: p.approval_status || 'pending',
+              is_creator: p.is_creator || false,
+              deck: p.deck_name_at_time ? {
+                name: p.deck_name_at_time,
+                color_identity: p.deck_snapshot_json?.color_identity || [],
+                commander_name: p.commander_name_at_time || null,
+                commander_image: p.commander_image_at_time || null,
+              } : null,
+            };
+          });
+
+          const nonCreators = allParticipants.filter((p) => !p.is_creator);
+          const approvalSummary = {
+            total: nonCreators.length,
+            approved: nonCreators.filter((p) => p.approval_status === 'approved').length,
+            rejected: nonCreators.filter((p) => p.approval_status === 'rejected').length,
+            pending: nonCreators.filter((p) => p.approval_status === 'pending').length,
+          };
+
+          const submitterProfile = game.created_by_profile_id ? profileMap[game.created_by_profile_id] : null;
+          const pod = game.pod_id ? podMap[game.pod_id] : null;
+
+          return {
+            approvalId: myRow?.id,
+            gameParticipantId: myRow?.id,
+            game: {
+              id: game.id,
+              status: game.status,
+              played_at: game.played_at || game.created_date,
+              created_date: game.created_date,
+              notes: game.notes || '',
+              participants,
+              approvalSummary,
+            },
+            podId: game.pod_id || null,
+            contextLabel: game.context_type === 'pod' ? (pod?.pod_name || 'POD Game') : 'Casual Game',
+            contextType: game.context_type || 'casual',
+            submittedByName: submitterProfile?.display_name || null,
+          };
+        })
+        .filter(Boolean);
+
+      return Response.json({ approvals });
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {
