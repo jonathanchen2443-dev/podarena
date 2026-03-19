@@ -212,7 +212,7 @@ export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onL
             <PendingRequestRow
               key={m.id}
               membership={m}
-              profile={profiles[m.profile_id]}
+              profile={{ display_name: m.display_name, avatar_url: m.avatar_url }}
               onAccept={handleAccept}
               onReject={handleReject}
             />
