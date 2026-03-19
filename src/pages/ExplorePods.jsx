@@ -66,33 +66,18 @@ export default function ExplorePods() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Use authUserId from context (Auth User ID) — no redundant me() call needed
-      const myActivePodIds = new Set();
-      if (authUserId) {
-        const myMemberships = await base44.entities.PODMembership.filter({
-          user_id: authUserId,
-          membership_status: "active",
-        }).catch(() => []);
-        myMemberships.forEach((m) => myActivePodIds.add(m.pod_id));
-      }
-
-      // Public active PODs
-      const allPodsRaw = await base44.entities.POD.list("-created_date", 100);
-      const allPods = allPodsRaw.filter((p) => p.is_public && p.status === "active");
-      const explorePods = allPods.filter((p) => !myActivePodIds.has(p.id));
-
-      // Fetch member counts — use a single list call and aggregate client-side
-      const allMemberships = await base44.entities.PODMembership.list("-created_date", 500);
-      const countResults = explorePods.map((p) => ({
-        id: p.id,
-        count: allMemberships.filter((m) => m.pod_id === p.id && m.membership_status === "active").length,
-      }));
-      setMemberCounts(Object.fromEntries(countResults.map((r) => [r.id, r.count])));
-      setPods(explorePods);
+      const res = await base44.functions.invoke('publicProfiles', {
+        action: 'explorePublicPods',
+        callerAuthUserId: authUserId || null,
+      });
+      const pods = res.data?.pods || [];
+      const counts = Object.fromEntries(pods.map((p) => [p.id, p.activeMemberCount]));
+      setMemberCounts(counts);
+      setPods(pods);
     } finally {
       setLoading(false);
     }
-  }, [currentUser, authUserId]);
+  }, [authUserId]);
 
   useEffect(() => {
     if (!authLoading) load();
