@@ -85,9 +85,9 @@ function PendingRequestRow({ membership, profile, onAccept, onReject }) {
 }
 
 export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onLeft, onOpenEdit }) {
+  const { currentUser } = useAuth();
   const [members, setMembers] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -96,24 +96,23 @@ export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onL
   const isActiveMember = myMembership?.membership_status === "active";
 
   useEffect(() => {
+    if (!currentUser?.id || myMembership?.membership_status !== "active") { setLoading(false); return; }
     async function load() {
       setLoading(true);
       try {
-        const allMemberships = await base44.entities.PODMembership.filter({ pod_id: podId });
-        const activeMembers = allMemberships.filter((m) => m.membership_status === "active");
-        const pending = allMemberships.filter((m) => m.membership_status === "pending_request");
-        setMembers(activeMembers);
-        setPendingRequests(isAdmin ? pending : []);
-        const profileIds = [...new Set(allMemberships.map((m) => m.profile_id).filter(Boolean))];
-        const allProfiles = await base44.entities.Profile.list("-created_date", 200);
-        const pMap = Object.fromEntries(allProfiles.filter((p) => profileIds.includes(p.id)).map((p) => [p.id, p]));
-        setProfiles(pMap);
+        const res = await base44.functions.invoke('publicProfiles', {
+          action: 'podMembers',
+          podId,
+          callerProfileId: currentUser.id,
+        });
+        setMembers(res.data?.members || []);
+        setPendingRequests(res.data?.pendingRequests || []);
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [podId, isAdmin, myMembership?.membership_status]);
+  }, [podId, currentUser?.id, myMembership?.membership_status]);
 
   async function handleAccept(membershipId) {
     await acceptJoinRequest(membershipId);
