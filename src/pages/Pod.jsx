@@ -189,7 +189,7 @@ export default function Pod() {
         <PodLeaderboardTab pod={pod} myMembership={myMembership} podId={podId} />
       )}
       {activeTab === "activity" && (
-        <PodActivityTab podId={podId} onOpenGame={handleOpenGame} />
+        <PodActivityTab podId={podId} myMembership={myMembership} onOpenGame={handleOpenGame} />
       )}
       {activeTab === "info" && (
         <PodInfoTab

@@ -31,7 +31,7 @@ function GameRow({ game, participants, profiles, onClick }) {
   );
 }
 
-export default function PodActivityTab({ podId, onOpenGame }) {
+export default function PodActivityTab({ podId, myMembership, onOpenGame }) {
   const { currentUser } = useAuth();
   const [games, setGames] = useState([]);
   const [participantMap, setParticipantMap] = useState({});
@@ -42,6 +42,7 @@ export default function PodActivityTab({ podId, onOpenGame }) {
 
   useEffect(() => {
     if (!currentUser?.id) return;
+    if (myMembership?.membership_status !== "active") { setLoading(false); return; }
     async function load() {
       setLoading(true);
       try {
