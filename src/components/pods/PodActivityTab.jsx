@@ -63,7 +63,7 @@ export default function PodActivityTab({ podId, myMembership, onOpenGame }) {
       }
     }
     load();
-  }, [podId, currentUser?.id]);
+  }, [podId, currentUser?.id, myMembership?.membership_status]);
 
   const filteredGames = games.filter((g) => {
     const participants = participantMap[g.id] || [];
