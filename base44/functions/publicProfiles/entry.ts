@@ -32,7 +32,7 @@ function sanitizeProfile(raw) {
   };
 }
 
-/** Public-facing deck display fields. Does NOT expose owner_id or any user linkage. */
+/** Public-facing deck display fields. Does NOT expose owner_id, management flags, or any user linkage. */
 function sanitizeDeck(raw) {
   return {
     id: raw.id,
@@ -40,8 +40,6 @@ function sanitizeDeck(raw) {
     commander_name: raw.commander_name || null,
     commander_image_url: raw.commander_image_url || null,
     color_identity: raw.color_identity || [],
-    is_active: raw.is_active !== false,
-    is_favorite: raw.is_favorite || false,
   };
 }
 
