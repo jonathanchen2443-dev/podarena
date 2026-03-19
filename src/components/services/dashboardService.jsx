@@ -93,6 +93,7 @@ export async function getDashboardData(auth) {
         .map((game) => ({
           id: game.id,
           context_type: game.context_type || "casual",
+          pod_id: game.pod_id || null,
           status: game.status,
           played_at: game.played_at || game.created_date,
           participantsSummary: "",

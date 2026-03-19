@@ -173,13 +173,12 @@ export async function createGameWithParticipants({
   notes,
   participants,
 }) {
-  // Validate all profile IDs exist
-  const allProfiles = await base44.entities.Profile.list("-created_date", 200);
-  const profileIdSet = new Set(allProfiles.map((p) => p.id));
-  for (const p of participants) {
-    if (!profileIdSet.has(p.profileId)) {
-      throw new Error(`Cannot log game: participant profile ID "${p.profileId}" has no matching Profile.`);
-    }
+  // Validate all profile IDs exist via backend (avoids RLS-blocked Profile.list)
+  const profileIds = participants.map((p) => p.profileId).filter(Boolean);
+  const validationRes = await base44.functions.invoke('publicProfiles', { action: 'validateProfileIds', profileIds });
+  if (!validationRes.data?.valid) {
+    const missing = validationRes.data?.missing || [];
+    throw new Error(`Cannot log game: participant profile ID "${missing[0]}" has no matching Profile.`);
   }
 
   // Create the game
@@ -277,8 +276,8 @@ export async function createGameWithParticipants({
  * @param {string} deckId              - required: the deck this participant played
  */
 export async function approveGame(gameId, approverAuthUserId, approverProfileId, deckId) {
-  // Find the participant row by auth user id (RLS ensures only own row is visible)
-  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId });
+  // Filter by both game_id and participant_user_id to make RLS intent explicit
+  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId, participant_user_id: approverAuthUserId });
   const myParticipant = participants.find(
     (p) => p.participant_user_id === approverAuthUserId && p.approval_status === "pending"
   );
@@ -320,7 +319,7 @@ export async function approveGame(gameId, approverAuthUserId, approverProfileId,
  * @param {string} reason              - optional reason (stored in notes-style, no dedicated field)
  */
 export async function rejectGame(gameId, approverAuthUserId, approverProfileId, reason) {
-  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId });
+  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId, participant_user_id: approverAuthUserId });
   const myParticipant = participants.find(
     (p) => p.participant_user_id === approverAuthUserId && p.approval_status === "pending"
   );
@@ -340,14 +339,11 @@ export async function rejectGame(gameId, approverAuthUserId, approverProfileId, 
 
 async function _markReviewNotificationRead(gameId, recipientAuthUserId) {
   try {
-    const notifs = await base44.entities.Notification.list("-created_date", 50);
-    const pending = notifs.find(
-      (n) =>
-        n.type === "game_review_request" &&
-        n.recipient_user_id === recipientAuthUserId &&
-        n.metadata?.game_id === gameId &&
-        !n.read_at
-    );
+    const notifs = await base44.entities.Notification.filter({
+      recipient_user_id: recipientAuthUserId,
+      type: "game_review_request",
+    });
+    const pending = notifs.find((n) => n.metadata?.game_id === gameId && !n.read_at);
     if (pending) {
       await base44.entities.Notification.update(pending.id, { read_at: new Date().toISOString() });
     }
@@ -357,20 +353,8 @@ async function _markReviewNotificationRead(gameId, recipientAuthUserId) {
 }
 
 export async function recalculateGameStatus(gameId) {
-  const allParticipants = await base44.entities.GameParticipant.filter({ game_id: gameId });
-  // Only non-creator participants gate the status
-  const reviewable = allParticipants.filter((p) => !p.is_creator);
-  if (reviewable.length === 0) {
-    // Solo or all-creator (shouldn't happen, but handle gracefully)
-    await base44.entities.Game.update(gameId, { status: "approved" });
-    return;
-  }
-  const hasRejection = reviewable.some((p) => p.approval_status === "rejected");
-  const allApproved = reviewable.every((p) => p.approval_status === "approved");
-  let newStatus = "pending";
-  if (hasRejection) newStatus = "rejected";
-  else if (allApproved) newStatus = "approved";
-  await base44.entities.Game.update(gameId, { status: newStatus });
+  // Route through backend so asServiceRole reads ALL participant rows (not just caller's own)
+  await base44.functions.invoke('publicProfiles', { action: 'recalculateGameStatus', gameId });
 }
 
 /**

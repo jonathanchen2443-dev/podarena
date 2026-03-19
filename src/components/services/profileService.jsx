@@ -142,6 +142,18 @@ export async function getMyHistory(profileId, callerProfileId) {
 }
 
 /**
+ * getGameDetailsForParticipant — fetches assembled game details for any game
+ * (casual or pod) where the caller is a direct participant.
+ * Gated server-side: callerAuthUserId must have a GameParticipant row for this game.
+ */
+export async function getGameDetailsForParticipant(gameId, callerAuthUserId) {
+  if (!gameId || !callerAuthUserId) return null;
+  const data = await callBackend({ action: 'gameDetailsForParticipant', gameId, callerAuthUserId });
+  if (data.error || !data.game) return null;
+  return data.game;
+}
+
+/**
  * getPublicProfileStats — fetches game/deck stats for a public profile.
  * Uses backend service role to bypass RLS on GameParticipant and Deck.
  */

@@ -716,6 +716,141 @@ Deno.serve(async (req) => {
       return Response.json({ isActiveMember: participantMembership.length > 0 });
     }
 
+    // ── validateProfileIds ────────────────────────────────────────────────────
+    if (action === 'validateProfileIds') {
+      const { profileIds } = body;
+      if (!Array.isArray(profileIds) || profileIds.length === 0) return Response.json({ valid: true, missing: [] });
+      const found = await base44.asServiceRole.entities.Profile.filter({ id: { $in: profileIds } });
+      const foundSet = new Set(found.map((p) => p.id));
+      const missing = profileIds.filter((id) => !foundSet.has(id));
+      return Response.json({ valid: missing.length === 0, missing });
+    }
+
+    // ── gameDetailsForParticipant ─────────────────────────────────────────────
+    // Returns assembled game details for ANY game (casual or pod) where caller is a participant.
+    // Gate: callerAuthUserId must have a row in GameParticipant for this game.
+    if (action === 'gameDetailsForParticipant') {
+      const { gameId, callerAuthUserId } = body;
+      if (!gameId || !callerAuthUserId) return Response.json({ error: 'gameId and callerAuthUserId required' }, { status: 400 });
+
+      const gameArr = await base44.asServiceRole.entities.Game.filter({ id: gameId });
+      if (!gameArr.length) return Response.json({ error: 'not_found' }, { status: 404 });
+      const game = gameArr[0];
+
+      const participantArr = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: gameId }, '-created_date', 20);
+
+      // Gate: caller must be a participant
+      const isParticipant = participantArr.some((p) => p.participant_user_id === callerAuthUserId);
+      if (!isParticipant) return Response.json({ error: 'Forbidden: not a participant' }, { status: 403 });
+
+      const profileIds = [...new Set(participantArr.map((p) => p.participant_profile_id).filter(Boolean))];
+      let profileMap = {};
+      if (profileIds.length > 0) {
+        const profiles = await base44.asServiceRole.entities.Profile.filter({ id: { $in: profileIds } }, '-created_date', 200);
+        profileMap = Object.fromEntries(profiles.map((p) => [p.id, sanitizeProfile(p)]));
+      }
+
+      const participants = participantArr.map((p) => {
+        const profile = profileMap[p.participant_profile_id] || {};
+        return {
+          userId: p.participant_profile_id,
+          authUserId: p.participant_user_id || null,
+          display_name: profile.display_name || 'Unknown',
+          avatar_url: profile.avatar_url || null,
+          result: p.result || null,
+          placement: p.placement || null,
+          approval_status: p.approval_status || 'pending',
+          is_creator: p.is_creator || false,
+          deck: p.deck_name_at_time ? {
+            name: p.deck_name_at_time,
+            color_identity: p.deck_snapshot_json?.color_identity || [],
+            commander_name: p.commander_name_at_time || null,
+            commander_image: p.commander_image_at_time || null,
+          } : null,
+        };
+      });
+
+      const nonCreators = participantArr.filter((p) => !p.is_creator);
+      const assembled = {
+        id: game.id,
+        status: game.status,
+        played_at: game.played_at || game.created_date || null,
+        notes: game.notes || '',
+        context_type: game.context_type || 'casual',
+        pod_id: game.pod_id || null,
+        participants,
+        approvalSummary: {
+          total: nonCreators.length,
+          approved: nonCreators.filter((p) => p.approval_status === 'approved').length,
+          rejected: nonCreators.filter((p) => p.approval_status === 'rejected').length,
+          pending: nonCreators.filter((p) => p.approval_status === 'pending').length,
+        },
+      };
+
+      return Response.json({ game: assembled });
+    }
+
+    // ── recalculateGameStatus ─────────────────────────────────────────────────
+    // Uses asServiceRole to read ALL participants and set the correct game status.
+    if (action === 'recalculateGameStatus') {
+      const { gameId } = body;
+      if (!gameId) return Response.json({ error: 'gameId required' }, { status: 400 });
+
+      const allParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: gameId }, '-created_date', 20);
+      const reviewable = allParticipants.filter((p) => !p.is_creator);
+
+      let newStatus = 'pending';
+      if (reviewable.length === 0) {
+        newStatus = 'approved';
+      } else {
+        const hasRejection = reviewable.some((p) => p.approval_status === 'rejected');
+        const allApproved = reviewable.every((p) => p.approval_status === 'approved');
+        if (hasRejection) newStatus = 'rejected';
+        else if (allApproved) newStatus = 'approved';
+      }
+
+      await base44.asServiceRole.entities.Game.update(gameId, { status: newStatus });
+      return Response.json({ status: newStatus });
+    }
+
+    // ── acceptPodInvite ───────────────────────────────────────────────────────
+    if (action === 'acceptPodInvite') {
+      const { membershipId, callerAuthUserId } = body;
+      if (!membershipId || !callerAuthUserId) return Response.json({ error: 'membershipId and callerAuthUserId required' }, { status: 400 });
+
+      const rows = await base44.asServiceRole.entities.PODMembership.filter({ id: membershipId });
+      if (!rows.length) return Response.json({ error: 'not_found' }, { status: 404 });
+      const membership = rows[0];
+
+      if (membership.user_id !== callerAuthUserId) return Response.json({ error: 'Forbidden' }, { status: 403 });
+      if (membership.membership_status !== 'invited_pending') return Response.json({ error: 'Not in invited_pending state' }, { status: 400 });
+
+      await base44.asServiceRole.entities.PODMembership.update(membershipId, {
+        membership_status: 'active',
+        joined_at: new Date().toISOString(),
+        decided_at: new Date().toISOString(),
+      });
+      return Response.json({ success: true });
+    }
+
+    // ── declinePodInvite ──────────────────────────────────────────────────────
+    if (action === 'declinePodInvite') {
+      const { membershipId, callerAuthUserId } = body;
+      if (!membershipId || !callerAuthUserId) return Response.json({ error: 'membershipId and callerAuthUserId required' }, { status: 400 });
+
+      const rows = await base44.asServiceRole.entities.PODMembership.filter({ id: membershipId });
+      if (!rows.length) return Response.json({ error: 'not_found' }, { status: 404 });
+      const membership = rows[0];
+
+      if (membership.user_id !== callerAuthUserId) return Response.json({ error: 'Forbidden' }, { status: 403 });
+
+      await base44.asServiceRole.entities.PODMembership.update(membershipId, {
+        membership_status: 'rejected',
+        decided_at: new Date().toISOString(),
+      });
+      return Response.json({ success: true });
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {
