@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { approveGame, rejectGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
 import { base44 } from "@/api/base44Client";
-import { getPodGameDetails } from "@/components/services/profileService";
+import { getPodGameDetails } from "@/components/services/profileService.jsx";
 import { ROUTES } from "@/components/utils/routes";
 import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
 import { toast } from "sonner";
