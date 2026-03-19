@@ -64,18 +64,9 @@ export default function AllPods() {
     if (!currentUser || !authUserId) return;
     setLoading(true);
     try {
-      // user_id = Auth User ID (RLS field) — use authUserId from context, no extra me() call needed
-      const myMemberships = await base44.entities.PODMembership.filter({
-        user_id: authUserId,
-        membership_status: "active",
-      }).catch(() => []);
-      if (myMemberships.length === 0) { setPods([]); setMemberships([]); return; }
-      const podIds = [...new Set(myMemberships.map((m) => m.pod_id))];
-      const podResults = await Promise.all(
-        podIds.map((id) => base44.entities.POD.get(id).catch(() => null))
-      );
-      setPods(podResults.filter(Boolean).filter((p) => p.status === "active"));
-      setMemberships(myMemberships);
+      const res = await base44.functions.invoke('publicProfiles', { action: 'myPods', callerAuthUserId: authUserId, callerProfileId: currentUser.id });
+      setPods(res.data?.pods || []);
+      setMemberships(res.data?.memberships || []);
     } finally {
       setLoading(false);
     }

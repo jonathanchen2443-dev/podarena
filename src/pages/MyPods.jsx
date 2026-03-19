@@ -69,22 +69,9 @@ export default function MyPods() {
     if (!currentUser || !authUserId) return;
     setLoading(true);
     try {
-      // Filter by user_id (Auth User ID) + status — RLS-safe, returns only my memberships
-      const myMemberships = await base44.entities.PODMembership.filter({
-        user_id: authUserId,
-        membership_status: "active",
-      }).catch(() => []);
-
-      if (myMemberships.length > 0) {
-        const podIds = [...new Set(myMemberships.map((m) => m.pod_id))];
-        const podResults = await Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null)));
-        const validPods = podResults.filter(Boolean).filter((p) => p.status === "active");
-        setPods(validPods);
-        setMemberships(myMemberships);
-      } else {
-        setPods([]);
-        setMemberships([]);
-      }
+      const res = await base44.functions.invoke('publicProfiles', { action: 'myPods', callerAuthUserId: authUserId, callerProfileId: currentUser.id });
+      setPods(res.data?.pods || []);
+      setMemberships(res.data?.memberships || []);
     } finally {
       setLoading(false);
     }

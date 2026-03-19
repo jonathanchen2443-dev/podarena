@@ -36,9 +36,9 @@ export default function Inbox() {
           console.warn("[Inbox] listMyPendingApprovals failed:", e?.message);
           return [];
         }),
-        base44.entities.Notification.list("-created_date", 200).then((list) =>
-          list.filter((n) => n.recipient_user_id === authUserId)
-        ).catch(() => []),
+        base44.functions.invoke('publicProfiles', { action: 'myNotifications', callerAuthUserId: authUserId })
+          .then((res) => res.data?.notifications || [])
+          .catch(() => []),
       ]);
       setApprovals(approvalsData);
       setNotifications(allNotifs);
