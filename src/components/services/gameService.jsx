@@ -410,7 +410,7 @@ export async function listMyPendingApprovals(auth) {
     podIds.length > 0
       ? Promise.all(podIds.map((id) => base44.entities.POD.get(id).catch(() => null)))
       : Promise.resolve([]),
-    base44.entities.Profile.list("-created_date", 200),
+    base44.entities.Profile.list("-created_date", 200).catch(() => []),
   ]);
 
   const podMap = Object.fromEntries(allPods.filter(Boolean).map((p) => [p.id, p]));
