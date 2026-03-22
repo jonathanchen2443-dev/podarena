@@ -724,75 +724,94 @@ Deno.serve(async (req) => {
     // Full game creation flow via asServiceRole — bypasses RLS for participant/notification creates.
     if (action === 'createGame') {
       const { podId, contextType = 'casual', creatorProfileId, creatorAuthUserId, playedAt, notes, participants } = body;
-      if (!creatorProfileId || !creatorAuthUserId || !Array.isArray(participants)) {
-        return Response.json({ error: 'Missing required fields' }, { status: 400 });
-      }
 
-      // Validate all profile IDs exist
-      const profileIds = participants.map((p) => p.profileId).filter(Boolean);
-      if (profileIds.length > 0) {
-        const found = await base44.asServiceRole.entities.Profile.filter({ id: { $in: profileIds } });
-        const foundSet = new Set(found.map((p) => p.id));
-        const missing = profileIds.filter((id) => !foundSet.has(id));
-        if (missing.length > 0) {
-          return Response.json({ error: `Participant profile ID "${missing[0]}" has no matching Profile.` }, { status: 400 });
-        }
-      }
+      let step = 'validate_input';
+      let gameId = null;
+      let participantsCreated = false;
+      let notificationsCreated = false;
 
-      // Create the Game record
-      const game = await base44.asServiceRole.entities.Game.create({
-        pod_id: podId || null,
-        context_type: contextType,
-        played_at: playedAt || new Date().toISOString(),
-        status: 'pending',
-        notes: notes || '',
-        created_by_user_id: creatorAuthUserId,
-        created_by_profile_id: creatorProfileId,
-      });
-
-      const nonCreators = participants.filter((p) => p.profileId !== creatorProfileId);
-
-      // Build and create ALL participant records via asServiceRole
-      const participantRecords = participants.map((p) => {
-        const isCreator = p.profileId === creatorProfileId;
-        const snap = isCreator && p.deckData ? {
-          id: p.deckData.id, name: p.deckData.name,
-          commander_name: p.deckData.commander_name || null,
-          commander_image_url: p.deckData.commander_image_url || null,
-          color_identity: p.deckData.color_identity || [],
-        } : null;
-        return {
-          game_id: game.id,
-          participant_user_id: p.authUserId || null,
-          participant_profile_id: p.profileId,
-          is_creator: isCreator,
-          selected_deck_id: isCreator ? (p.deck_id || null) : null,
-          deck_snapshot_json: snap,
-          deck_name_at_time: snap?.name || null,
-          commander_name_at_time: snap?.commander_name || null,
-          commander_image_at_time: snap?.commander_image_url || null,
-          result: p.result || null,
-          placement: p.placement || null,
-          approval_status: isCreator ? 'approved' : 'pending',
-          approved_at: isCreator ? new Date().toISOString() : null,
-          rejected_at: null,
-        };
-      });
       try {
+        if (!creatorProfileId || !creatorAuthUserId || !Array.isArray(participants)) {
+          return Response.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        // Validate all profile IDs exist
+        step = 'validate_profile_ids';
+        const profileIds = participants.map((p) => p.profileId).filter(Boolean);
+        if (profileIds.length > 0) {
+          const found = await base44.asServiceRole.entities.Profile.filter({ id: { $in: profileIds } });
+          const foundSet = new Set(found.map((p) => p.id));
+          const missing = profileIds.filter((id) => !foundSet.has(id));
+          if (missing.length > 0) {
+            return Response.json({ error: `Participant profile ID "${missing[0]}" has no matching Profile.` }, { status: 400 });
+          }
+        }
+
+        // Create the Game record
+        step = 'create_game';
+        const game = await base44.asServiceRole.entities.Game.create({
+          pod_id: podId || null,
+          context_type: contextType,
+          played_at: playedAt || new Date().toISOString(),
+          status: 'pending',
+          notes: notes || '',
+          created_by_user_id: creatorAuthUserId,
+          created_by_profile_id: creatorProfileId,
+        });
+        gameId = game.id;
+        console.log(`[createGame] step=${step} gameId=${gameId} contextType=${contextType} participants=${participants.length}`);
+
+        const nonCreators = participants.filter((p) => p.profileId !== creatorProfileId);
+
+        // Build participant records
+        step = 'build_participant_records';
+        const participantRecords = participants.map((p) => {
+          const isCreator = p.profileId === creatorProfileId;
+          const snap = isCreator && p.deckData ? {
+            id: p.deckData.id, name: p.deckData.name,
+            commander_name: p.deckData.commander_name || null,
+            commander_image_url: p.deckData.commander_image_url || null,
+            color_identity: p.deckData.color_identity || [],
+          } : null;
+          return {
+            game_id: gameId,
+            participant_user_id: p.authUserId || null,
+            participant_profile_id: p.profileId,
+            is_creator: isCreator,
+            selected_deck_id: isCreator ? (p.deck_id || null) : null,
+            deck_snapshot_json: snap,
+            deck_name_at_time: snap?.name || null,
+            commander_name_at_time: snap?.commander_name || null,
+            commander_image_at_time: snap?.commander_image_url || null,
+            result: p.result || null,
+            placement: p.placement || null,
+            approval_status: isCreator ? 'approved' : 'pending',
+            approved_at: isCreator ? new Date().toISOString() : null,
+            rejected_at: null,
+          };
+        });
+
+        step = 'create_participants';
         await base44.asServiceRole.entities.GameParticipant.bulkCreate(participantRecords);
+        participantsCreated = true;
+        console.log(`[createGame] step=${step} gameId=${gameId} count=${participantRecords.length}`);
 
         if (nonCreators.length === 0) {
-          await base44.asServiceRole.entities.Game.update(game.id, { status: 'approved' });
+          step = 'finalize_solo_game';
+          await base44.asServiceRole.entities.Game.update(gameId, { status: 'approved' });
         } else {
+          // Fetch pod name if needed
           let podName = null;
           if (podId) {
             const podArr = await base44.asServiceRole.entities.POD.filter({ id: podId });
             podName = podArr[0]?.pod_name || null;
           }
 
-          const createdParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: game.id });
+          step = 'load_created_participants';
+          const createdParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: gameId });
           const participantByProfile = Object.fromEntries(createdParticipants.map((p) => [p.participant_profile_id, p]));
 
+          step = 'build_notifications';
           const notifications = nonCreators
             .filter((p) => !!p.authUserId)
             .map((p) => {
@@ -802,7 +821,7 @@ Deno.serve(async (req) => {
                 actor_user_id: creatorAuthUserId,
                 recipient_user_id: p.authUserId,
                 metadata: {
-                  game_id: game.id,
+                  game_id: gameId,
                   game_participant_id: participantRow?.id || null,
                   context_type: contextType,
                   pod_name: podName || null,
@@ -811,16 +830,48 @@ Deno.serve(async (req) => {
             });
 
           if (notifications.length > 0) {
+            step = 'create_notifications';
             await base44.asServiceRole.entities.Notification.bulkCreate(notifications);
+            notificationsCreated = true;
+            console.log(`[createGame] step=${step} gameId=${gameId} count=${notifications.length}`);
           }
         }
-      } catch (innerError) {
-        // Rollback: delete the orphaned Game record so it doesn't become a ghost
-        try { await base44.asServiceRole.entities.Game.delete(game.id); } catch (_) {}
-        throw innerError;
-      }
 
-      return Response.json({ game });
+        step = 'finalize_response';
+        console.log(`[createGame] success gameId=${gameId}`);
+        return Response.json({ game });
+
+      } catch (innerError) {
+        console.error('[createGame] FAILED', {
+          step,
+          error: innerError?.message,
+          creatorProfileId,
+          creatorAuthUserId,
+          participantCount: participants?.length,
+          contextType,
+          podId: podId || null,
+          gameId,
+        });
+
+        // Best-effort rollback — clean up in reverse order
+        if (gameId) {
+          if (notificationsCreated) {
+            try {
+              const notifs = await base44.asServiceRole.entities.Notification.filter({ metadata: { game_id: gameId } });
+              await Promise.all(notifs.map((n) => base44.asServiceRole.entities.Notification.delete(n.id).catch(() => {})));
+            } catch (_) {}
+          }
+          if (participantsCreated) {
+            try {
+              const parts = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: gameId });
+              await Promise.all(parts.map((p) => base44.asServiceRole.entities.GameParticipant.delete(p.id).catch(() => {})));
+            } catch (_) {}
+          }
+          try { await base44.asServiceRole.entities.Game.delete(gameId); } catch (_) {}
+        }
+
+        return Response.json({ error: innerError.message || 'Game creation failed' }, { status: 500 });
+      }
     }
 
     // ── dashboardData ─────────────────────────────────────────────────────────
@@ -907,21 +958,35 @@ Deno.serve(async (req) => {
       return Response.json({ notifications });
     }
 
-    // ── listProfilesForGameLog ────────────────────────────────────────────────
-    // Returns profiles with user_id included — needed so participant_user_id can be set correctly.
-    // ONLY for authenticated users. user_id is sensitive and must not be in public-facing endpoints.
-    if (action === 'listProfilesForGameLog') {
-      const profiles = await base44.asServiceRole.entities.Profile.filter({}, '-created_date', 200);
+    // ── searchProfilesForGameLog ──────────────────────────────────────────────
+    // On-demand profile search for the casual participant picker.
+    // Returns user_id so participant_user_id linkage is correct — only for authenticated callers.
+    if (action === 'searchProfilesForGameLog') {
+      const { searchQuery } = body;
+      if (!searchQuery || searchQuery.trim().length < 2) return Response.json({ profiles: [] });
+      const q = searchQuery.trim().toLowerCase();
+
+      // Search by display_name_lc, username_lc, and exact public_user_id in parallel
+      const [byName, byUsername, byUid] = await Promise.all([
+        base44.asServiceRole.entities.Profile.filter({ display_name_lc: { $regex: q } }, '-created_date', 20).catch(() => []),
+        base44.asServiceRole.entities.Profile.filter({ username_lc: { $regex: q } }, '-created_date', 20).catch(() => []),
+        base44.asServiceRole.entities.Profile.filter({ public_user_id: { $regex: q } }, '-created_date', 10).catch(() => []),
+      ]);
+
+      const seen = new Set();
+      const merged = [];
+      for (const p of [...byName, ...byUsername, ...byUid]) {
+        if (!seen.has(p.id)) { seen.add(p.id); merged.push(p); }
+      }
+
       return Response.json({
-        profiles: profiles.map((p) => ({
+        profiles: merged.slice(0, 15).map((p) => ({
           id: p.id,
           user_id: p.user_id || null,
           display_name: p.display_name || 'Unknown',
           public_user_id: p.public_user_id || null,
           avatar_url: p.avatar_url || null,
           username: p.username || null,
-          display_name_lc: p.display_name_lc || null,
-          username_lc: p.username_lc || null,
         })),
       });
     }

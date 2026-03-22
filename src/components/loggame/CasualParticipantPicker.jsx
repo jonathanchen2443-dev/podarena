@@ -1,56 +1,72 @@
-import React, { useState, useEffect } from "react";
-import { X, User, Search } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, User, Search, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 /**
- * CasualParticipantPicker — lets the user search all profiles to add participants.
+ * CasualParticipantPicker — backend search-on-demand for participant picking.
+ *
+ * Searches profiles via the searchProfilesForGameLog backend action (service role),
+ * which returns user_id so participant_user_id linkage is correct for all user types.
  *
  * onAdd(profileId, participantData) where participantData = {
  *   profileId: string,     Profile.id
- *   authUserId: string,    Auth User ID (user_id on Profile)
+ *   authUserId: string,    Auth User ID (user_id on Profile) — from backend service role
  *   display_name: string,
  *   avatar_url: string|null,
  * }
  */
 export default function CasualParticipantPicker({
-  selectedIds,     // Profile.id[]
+  selectedIds,            // Profile.id[]
   onAdd,
   onRemove,
-  currentUserProfileId,  // Profile.id of the logged-in user
+  currentUserProfileId,   // Profile.id of the logged-in user
 }) {
-  const [allProfiles, setAllProfiles] = useState([]);
   const [query, setQuery] = useState("");
-  const [profilesLoaded, setProfilesLoaded] = useState(false);
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  // Map of profileId → profile data for selected participants (for display in the chip list)
+  const [selectedProfiles, setSelectedProfiles] = useState({});
 
+  const debounceRef = useRef(null);
+
+  // Debounced backend search — fires after 300ms of no typing, min 2 chars
   useEffect(() => {
-    base44.functions.invoke('publicProfiles', { action: 'listProfilesForGameLog' })
-      .then((res) => setAllProfiles(res.data?.profiles || []))
-      .catch(() => {})
-      .finally(() => setProfilesLoaded(true));
-  }, []);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await base44.functions.invoke('publicProfiles', {
+          action: 'searchProfilesForGameLog',
+          searchQuery: query.trim(),
+        });
+        setResults(res.data?.profiles || []);
+      } catch (_) {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
 
-  const q = query.trim().toLowerCase();
-  const filtered = allProfiles.filter((p) => {
-    if (selectedIds.includes(p.id)) return false;
-    if (!q) return true;
-    return (
-      p.display_name?.toLowerCase().includes(q) ||
-      p.username?.toLowerCase().includes(q) ||
-      p.display_name_lc?.includes(q) ||
-      p.username_lc?.includes(q) ||
-      p.public_user_id === q ||
-      p.public_user_id === q.replace(/^0+/, "").padStart(6, "0")
-    );
-  });
+  // Filter out already-selected profiles from results
+  const filtered = results.filter((p) => !selectedIds.includes(p.id));
 
   function handleSelect(profile) {
     onAdd(profile.id, {
       profileId: profile.id,
-      authUserId: profile.user_id || null,  // stored on Profile at registration
+      authUserId: profile.user_id || null,
       display_name: profile.display_name,
       avatar_url: profile.avatar_url || null,
     });
+    // Cache the profile data so we can render the chip
+    setSelectedProfiles((prev) => ({ ...prev, [profile.id]: profile }));
     setQuery("");
+    setResults([]);
   }
 
   return (
@@ -63,21 +79,27 @@ export default function CasualParticipantPicker({
       {/* Search box */}
       {selectedIds.length < 4 && (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+          {searching ? (
+            <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 animate-spin pointer-events-none" />
+          ) : (
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+          )}
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or username…"
+            placeholder="Search by name, username, or ID…"
             className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))]"
           />
         </div>
       )}
 
-      {/* Dropdown results */}
-      {query && profilesLoaded && (
+      {/* Search results dropdown */}
+      {query.trim().length >= 2 && (
         <div className="mt-1 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
-          {filtered.length === 0 ? (
+          {searching ? (
+            <p className="text-gray-500 text-xs px-4 py-3">Searching…</p>
+          ) : filtered.length === 0 ? (
             <p className="text-gray-500 text-xs px-4 py-3">No users found.</p>
           ) : (
             filtered.slice(0, 8).map((p) => (
@@ -103,11 +125,11 @@ export default function CasualParticipantPicker({
         </div>
       )}
 
-      {/* Selected list */}
+      {/* Selected participants chips */}
       {selectedIds.length > 0 && (
         <div className="mt-3 space-y-2">
           {selectedIds.map((profileId) => {
-            const profile = allProfiles.find((p) => p.id === profileId);
+            const profile = selectedProfiles[profileId];
             return (
               <div
                 key={profileId}
