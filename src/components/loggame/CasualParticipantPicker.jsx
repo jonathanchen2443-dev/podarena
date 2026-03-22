@@ -23,8 +23,8 @@ export default function CasualParticipantPicker({
   const [profilesLoaded, setProfilesLoaded] = useState(false);
 
   useEffect(() => {
-    base44.entities.Profile.list("-created_date", 200)
-      .then((ps) => setAllProfiles(ps))
+    base44.functions.invoke('publicProfiles', { action: 'listProfilesForGameLog' })
+      .then((res) => setAllProfiles(res.data?.profiles || []))
       .catch(() => {})
       .finally(() => setProfilesLoaded(true));
   }, []);

@@ -239,13 +239,17 @@ Deno.serve(async (req) => {
       // Find all games where this profile was a direct participant.
       // Use participant_user_id (auth user id) rather than participant_profile_id
       // for consistent, reliable matching — same field used on the client-side fix.
-      const myParticipations = callerAuthUserId
-        ? await base44.asServiceRole.entities.GameParticipant.filter(
-            { participant_user_id: callerAuthUserId }, '-created_date', 200
-          )
-        : await base44.asServiceRole.entities.GameParticipant.filter(
-            { participant_profile_id: profileId }, '-created_date', 200
-          );
+      const [byUid, byPid] = await Promise.all([
+        callerAuthUserId
+          ? base44.asServiceRole.entities.GameParticipant.filter({ participant_user_id: callerAuthUserId }, '-created_date', 200).catch(() => [])
+          : Promise.resolve([]),
+        base44.asServiceRole.entities.GameParticipant.filter({ participant_profile_id: profileId }, '-created_date', 200).catch(() => []),
+      ]);
+      const seenParticipationIds = new Set();
+      const myParticipations = [];
+      for (const p of [...byUid, ...byPid]) {
+        if (!seenParticipationIds.has(p.id)) { seenParticipationIds.add(p.id); myParticipations.push(p); }
+      }
       if (myParticipations.length === 0) return Response.json({ games: [], participants: {} });
 
       const gameIds = [...new Set(myParticipations.map((p) => p.game_id))];
@@ -735,7 +739,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Create the Game record (creator creates it — RLS allows this)
+      // Create the Game record
       const game = await base44.asServiceRole.entities.Game.create({
         pod_id: podId || null,
         context_type: contextType,
@@ -774,42 +778,46 @@ Deno.serve(async (req) => {
           rejected_at: null,
         };
       });
-      await base44.asServiceRole.entities.GameParticipant.bulkCreate(participantRecords);
+      try {
+        await base44.asServiceRole.entities.GameParticipant.bulkCreate(participantRecords);
 
-      if (nonCreators.length === 0) {
-        await base44.asServiceRole.entities.Game.update(game.id, { status: 'approved' });
-      } else {
-        // Get pod name if needed
-        let podName = null;
-        if (podId) {
-          const podArr = await base44.asServiceRole.entities.POD.filter({ id: podId });
-          podName = podArr[0]?.pod_name || null;
+        if (nonCreators.length === 0) {
+          await base44.asServiceRole.entities.Game.update(game.id, { status: 'approved' });
+        } else {
+          let podName = null;
+          if (podId) {
+            const podArr = await base44.asServiceRole.entities.POD.filter({ id: podId });
+            podName = podArr[0]?.pod_name || null;
+          }
+
+          const createdParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: game.id });
+          const participantByProfile = Object.fromEntries(createdParticipants.map((p) => [p.participant_profile_id, p]));
+
+          const notifications = nonCreators
+            .filter((p) => !!p.authUserId)
+            .map((p) => {
+              const participantRow = participantByProfile[p.profileId];
+              return {
+                type: 'game_review_request',
+                actor_user_id: creatorAuthUserId,
+                recipient_user_id: p.authUserId,
+                metadata: {
+                  game_id: game.id,
+                  game_participant_id: participantRow?.id || null,
+                  context_type: contextType,
+                  pod_name: podName || null,
+                },
+              };
+            });
+
+          if (notifications.length > 0) {
+            await base44.asServiceRole.entities.Notification.bulkCreate(notifications);
+          }
         }
-
-        // Fetch created participants to get their IDs
-        const createdParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: game.id });
-        const participantByProfile = Object.fromEntries(createdParticipants.map((p) => [p.participant_profile_id, p]));
-
-        const notifications = nonCreators
-          .filter((p) => !!p.authUserId)
-          .map((p) => {
-            const participantRow = participantByProfile[p.profileId];
-            return {
-              type: 'game_review_request',
-              actor_user_id: creatorAuthUserId,
-              recipient_user_id: p.authUserId,
-              metadata: {
-                game_id: game.id,
-                game_participant_id: participantRow?.id || null,
-                context_type: contextType,
-                pod_name: podName || null,
-              },
-            };
-          });
-
-        if (notifications.length > 0) {
-          await base44.asServiceRole.entities.Notification.bulkCreate(notifications);
-        }
+      } catch (innerError) {
+        // Rollback: delete the orphaned Game record so it doesn't become a ghost
+        try { await base44.asServiceRole.entities.Game.delete(game.id); } catch (_) {}
+        throw innerError;
       }
 
       return Response.json({ game });
@@ -826,11 +834,18 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
       }
 
-      const [memberships, decks, recentParticipations] = await Promise.all([
+      const [memberships, decks, byUserId, byProfileId] = await Promise.all([
         base44.asServiceRole.entities.PODMembership.filter({ user_id: callerAuthUserId, membership_status: 'active' }),
         base44.asServiceRole.entities.Deck.filter({ owner_id: callerProfileId }),
-        base44.asServiceRole.entities.GameParticipant.filter({ participant_user_id: callerAuthUserId }, '-created_date', 20),
+        base44.asServiceRole.entities.GameParticipant.filter({ participant_user_id: callerAuthUserId }, '-created_date', 20).catch(() => []),
+        base44.asServiceRole.entities.GameParticipant.filter({ participant_profile_id: callerProfileId }, '-created_date', 20).catch(() => []),
       ]);
+      // Merge both queries, deduplicating by id
+      const seenIds = new Set();
+      const recentParticipations = [];
+      for (const p of [...byUserId, ...byProfileId]) {
+        if (!seenIds.has(p.id)) { seenIds.add(p.id); recentParticipations.push(p); }
+      }
 
       const gameIds = [...new Set(recentParticipations.map((p) => p.game_id))].slice(0, 10);
       let recentGames = [];
@@ -890,6 +905,25 @@ Deno.serve(async (req) => {
         { recipient_user_id: callerAuthUserId }, '-created_date', 100
       );
       return Response.json({ notifications });
+    }
+
+    // ── listProfilesForGameLog ────────────────────────────────────────────────
+    // Returns profiles with user_id included — needed so participant_user_id can be set correctly.
+    // ONLY for authenticated users. user_id is sensitive and must not be in public-facing endpoints.
+    if (action === 'listProfilesForGameLog') {
+      const profiles = await base44.asServiceRole.entities.Profile.filter({}, '-created_date', 200);
+      return Response.json({
+        profiles: profiles.map((p) => ({
+          id: p.id,
+          user_id: p.user_id || null,
+          display_name: p.display_name || 'Unknown',
+          public_user_id: p.public_user_id || null,
+          avatar_url: p.avatar_url || null,
+          username: p.username || null,
+          display_name_lc: p.display_name_lc || null,
+          username_lc: p.username_lc || null,
+        })),
+      });
     }
 
     // ── validateProfileIds ────────────────────────────────────────────────────
