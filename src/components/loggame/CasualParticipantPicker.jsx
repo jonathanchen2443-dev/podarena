@@ -20,12 +20,18 @@ export default function CasualParticipantPicker({
   onAdd,
   onRemove,
   currentUserProfileId,   // Profile.id of the logged-in user
+  currentUserProfile,     // { display_name, avatar_url } — optional, seeds self chip without LogGame changes
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   // Map of profileId → profile data for selected participants (for display in the chip list)
-  const [selectedProfiles, setSelectedProfiles] = useState({});
+  // Seeded with current user so the auto-added self chip renders without a backend fetch
+  const [selectedProfiles, setSelectedProfiles] = useState(() =>
+    currentUserProfileId && currentUserProfile
+      ? { [currentUserProfileId]: currentUserProfile }
+      : {}
+  );
 
   const debounceRef = useRef(null);
 
