@@ -100,7 +100,10 @@ export default function CasualParticipantPicker({
         </div>
       )}
 
-      {/* Search results dropdown */}
+      {/* Helper text / search results */}
+      {query.trim().length > 0 && query.trim().length < 2 && (
+        <p className="text-gray-600 text-xs mt-1.5 px-1">Type at least 2 characters to search…</p>
+      )}
       {query.trim().length >= 2 && (
         <div className="mt-1 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
           {searching ? (
