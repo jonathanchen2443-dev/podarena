@@ -358,6 +358,7 @@ export default function LogGame() {
                 onAdd={handleAddCasualParticipant}
                 onRemove={handleRemoveCasualParticipant}
                 currentUserProfileId={currentUser?.id}
+                currentUserProfile={currentUser ? { display_name: currentUser.display_name, avatar_url: currentUser.avatar_url || null } : null}
               />
             ) : (
               <ParticipantPicker
