@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext";
-import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { Swords, Trophy, Clock } from "lucide-react";
+import { Trophy, Clock } from "lucide-react";
+import { ROUTES } from "@/components/utils/routes";
 import { getPODLeaderboard } from "@/components/services/podService";
 
 export default function PodLeaderboardTab({ pod, myMembership, podId }) {
