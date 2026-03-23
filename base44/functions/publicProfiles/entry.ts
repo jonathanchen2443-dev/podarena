@@ -1065,6 +1065,218 @@ Deno.serve(async (req) => {
       return Response.json({ game: assembled });
     }
 
+    // ── approveGameReview ─────────────────────────────────────────────────────
+    // RLS-safe approve flow for a non-creator participant.
+    // All reads/writes use asServiceRole — works for any authenticated user.
+    if (action === 'approveGameReview') {
+      const { gameId, callerAuthUserId, callerProfileId, deckId } = body;
+      let step = 'validate_input';
+      try {
+        if (!gameId || !callerAuthUserId || !callerProfileId || !deckId) {
+          return Response.json({ error: 'gameId, callerAuthUserId, callerProfileId, and deckId are required' }, { status: 400 });
+        }
+
+        // Verify caller identity
+        step = 'verify_identity';
+        const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+          console.error('[approveGameReview] identity mismatch', { step, gameId, callerAuthUserId, callerProfileId });
+          return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+        }
+
+        // Load game
+        step = 'load_game';
+        const gameArr = await base44.asServiceRole.entities.Game.filter({ id: gameId });
+        if (!gameArr.length) return Response.json({ error: 'Game not found' }, { status: 404 });
+        const game = gameArr[0];
+        if (game.status !== 'pending') {
+          return Response.json({ error: `Game is already ${game.status}` }, { status: 400 });
+        }
+
+        // Load all participant rows for this game
+        step = 'load_participants';
+        const allParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: gameId }, '-created_date', 20);
+
+        // Match caller — primary: participant_user_id; fallback: participant_profile_id
+        step = 'match_caller_participant';
+        let myParticipant = allParticipants.find((p) => p.participant_user_id === callerAuthUserId);
+        if (!myParticipant) {
+          myParticipant = allParticipants.find((p) => p.participant_profile_id === callerProfileId);
+        }
+        if (!myParticipant) {
+          console.error('[approveGameReview] not a participant', { step, gameId, callerAuthUserId, callerProfileId });
+          return Response.json({ error: 'Forbidden: you are not a participant in this game' }, { status: 403 });
+        }
+        if (myParticipant.is_creator) {
+          return Response.json({ error: 'Forbidden: creator cannot approve as reviewer' }, { status: 403 });
+        }
+        if (myParticipant.approval_status !== 'pending') {
+          return Response.json({ error: `Already responded: status is ${myParticipant.approval_status}` }, { status: 400 });
+        }
+
+        // Validate deck belongs to caller
+        step = 'validate_deck';
+        const deckRows = await base44.asServiceRole.entities.Deck.filter({ id: deckId });
+        if (!deckRows.length) {
+          console.error('[approveGameReview] deck not found', { step, gameId, callerProfileId, deckId });
+          return Response.json({ error: 'Deck not found' }, { status: 404 });
+        }
+        const deck = deckRows[0];
+        if (deck.owner_id !== callerProfileId) {
+          console.error('[approveGameReview] deck not owned by caller', { step, gameId, callerProfileId, deckId, deckOwnerId: deck.owner_id });
+          return Response.json({ error: 'Forbidden: deck does not belong to you' }, { status: 403 });
+        }
+        if (deck.is_active === false) {
+          return Response.json({ error: 'Selected deck is inactive' }, { status: 400 });
+        }
+
+        // Build deck snapshot
+        step = 'build_snapshot';
+        const snap = {
+          id: deck.id,
+          name: deck.name,
+          commander_name: deck.commander_name || null,
+          commander_image_url: deck.commander_image_url || null,
+          color_identity: deck.color_identity || [],
+        };
+
+        // Update participant row
+        step = 'update_participant';
+        await base44.asServiceRole.entities.GameParticipant.update(myParticipant.id, {
+          approval_status: 'approved',
+          approved_at: new Date().toISOString(),
+          rejected_at: null,
+          selected_deck_id: deckId,
+          deck_snapshot_json: snap,
+          deck_name_at_time: snap.name,
+          commander_name_at_time: snap.commander_name,
+          commander_image_at_time: snap.commander_image_url,
+        });
+        console.log('[approveGameReview] participant updated', { gameId, participantId: myParticipant.id, callerAuthUserId });
+
+        // Mark review notification as read
+        step = 'mark_notification_read';
+        try {
+          const notifs = await base44.asServiceRole.entities.Notification.filter({
+            recipient_user_id: callerAuthUserId,
+            type: 'game_review_request',
+          });
+          const pending = notifs.find((n) => n.metadata?.game_id === gameId && !n.read_at);
+          if (pending) {
+            await base44.asServiceRole.entities.Notification.update(pending.id, { read_at: new Date().toISOString() });
+          }
+        } catch (_) { /* non-critical */ }
+
+        // Recalculate game status
+        step = 'recalculate_status';
+        const freshParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: gameId }, '-created_date', 20);
+        const reviewable = freshParticipants.filter((p) => !p.is_creator);
+        let newStatus = 'pending';
+        if (reviewable.length === 0) newStatus = 'approved';
+        else if (reviewable.some((p) => p.approval_status === 'rejected')) newStatus = 'rejected';
+        else if (reviewable.every((p) => p.approval_status === 'approved')) newStatus = 'approved';
+        await base44.asServiceRole.entities.Game.update(gameId, { status: newStatus });
+        console.log('[approveGameReview] recalculated', { gameId, newStatus });
+
+        step = 'finalize_response';
+        return Response.json({ success: true, participantStatus: 'approved', gameStatus: newStatus });
+
+      } catch (err) {
+        console.error('[approveGameReview] FAILED', { step, gameId, callerAuthUserId, callerProfileId, deckId, error: err?.message });
+        return Response.json({ error: err.message || 'Approve failed' }, { status: 500 });
+      }
+    }
+
+    // ── rejectGameReview ──────────────────────────────────────────────────────
+    // RLS-safe reject flow for a non-creator participant.
+    if (action === 'rejectGameReview') {
+      const { gameId, callerAuthUserId, callerProfileId, reason } = body;
+      let step = 'validate_input';
+      try {
+        if (!gameId || !callerAuthUserId || !callerProfileId) {
+          return Response.json({ error: 'gameId, callerAuthUserId, and callerProfileId are required' }, { status: 400 });
+        }
+
+        // Verify caller identity
+        step = 'verify_identity';
+        const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+          console.error('[rejectGameReview] identity mismatch', { step, gameId, callerAuthUserId, callerProfileId });
+          return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+        }
+
+        // Load game
+        step = 'load_game';
+        const gameArr = await base44.asServiceRole.entities.Game.filter({ id: gameId });
+        if (!gameArr.length) return Response.json({ error: 'Game not found' }, { status: 404 });
+        const game = gameArr[0];
+        if (game.status !== 'pending') {
+          return Response.json({ error: `Game is already ${game.status}` }, { status: 400 });
+        }
+
+        // Load participants
+        step = 'load_participants';
+        const allParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: gameId }, '-created_date', 20);
+
+        // Match caller — primary: participant_user_id; fallback: participant_profile_id
+        step = 'match_caller_participant';
+        let myParticipant = allParticipants.find((p) => p.participant_user_id === callerAuthUserId);
+        if (!myParticipant) {
+          myParticipant = allParticipants.find((p) => p.participant_profile_id === callerProfileId);
+        }
+        if (!myParticipant) {
+          console.error('[rejectGameReview] not a participant', { step, gameId, callerAuthUserId, callerProfileId });
+          return Response.json({ error: 'Forbidden: you are not a participant in this game' }, { status: 403 });
+        }
+        if (myParticipant.is_creator) {
+          return Response.json({ error: 'Forbidden: creator cannot reject as reviewer' }, { status: 403 });
+        }
+        if (myParticipant.approval_status !== 'pending') {
+          return Response.json({ error: `Already responded: status is ${myParticipant.approval_status}` }, { status: 400 });
+        }
+
+        // Update participant row
+        step = 'update_participant';
+        await base44.asServiceRole.entities.GameParticipant.update(myParticipant.id, {
+          approval_status: 'rejected',
+          rejected_at: new Date().toISOString(),
+          approved_at: null,
+        });
+        console.log('[rejectGameReview] participant updated', { gameId, participantId: myParticipant.id, callerAuthUserId });
+
+        // Mark review notification as read
+        step = 'mark_notification_read';
+        try {
+          const notifs = await base44.asServiceRole.entities.Notification.filter({
+            recipient_user_id: callerAuthUserId,
+            type: 'game_review_request',
+          });
+          const pending = notifs.find((n) => n.metadata?.game_id === gameId && !n.read_at);
+          if (pending) {
+            await base44.asServiceRole.entities.Notification.update(pending.id, { read_at: new Date().toISOString() });
+          }
+        } catch (_) { /* non-critical */ }
+
+        // Recalculate game status
+        step = 'recalculate_status';
+        const freshParticipants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: gameId }, '-created_date', 20);
+        const reviewable = freshParticipants.filter((p) => !p.is_creator);
+        let newStatus = 'pending';
+        if (reviewable.length === 0) newStatus = 'approved';
+        else if (reviewable.some((p) => p.approval_status === 'rejected')) newStatus = 'rejected';
+        else if (reviewable.every((p) => p.approval_status === 'approved')) newStatus = 'approved';
+        await base44.asServiceRole.entities.Game.update(gameId, { status: newStatus });
+        console.log('[rejectGameReview] recalculated', { gameId, newStatus });
+
+        step = 'finalize_response';
+        return Response.json({ success: true, participantStatus: 'rejected', gameStatus: newStatus });
+
+      } catch (err) {
+        console.error('[rejectGameReview] FAILED', { step, gameId, callerAuthUserId, callerProfileId, error: err?.message });
+        return Response.json({ error: err.message || 'Reject failed' }, { status: 500 });
+      }
+    }
+
     // ── recalculateGameStatus ─────────────────────────────────────────────────
     // Uses asServiceRole to read ALL participants and set the correct game status.
     if (action === 'recalculateGameStatus') {
