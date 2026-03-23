@@ -116,7 +116,8 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
         }
 
         // Participant path: use backend so asServiceRole reads all participant rows safely.
-        const callerAuthUserId = auth?.currentUser?.user_id || null;
+        // authUserId is the Auth User ID (profile.user_id) — use auth.authUserId from context, not currentUser.user_id.
+        const callerAuthUserId = auth?.authUserId || auth?.currentUser?.user_id || null;
         const assembled = await getGameDetailsForParticipant(gameId, callerAuthUserId);
         if (!assembled) { onClose(); return; }
         setFetchedGame(assembled);
