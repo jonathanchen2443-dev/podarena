@@ -135,8 +135,15 @@ export default function Pod() {
     setRequesting(true);
     try {
       await requestJoinPOD(podId, authUserId, currentUser.id);
-      const updated = await getMyMembership(podId, authUserId);
-      setMyMembership(updated);
+      // Reload via backend to get fresh membership state
+      const res = await base44.functions.invoke('publicProfiles', {
+        action: 'podPageData',
+        podId,
+        callerAuthUserId: authUserId,
+        callerProfileId: currentUser.id,
+      });
+      const data = res.data || {};
+      if (data.myMembership) setMyMembership(data.myMembership);
       toast.success("Join request sent! Waiting for admin approval.");
     } catch (err) {
       toast.error(err.message || "Failed to send request.");
