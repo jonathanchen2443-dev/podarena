@@ -209,6 +209,16 @@ export default function Pod() {
           </div>
         </div>
 
+        {/* Log a Game — active members only */}
+        {isActiveMember && (
+          <Button
+            onClick={() => navigate(`${createPageUrl("LogGame")}?podId=${podId}`)}
+            className="w-full ds-btn-primary h-10 rounded-xl text-sm font-semibold mt-3 gap-2"
+          >
+            <PlusCircle className="w-4 h-4" /> Log a Game
+          </Button>
+        )}
+
         {/* Join CTA for non-members */}
         {canRequestJoin && (
           <Button
