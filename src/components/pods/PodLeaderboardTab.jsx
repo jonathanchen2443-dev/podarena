@@ -32,10 +32,6 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
   const isActiveMember = myMembership?.membership_status === "active";
   const hasPendingOrInvite = myMembership && ["pending_request", "invited_pending"].includes(myMembership.membership_status);
 
-  function handleLogGame() {
-    navigate(`${createPageUrl("LogGame")}?contextType=pod&podId=${podId}&podName=${encodeURIComponent(pod.pod_name)}`);
-  }
-
   if (loading) {
     return <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" /></div>;
   }
