@@ -305,5 +305,14 @@ export default function Dashboard() {
 
   if (!data) return null;
 
-  return <AuthDashboard data={data} displayName={displayName} auth={auth} />;
+  async function refreshActivity() {
+    // Invalidate cache and reload only recent games without spinner-blocking the whole page
+    invalidateDashboardCache(currentUser?.id);
+    try {
+      const result = await getDashboardData({ ...auth, _bustCache: true });
+      if (result) setData(result);
+    } catch (_) {}
+  }
+
+  return <AuthDashboard data={data} displayName={displayName} auth={auth} onRefreshActivity={refreshActivity} />;
 }
