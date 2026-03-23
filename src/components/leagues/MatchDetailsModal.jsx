@@ -27,10 +27,13 @@ function resultLabel(p) {
 
 function ParticipantRow({ p, onNavigate }) {
   const result = resultLabel(p);
-  // Deck display uses snapshot only — never reads another user's live Deck entity
-  const colors = p.deck?.color_identity || [];
-  const hasRealColors = colors.some((c) => ["W","U","B","R","G"].includes(c));
-  const deckVariant = !p.deck ? "didNotPlay" : hasRealColors ? "deck" : "colorless";
+  // Resolve deck display: prefer p.deck object, fall back to top-level snapshot fields.
+  // This handles cases where the backend sets deck_name_at_time but p.deck wasn't assembled.
+  const deckName = p.deck?.name || p.deck_name_at_time || null;
+  const deckColors = p.deck?.color_identity || p.color_identity || [];
+  const hasRealColors = deckColors.some((c) => ["W","U","B","R","G"].includes(c));
+  const hasDeck = !!deckName;
+  const deckVariant = !hasDeck ? "didNotPlay" : hasRealColors ? "deck" : "colorless";
 
   const approvalIcon =
     p.approval_status === "approved" ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" /> :
@@ -55,8 +58,8 @@ function ParticipantRow({ p, onNavigate }) {
           {p.display_name}
           {p.is_creator && <span className="ml-1 text-xs text-gray-500">(recorder)</span>}
         </button>
-        {p.deck ? (
-          <p className="text-xs text-gray-500 truncate">{p.deck.name}</p>
+        {hasDeck ? (
+          <p className="text-xs text-gray-500 truncate">{deckName}</p>
         ) : (
           <p className="text-xs text-gray-600 italic">
             {p.approval_status === "pending" ? "Deck choice pending" : "No deck"}
