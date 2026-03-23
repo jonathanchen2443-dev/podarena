@@ -68,7 +68,7 @@ function ParticipantRow({ p, onNavigate }) {
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         {approvalIcon}
-        <RecentDecksIcon variant={deckVariant} colors={colors} size={20} title={p.deck?.name} />
+        <RecentDecksIcon variant={deckVariant} colors={deckColors} size={20} title={deckName} />
         {result && <span className={`text-xs font-semibold ${result.cls}`}>{result.text}</span>}
         {p.placement != null && <span className="text-xs text-gray-500">#{p.placement}</span>}
       </div>
