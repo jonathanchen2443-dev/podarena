@@ -73,7 +73,11 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
                 <span className={`text-sm font-bold ${idx === 0 ? "text-amber-400" : idx === 1 ? "text-gray-300" : idx === 2 ? "text-amber-700" : "text-gray-600"}`}>
                   {idx + 1}
                 </span>
-                <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => entry.profileId && navigate(ROUTES.USER_PROFILE(entry.profileId))}
+                  className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity text-left"
+                >
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} className="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="" />
                   ) : (
@@ -82,7 +86,7 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
                     </div>
                   )}
                   <span className="text-white text-sm truncate">{profile?.display_name || "Unknown"}</span>
-                </div>
+                </button>
                 <span className="text-gray-300 text-sm text-center">{entry.games}</span>
                 <span className="text-gray-300 text-sm text-center">{entry.wins}</span>
                 <span className="text-white text-sm font-semibold text-center">{entry.points}</span>
