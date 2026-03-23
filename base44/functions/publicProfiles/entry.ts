@@ -917,11 +917,23 @@ Deno.serve(async (req) => {
         pendingApprovalsCount = pendingGames.length;
       }
 
+      // Enrich recent games with pod_name
+      const podIdsForNames = [...new Set(recentGames.map((g) => g.pod_id).filter(Boolean))];
+      let podNameMap = {};
+      if (podIdsForNames.length > 0) {
+        const podRows = await base44.asServiceRole.entities.POD.filter({ id: { $in: podIdsForNames } }, '-created_date', 20);
+        podNameMap = Object.fromEntries(podRows.map((p) => [p.id, p.pod_name]));
+      }
+      const enrichedRecentGames = recentGames.map((g) => ({
+        ...g,
+        pod_name: g.pod_id ? (podNameMap[g.pod_id] || null) : null,
+      }));
+
       return Response.json({
         myPodsCount: memberships.length,
         myDecksCount: decks.length,
         pendingApprovalsCount,
-        recentGames,
+        recentGames: enrichedRecentGames,
       });
     }
 
