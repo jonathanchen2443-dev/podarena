@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { Layers, Trophy, Clock, Info, Users, ArrowLeft } from "lucide-react";
+import { Layers, Trophy, Clock, Info, Users, ArrowLeft, PlusCircle } from "lucide-react";
 import PodLeaderboardTab from "@/components/pods/PodLeaderboardTab";
 import PodActivityTab from "@/components/pods/PodActivityTab";
 import PodInfoTab from "@/components/pods/PodInfoTab";
