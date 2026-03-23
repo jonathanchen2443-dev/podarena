@@ -38,13 +38,8 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
 
   return (
     <div className="space-y-4">
-      {/* CTA */}
-      {isActiveMember ? (
-        <Button onClick={handleLogGame} className="w-full ds-btn-primary h-11 rounded-xl text-sm font-semibold flex items-center gap-2">
-          <Swords className="w-4 h-4" />
-          Log a Game
-        </Button>
-      ) : hasPendingOrInvite ? (
+      {/* Pending/invite status (no CTA button — Log a Game is on the POD card) */}
+      {!isActiveMember && hasPendingOrInvite ? (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-center">
           <Clock className="w-5 h-5 text-amber-400 mx-auto mb-1" />
           <p className="text-amber-400 text-sm font-medium">
