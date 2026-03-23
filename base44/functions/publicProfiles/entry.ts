@@ -1300,6 +1300,149 @@ Deno.serve(async (req) => {
       return Response.json({ status: newStatus });
     }
 
+    // ── searchMyPodsForLogGame ────────────────────────────────────────────────
+    // Returns PODs the caller is an active member of, filtered by query.
+    // Used by PodSearchPicker in free POD mode inside Log Game.
+    if (action === 'searchMyPodsForLogGame') {
+      const { callerAuthUserId, callerProfileId, query: searchQ } = body;
+      let step = 'validate_input';
+      try {
+        if (!callerAuthUserId || !callerProfileId) {
+          return Response.json({ error: 'callerAuthUserId and callerProfileId required' }, { status: 400 });
+        }
+
+        step = 'validate_identity';
+        const callerRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerRows.length || callerRows[0].user_id !== callerAuthUserId) {
+          console.error('[searchMyPodsForLogGame] identity mismatch', { step, callerAuthUserId, callerProfileId });
+          return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+        }
+
+        step = 'load_memberships';
+        const memberships = await base44.asServiceRole.entities.PODMembership.filter({
+          user_id: callerAuthUserId,
+          membership_status: 'active',
+        });
+        const podIds = [...new Set(memberships.map((m) => m.pod_id).filter(Boolean))];
+        console.log('[searchMyPodsForLogGame] step=load_memberships podCount=', podIds.length, 'callerAuthUserId=', callerAuthUserId);
+
+        if (podIds.length === 0) return Response.json({ pods: [] });
+
+        step = 'load_pods';
+        const pods = await base44.asServiceRole.entities.POD.filter({
+          id: { $in: podIds },
+          status: 'active',
+        }, '-created_date', 100);
+
+        step = 'filter_search';
+        const q = (searchQ || '').trim().toLowerCase();
+        const filtered = q
+          ? pods.filter((p) =>
+              p.pod_name?.toLowerCase().includes(q) ||
+              p.pod_code?.toLowerCase().includes(q)
+            )
+          : pods;
+
+        step = 'build_response';
+        const result = filtered.slice(0, 20).map((p) => ({
+          id: p.id,
+          pod_name: p.pod_name,
+          pod_code: p.pod_code,
+          image_url: p.image_url || null,
+          status: p.status,
+        }));
+        console.log('[searchMyPodsForLogGame] success query=', q, 'results=', result.length);
+        return Response.json({ pods: result });
+
+      } catch (err) {
+        console.error('[searchMyPodsForLogGame] FAILED', { step, callerAuthUserId, callerProfileId, error: err?.message });
+        return Response.json({ error: err.message || 'searchMyPodsForLogGame failed' }, { status: 500 });
+      }
+    }
+
+    // ── logGamePodContext ─────────────────────────────────────────────────────
+    // Loads the POD record and its active members for the LogGame locked POD flow.
+    // Used when LogGame is opened with a podId in the URL (from a POD page).
+    if (action === 'logGamePodContext') {
+      const { podId: ctxPodId, callerAuthUserId, callerProfileId } = body;
+      let step = 'validate_input';
+      try {
+        if (!ctxPodId) return Response.json({ error: 'podId required' }, { status: 400 });
+        if (!callerAuthUserId || !callerProfileId) {
+          return Response.json({ error: 'callerAuthUserId and callerProfileId required' }, { status: 400 });
+        }
+
+        step = 'validate_identity';
+        const callerRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerRows.length || callerRows[0].user_id !== callerAuthUserId) {
+          console.error('[logGamePodContext] identity mismatch', { step, ctxPodId, callerAuthUserId, callerProfileId });
+          return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+        }
+
+        step = 'load_pod';
+        const podArr = await base44.asServiceRole.entities.POD.filter({ id: ctxPodId });
+        if (!podArr.length) {
+          console.error('[logGamePodContext] pod not found', { step, ctxPodId });
+          return Response.json({ notFound: true, error: 'POD not found' }, { status: 404 });
+        }
+        const pod = podArr[0];
+        if (pod.status !== 'active') {
+          return Response.json({ error: 'POD is not active' }, { status: 400 });
+        }
+
+        step = 'load_memberships';
+        const allMemberships = await base44.asServiceRole.entities.PODMembership.filter({ pod_id: ctxPodId });
+        const activeMembers = allMemberships.filter((m) => m.membership_status === 'active');
+
+        // Verify caller is an active member
+        const callerMembership = activeMembers.find((m) => m.user_id === callerAuthUserId);
+        if (!callerMembership) {
+          console.error('[logGamePodContext] caller not active member', { step, ctxPodId, callerAuthUserId });
+          return Response.json({ error: 'Forbidden: you are not an active member of this POD' }, { status: 403 });
+        }
+
+        step = 'derive_member_payload';
+        const profileIds = [...new Set(activeMembers.map((m) => m.profile_id).filter(Boolean))];
+        let profileMap = {};
+        if (profileIds.length > 0) {
+          const profileRows = await base44.asServiceRole.entities.Profile.filter(
+            { id: { $in: profileIds } }, '-created_date', 200
+          );
+          profileMap = Object.fromEntries(profileRows.map((p) => [p.id, p]));
+        }
+
+        const members = activeMembers.map((m) => {
+          const p = profileMap[m.profile_id] || {};
+          return {
+            profileId: m.profile_id,
+            user_id: m.user_id || null,
+            display_name: p.display_name || 'Unknown',
+            avatar_url: p.avatar_url || null,
+          };
+        }).filter((m) => m.profileId);
+
+        step = 'build_response';
+        const safePod = {
+          id: pod.id,
+          pod_name: pod.pod_name,
+          pod_code: pod.pod_code,
+          image_url: pod.image_url || null,
+          status: pod.status,
+        };
+
+        console.log('[logGamePodContext] success podId=', ctxPodId, 'memberCount=', members.length);
+        return Response.json({
+          pod: safePod,
+          members,
+          isActiveMember: true,
+        });
+
+      } catch (err) {
+        console.error('[logGamePodContext] FAILED', { step, ctxPodId: body?.podId, callerAuthUserId, callerProfileId, error: err?.message });
+        return Response.json({ error: err.message || 'logGamePodContext failed' }, { status: 500 });
+      }
+    }
+
     // ── podPageData ───────────────────────────────────────────────────────────
     // Loads all data needed for the Pod page in one call via asServiceRole.
     // Supports guests (no callerAuthUserId) for public pods.
