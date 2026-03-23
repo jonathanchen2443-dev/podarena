@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext";
-import { Button } from "@/components/ui/button";
 import { Trophy, Clock } from "lucide-react";
 import { ROUTES } from "@/components/utils/routes";
 import { getPODLeaderboard } from "@/components/services/podService";
