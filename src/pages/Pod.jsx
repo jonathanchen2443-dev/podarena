@@ -20,6 +20,33 @@ const TABS = [
   { key: "info", label: "Info", icon: Info },
 ];
 
+// ── Error states ──────────────────────────────────────────────────────────────
+function PodNotFound({ onBack }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center">
+      <Layers className="w-12 h-12 text-gray-700" />
+      <h2 className="text-white font-semibold text-lg">POD Not Found</h2>
+      <p className="text-gray-400 text-sm">This POD doesn't exist or has been removed.</p>
+      <Button onClick={onBack} variant="outline" className="gap-2 text-sm">
+        <ArrowLeft className="w-4 h-4" /> Back
+      </Button>
+    </div>
+  );
+}
+
+function PodForbidden({ onBack }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center">
+      <Layers className="w-12 h-12 text-gray-700" />
+      <h2 className="text-white font-semibold text-lg">Access Denied</h2>
+      <p className="text-gray-400 text-sm">This is a private POD. You need an invitation to view it.</p>
+      <Button onClick={onBack} variant="outline" className="gap-2 text-sm">
+        <ArrowLeft className="w-4 h-4" /> Back
+      </Button>
+    </div>
+  );
+}
+
 export default function Pod() {
   const { currentUser, authUserId, isGuest, authLoading } = useAuth();
   const navigate = useNavigate();
@@ -31,49 +58,73 @@ export default function Pod() {
   const [myMembership, setMyMembership] = useState(null);
   const [activeMemberCount, setActiveMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null); // null | "not_found" | "forbidden" | "error"
   const [activeTab, setActiveTab] = useState("leaderboard");
   const [showEditModal, setShowEditModal] = useState(false);
   const [requesting, setRequesting] = useState(false);
-  const [selectedGame, setSelectedGame] = useState(null); // { gameId, podId }
+  const [selectedGame, setSelectedGame] = useState(null);
 
   const load = useCallback(async () => {
-    if (!podId) return;
+    if (!podId) { setLoadError("not_found"); setLoading(false); return; }
     setLoading(true);
+    setLoadError(null);
     try {
-      const podData = await base44.entities.POD.get(podId).catch(() => null);
-      if (!podData) { navigate(createPageUrl("MyPods")); return; }
-      setPod(podData);
+      const res = await base44.functions.invoke('publicProfiles', {
+        action: 'podPageData',
+        podId,
+        callerAuthUserId: authUserId || null,
+        callerProfileId: currentUser?.id || null,
+      });
+      const data = res.data || {};
 
-      const activeMembers = await base44.entities.PODMembership.filter({ pod_id: podId, membership_status: "active" });
-      setActiveMemberCount(activeMembers.length);
+      if (data.notFound) { setLoadError("not_found"); return; }
+      if (data.forbidden) { setLoadError("forbidden"); return; }
+      if (data.error && !data.pod) { setLoadError("error"); return; }
 
-      if (!isGuest && currentUser && authUserId) {
-        const membership = await getMyMembership(podId, authUserId);
-        setMyMembership(membership);
+      setPod(data.pod);
+      setActiveMemberCount(data.activeMemberCount || 0);
+      setMyMembership(data.myMembership || null);
 
-        // Handle invite flow
-        if (inviteFlag && (!membership || ["rejected", "left", "removed"].includes(membership?.membership_status))) {
+      // Handle invite flow — create invited_pending membership if eligible
+      if (inviteFlag && !isGuest && currentUser && authUserId) {
+        const ms = data.myMembership;
+        const noLiveMembership = !ms || ["rejected", "left", "removed"].includes(ms.membership_status);
+        if (noLiveMembership) {
           try {
             await base44.entities.PODMembership.create({
               pod_id: podId,
-              user_id: authUserId,       // Auth User ID — for RLS
-              profile_id: currentUser.id, // Profile ID — for display/joins
+              user_id: authUserId,
+              profile_id: currentUser.id,
               role: "member",
               membership_status: "invited_pending",
               source: "invite",
               invited_at: new Date().toISOString(),
               is_favorite: false,
             });
-            const updated = await getMyMembership(podId, authUserId);
-            setMyMembership(updated);
             toast.success("Invite received! Waiting for admin approval.");
+            // Reload to get fresh membership state
+            const res2 = await base44.functions.invoke('publicProfiles', {
+              action: 'podPageData',
+              podId,
+              callerAuthUserId: authUserId,
+              callerProfileId: currentUser.id,
+            });
+            const data2 = res2.data || {};
+            if (data2.pod) {
+              setPod(data2.pod);
+              setActiveMemberCount(data2.activeMemberCount || 0);
+              setMyMembership(data2.myMembership || null);
+            }
           } catch (_) {}
         }
       }
+    } catch (err) {
+      console.error('[Pod] load failed', err);
+      setLoadError("error");
     } finally {
       setLoading(false);
     }
-  }, [podId, isGuest, currentUser, authUserId, inviteFlag]);
+  }, [podId, authUserId, currentUser?.id, inviteFlag, isGuest]);
 
   useEffect(() => {
     if (!authLoading) load();
