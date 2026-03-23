@@ -369,7 +369,7 @@ export default function LogGame() {
                 </div>
               </div>
             ) : (
-              <PodSearchPicker authUserId={authUserId} onSelect={handlePodSelected} />
+              <PodSearchPicker authUserId={authUserId} profileId={currentUser?.id} onSelect={handlePodSelected} />
             )}
           </div>
         )}
