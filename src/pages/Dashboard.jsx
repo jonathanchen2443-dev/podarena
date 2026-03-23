@@ -151,6 +151,13 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-300">Recent Activity</h2>
+          <button
+            onClick={onRefreshActivity}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800/60 border border-gray-700/50 text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+            title="Refresh activity"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {recentGames.length === 0 ? (
