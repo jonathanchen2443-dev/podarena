@@ -189,46 +189,24 @@ export async function createGameWithParticipants({
 }
 
 /**
- * Approve a game — updates the participant's own GameParticipant row.
- * Deck selection is required and saved as a snapshot on the participant row.
+ * Approve a game — routed through backend action (approveGameReview) for RLS-safe writes.
+ * Works for all user types including regular non-founder users.
  *
  * @param {string} gameId
  * @param {string} approverAuthUserId  - Auth User ID ({{user.id}})
- * @param {string} approverProfileId   - Profile.id (for participant row update)
+ * @param {string} approverProfileId   - Profile.id
  * @param {string} deckId              - required: the deck this participant played
  */
 export async function approveGame(gameId, approverAuthUserId, approverProfileId, deckId) {
-  // Filter by both game_id and participant_user_id to make RLS intent explicit
-  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId, participant_user_id: approverAuthUserId });
-  const myParticipant = participants.find(
-    (p) => p.participant_user_id === approverAuthUserId && p.approval_status === "pending"
-  );
-  if (!myParticipant) throw new Error("No pending review found for you on this game.");
-
-  const participantUpdate = {
-    approval_status: "approved",
-    approved_at: new Date().toISOString(),
-    rejected_at: null,
-  };
-
-  if (deckId) {
-    participantUpdate.selected_deck_id = deckId;
-    const decks = await base44.entities.Deck.filter({ id: deckId });
-    if (decks[0]) {
-      const snap = _buildDeckSnapshot(decks[0]);
-      participantUpdate.deck_snapshot_json = snap;
-      participantUpdate.deck_name_at_time = snap.name;
-      participantUpdate.commander_name_at_time = snap.commander_name;
-      participantUpdate.commander_image_at_time = snap.commander_image_url;
-    }
-  }
-
-  await base44.entities.GameParticipant.update(myParticipant.id, participantUpdate);
-
-  // Mark the review notification as read
-  await _markReviewNotificationRead(gameId, approverAuthUserId);
-
-  await recalculateGameStatus(gameId);
+  const res = await base44.functions.invoke('publicProfiles', {
+    action: 'approveGameReview',
+    gameId,
+    callerAuthUserId: approverAuthUserId,
+    callerProfileId: approverProfileId,
+    deckId,
+  });
+  if (res.data?.error) throw new Error(res.data.error);
+  return res.data;
 }
 
 /**
