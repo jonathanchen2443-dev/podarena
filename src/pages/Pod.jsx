@@ -165,11 +165,20 @@ export default function Pod() {
     setSelectedGame({ gameId, podId: gamePodId || podId });
   }
 
+  function goBack() { navigate(-1); }
+
   if (authLoading || loading) {
     return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  if (!pod) return null;
+  if (loadError === "not_found") return <PodNotFound onBack={goBack} />;
+  if (loadError === "forbidden") return <PodForbidden onBack={goBack} />;
+  if (loadError === "error" || !pod) return (
+    <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center">
+      <p className="text-gray-400 text-sm">Could not load POD. Please try again.</p>
+      <Button onClick={load} variant="outline" className="text-sm">Retry</Button>
+    </div>
+  );
 
   const isActiveMember = myMembership?.membership_status === "active";
   const hasPendingOrInvite = myMembership && ["pending_request", "invited_pending"].includes(myMembership.membership_status);
