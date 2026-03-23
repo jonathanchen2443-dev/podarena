@@ -186,7 +186,7 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
                             ? "bg-sky-500/10 text-sky-400 border-sky-500/20"
                             : "bg-purple-500/10 text-purple-400 border-purple-500/20"
                         }`}>
-                          {isCasual ? "🎲 Casual" : "⚔️ POD Game"}
+                          {isCasual ? "🎲 Casual" : `⚔️ POD${game.pod_name ? ` - ${game.pod_name}` : ""}`}
                         </span>
                         <StatusBadge status={game.status} />
                       </div>
