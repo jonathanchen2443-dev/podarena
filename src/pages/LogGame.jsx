@@ -72,50 +72,75 @@ export default function LogGame() {
     setDeckSelections({});
   }, [authLoading, currentUser?.id, mode]);
 
-  // ── Load locked POD ────────────────────────────────────────────────────────
+  // ── Load locked POD via backend (logGamePodContext) ───────────────────────
   useEffect(() => {
-    if (!podIdFromUrl || authLoading) return;
+    if (!podIdFromUrl || authLoading || !currentUser || !authUserId) return;
     setPodLoading(true);
-    base44.entities.POD.get(podIdFromUrl)
-      .then((p) => { if (p) { setPod(p); loadPodMembers(p.id); } })
-      .catch(() => {})
-      .finally(() => setPodLoading(false));
-  }, [podIdFromUrl, authLoading]);
+    base44.functions.invoke('publicProfiles', {
+      action: 'logGamePodContext',
+      podId: podIdFromUrl,
+      callerAuthUserId: authUserId,
+      callerProfileId: currentUser.id,
+    }).then((res) => {
+      const data = res.data || {};
+      if (data.error || !data.pod) {
+        console.error('[LogGame] logGamePodContext error', data.error);
+        return;
+      }
+      setPod(data.pod);
+      applyPodMembers(data.members || []);
+    }).catch((err) => {
+      console.error('[LogGame] logGamePodContext failed', err?.message);
+    }).finally(() => setPodLoading(false));
+  }, [podIdFromUrl, authLoading, currentUser?.id, authUserId]);
+
+  // Apply members list to state (shared between locked + free POD mode)
+  function applyPodMembers(rawMembers) {
+    // rawMembers from logGamePodContext: { profileId, user_id, display_name, avatar_url }
+    // rawMembers from podMembers action:  { profileId, user_id, display_name, avatar_url }
+    const members = rawMembers.map((m) => ({
+      userId: m.profileId,
+      authUserId: m.user_id,
+      display_name: m.display_name,
+      avatar_url: m.avatar_url,
+    }));
+    setPodMembers(members);
+
+    // Auto-add self if in the member list
+    if (currentUser) {
+      const selfMember = members.find((m) => m.userId === currentUser.id);
+      if (selfMember) {
+        setParticipants([currentUser.id]);
+        setMemberData({
+          [currentUser.id]: {
+            profileId: currentUser.id,
+            authUserId: selfMember.authUserId,
+            display_name: selfMember.display_name,
+            avatar_url: selfMember.avatar_url,
+          },
+        });
+        setPlacements({});
+        setDeckSelections({});
+      } else {
+        setParticipants([]);
+        setMemberData({});
+        setPlacements({});
+        setDeckSelections({});
+      }
+    }
+  }
 
   async function loadPodMembers(pId) {
     setPodMembersLoading(true);
     try {
       const res = await base44.functions.invoke('publicProfiles', {
-        action: 'podMembers',
+        action: 'logGamePodContext',
         podId: pId,
+        callerAuthUserId: authUserId,
         callerProfileId: currentUser?.id,
       });
-      const rawMembers = res.data?.members || [];
-      const members = rawMembers.map((m) => ({
-        userId: m.profileId,
-        authUserId: m.user_id,
-        display_name: m.display_name,
-        avatar_url: m.avatar_url,
-      }));
-      setPodMembers(members);
-
-      // Auto-add self if member
-      if (currentUser) {
-        const selfMember = members.find((m) => m.userId === currentUser.id);
-        if (selfMember) {
-          setParticipants([currentUser.id]);
-          setMemberData({
-            [currentUser.id]: {
-              profileId: currentUser.id,
-              authUserId: selfMember.authUserId,
-              display_name: selfMember.display_name,
-              avatar_url: selfMember.avatar_url,
-            },
-          });
-          setPlacements({});
-          setDeckSelections({});
-        }
-      }
+      const data = res.data || {};
+      applyPodMembers(data.members || []);
     } finally {
       setPodMembersLoading(false);
     }
