@@ -131,19 +131,6 @@ async function _doGetOrCreate(user) {
   return created;
 }
 
-/**
- * Build a deck snapshot from a live deck object for historical preservation.
- */
-function _buildDeckSnapshot(deck) {
-  if (!deck) return null;
-  return {
-    id: deck.id,
-    name: deck.name,
-    commander_name: deck.commander_name || null,
-    commander_image_url: deck.commander_image_url || null,
-    color_identity: deck.color_identity || [],
-  };
-}
 
 /**
  * Create a casual or POD game with participants and review notifications.
