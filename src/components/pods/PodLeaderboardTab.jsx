@@ -48,6 +48,7 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
         </div>
       ) : null}
 
+
       {leaderboard.length === 0 ? (
         <div className="py-10 text-center">
           <Trophy className="w-10 h-10 text-gray-700 mx-auto mb-3" />
