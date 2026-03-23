@@ -217,20 +217,6 @@ export async function rejectGame(gameId, approverAuthUserId, approverProfileId, 
   return res.data;
 }
 
-async function _markReviewNotificationRead(gameId, recipientAuthUserId) {
-  try {
-    const notifs = await base44.entities.Notification.filter({
-      recipient_user_id: recipientAuthUserId,
-      type: "game_review_request",
-    });
-    const pending = notifs.find((n) => n.metadata?.game_id === gameId && !n.read_at);
-    if (pending) {
-      await base44.entities.Notification.update(pending.id, { read_at: new Date().toISOString() });
-    }
-  } catch (_) {
-    // Non-critical — don't block the approval
-  }
-}
 
 export async function recalculateGameStatus(gameId) {
   // Route through backend so asServiceRole reads ALL participant rows (not just caller's own)
