@@ -210,31 +210,24 @@ export async function approveGame(gameId, approverAuthUserId, approverProfileId,
 }
 
 /**
- * Reject a game — updates the participant's own GameParticipant row.
- * No deck selection required for rejection.
+ * Reject a game — routed through backend action (rejectGameReview) for RLS-safe writes.
+ * Works for all user types including regular non-founder users.
  *
  * @param {string} gameId
  * @param {string} approverAuthUserId  - Auth User ID
  * @param {string} approverProfileId   - Profile.id
- * @param {string} reason              - optional reason (stored in notes-style, no dedicated field)
+ * @param {string} reason              - optional (not currently stored)
  */
 export async function rejectGame(gameId, approverAuthUserId, approverProfileId, reason) {
-  const participants = await base44.entities.GameParticipant.filter({ game_id: gameId, participant_user_id: approverAuthUserId });
-  const myParticipant = participants.find(
-    (p) => p.participant_user_id === approverAuthUserId && p.approval_status === "pending"
-  );
-  if (!myParticipant) throw new Error("No pending review found for you on this game.");
-
-  await base44.entities.GameParticipant.update(myParticipant.id, {
-    approval_status: "rejected",
-    rejected_at: new Date().toISOString(),
-    approved_at: null,
+  const res = await base44.functions.invoke('publicProfiles', {
+    action: 'rejectGameReview',
+    gameId,
+    callerAuthUserId: approverAuthUserId,
+    callerProfileId: approverProfileId,
+    reason: reason || '',
   });
-
-  // Mark the review notification as read
-  await _markReviewNotificationRead(gameId, approverAuthUserId);
-
-  await recalculateGameStatus(gameId);
+  if (res.data?.error) throw new Error(res.data.error);
+  return res.data;
 }
 
 async function _markReviewNotificationRead(gameId, recipientAuthUserId) {
