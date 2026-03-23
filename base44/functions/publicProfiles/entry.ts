@@ -1300,6 +1300,96 @@ Deno.serve(async (req) => {
       return Response.json({ status: newStatus });
     }
 
+    // ── podPageData ───────────────────────────────────────────────────────────
+    // Loads all data needed for the Pod page in one call via asServiceRole.
+    // Supports guests (no callerAuthUserId) for public pods.
+    if (action === 'podPageData') {
+      const { podId, callerAuthUserId, callerProfileId } = body;
+      let step = 'validate_input';
+      try {
+        if (!podId) return Response.json({ error: 'podId required' }, { status: 400 });
+
+        // Optional identity verification — only when both ids are provided
+        step = 'validate_identity';
+        if (callerAuthUserId && callerProfileId) {
+          const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+          if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+            console.error('[podPageData] identity mismatch', { step, podId, callerAuthUserId, callerProfileId });
+            return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+          }
+        }
+
+        // Load POD
+        step = 'load_pod';
+        const podArr = await base44.asServiceRole.entities.POD.filter({ id: podId });
+        if (!podArr.length) {
+          console.error('[podPageData] pod not found', { step, podId, callerAuthUserId });
+          return Response.json({ notFound: true, error: 'POD not found' }, { status: 404 });
+        }
+        const pod = podArr[0];
+
+        // Load memberships
+        step = 'load_memberships';
+        const allMemberships = await base44.asServiceRole.entities.PODMembership.filter({ pod_id: podId });
+        const activeMembers = allMemberships.filter((m) => m.membership_status === 'active');
+        const activeMemberCount = activeMembers.length;
+
+        // Resolve caller's membership
+        let myMembership = null;
+        if (callerAuthUserId) {
+          // Primary match: user_id; fallback: profile_id
+          myMembership = allMemberships.find((m) => m.user_id === callerAuthUserId) || null;
+          if (!myMembership && callerProfileId) {
+            myMembership = allMemberships.find((m) => m.profile_id === callerProfileId) || null;
+          }
+        }
+
+        // Derive access
+        step = 'derive_access';
+        const isActiveMember = myMembership?.membership_status === 'active';
+        const hasPendingOrInvite = myMembership && ['pending_request', 'invited_pending'].includes(myMembership.membership_status);
+        const isAdmin = myMembership?.role === 'admin' && isActiveMember;
+
+        // Access rules: public pods viewable by all; private pods require a relationship
+        const hasRelationship = isActiveMember || hasPendingOrInvite;
+        if (!pod.is_public && !hasRelationship) {
+          console.error('[podPageData] forbidden: private pod, no relationship', { step, podId, callerAuthUserId, access: 'forbidden' });
+          return Response.json({ forbidden: true, error: 'Forbidden: this is a private POD' }, { status: 403 });
+        }
+
+        // Build response
+        step = 'build_response';
+        const safePod = {
+          id: pod.id,
+          pod_name: pod.pod_name,
+          pod_code: pod.pod_code,
+          description: pod.description || null,
+          image_url: pod.image_url || null,
+          max_members: pod.max_members,
+          is_public: pod.is_public,
+          status: pod.status,
+          admin_user_id: pod.admin_user_id || null,
+          admin_profile_id: pod.admin_profile_id || null,
+        };
+
+        step = 'finalize_response';
+        console.log('[podPageData] success', { podId, callerAuthUserId, isActiveMember, isAdmin, activeMemberCount });
+        return Response.json({
+          pod: safePod,
+          activeMemberCount,
+          myMembership: myMembership || null,
+          isActiveMember,
+          hasPendingOrInvite,
+          isAdmin,
+          canRequestJoin: !!(callerAuthUserId && !isActiveMember && !hasPendingOrInvite),
+        });
+
+      } catch (err) {
+        console.error('[podPageData] FAILED', { step, podId, callerAuthUserId, callerProfileId, error: err?.message });
+        return Response.json({ error: err.message || 'podPageData failed' }, { status: 500 });
+      }
+    }
+
     // ── acceptPodInvite ───────────────────────────────────────────────────────
     if (action === 'acceptPodInvite') {
       const { membershipId, callerAuthUserId } = body;
