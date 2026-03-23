@@ -87,12 +87,22 @@ function DashboardSkeleton() {
 }
 
 // ── Authenticated view ────────────────────────────────────────────────────────
-function AuthDashboard({ data, displayName, auth }) {
+function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
   const { pendingApprovalsCount, myPodsCount, myDecksCount, recentGames } = data;
   const [casualModal, setCasualModal] = useState(null);
 
   function handleGameClick(game) {
-    setCasualModal({ gameId: game.id, podId: game.pod_id || null });
+    // Always open via participant path — works for both casual and pod pending games.
+    // Passing podId only when the game is NOT pending for current user (view-only pod context).
+    // For pending games, participant path is correct and avoids "not a participant" error.
+    const myAuthUserId = auth.authUserId || auth.currentUser?.user_id;
+    const isPendingReview = game.status === "pending";
+    setCasualModal({
+      gameId: game.id,
+      // For pending reviews, skip podId so the modal uses the participant path (not podGameDetails)
+      podId: isPendingReview ? null : (game.pod_id || null),
+      pod_name: game.pod_name || null,
+    });
   }
 
   return (
