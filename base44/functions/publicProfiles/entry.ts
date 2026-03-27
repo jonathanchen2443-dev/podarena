@@ -341,11 +341,19 @@ Deno.serve(async (req) => {
         profileMap = Object.fromEntries(profiles.map((p) => [p.id, sanitizeProfile(p)]));
       }
 
+      // Fetch pod name for the assembled game response
+      let podName = null;
+      if (game.pod_id) {
+        const podArr2 = await base44.asServiceRole.entities.POD.filter({ id: game.pod_id });
+        podName = podArr2[0]?.pod_name || null;
+      }
+
       // Assemble sanitized participant rows with inlined profile display data
       const participants = participantArr.map((p) => {
         const profile = profileMap[p.participant_profile_id] || {};
         return {
           userId: p.participant_profile_id,
+          authUserId: p.participant_user_id || null,
           display_name: profile.display_name || "Unknown",
           avatar_url: profile.avatar_url || null,
           is_creator: p.is_creator || false,
@@ -356,6 +364,7 @@ Deno.serve(async (req) => {
             name: p.deck_name_at_time,
             color_identity: p.deck_snapshot_json?.color_identity || [],
             commander_name: p.commander_name_at_time || null,
+            commander_image: p.commander_image_at_time || null,
           } : null,
         };
       });
@@ -368,6 +377,7 @@ Deno.serve(async (req) => {
         notes: game.notes || "",
         context_type: game.context_type,
         pod_id: game.pod_id,
+        pod_name: podName,
         participants,
         approvalSummary: {
           total: nonCreators.length,
@@ -608,6 +618,9 @@ Deno.serve(async (req) => {
               played_at: game.played_at || game.created_date,
               created_date: game.created_date,
               notes: game.notes || '',
+              context_type: game.context_type || 'casual',
+              pod_id: game.pod_id || null,
+              pod_name: pod?.pod_name || null,
               participants,
               approvalSummary,
             },
@@ -1057,6 +1070,13 @@ Deno.serve(async (req) => {
         };
       });
 
+      // Fetch pod name
+      let podNameForGame = null;
+      if (game.pod_id) {
+        const podArrForGame = await base44.asServiceRole.entities.POD.filter({ id: game.pod_id });
+        podNameForGame = podArrForGame[0]?.pod_name || null;
+      }
+
       const nonCreators = participantArr.filter((p) => !p.is_creator);
       const assembled = {
         id: game.id,
@@ -1065,6 +1085,7 @@ Deno.serve(async (req) => {
         notes: game.notes || '',
         context_type: game.context_type || 'casual',
         pod_id: game.pod_id || null,
+        pod_name: podNameForGame,
         participants,
         approvalSummary: {
           total: nonCreators.length,
@@ -1581,6 +1602,112 @@ Deno.serve(async (req) => {
         decided_at: new Date().toISOString(),
       });
       return Response.json({ success: true });
+    }
+
+    // ── inboxSummary ──────────────────────────────────────────────────────────
+    // Returns unread counts for the top bar badge and inbox filters.
+    // Single source of truth — same query used by both TopBar and Inbox.
+    if (action === 'inboxSummary') {
+      const { callerAuthUserId, callerProfileId } = body;
+      if (!callerAuthUserId || !callerProfileId) return Response.json({ error: 'callerAuthUserId and callerProfileId required' }, { status: 400 });
+
+      const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+      if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      const [notifications, pendingParticipantRows] = await Promise.all([
+        base44.asServiceRole.entities.Notification.filter({ recipient_user_id: callerAuthUserId }, '-created_date', 200),
+        base44.asServiceRole.entities.GameParticipant.filter({
+          participant_user_id: callerAuthUserId,
+          approval_status: 'pending',
+          is_creator: false,
+        }, '-created_date', 100),
+      ]);
+
+      // For pending approvals count: only count games that are still pending
+      let pendingApprovalsCount = 0;
+      if (pendingParticipantRows.length > 0) {
+        const gameIds = [...new Set(pendingParticipantRows.map((p) => p.game_id).filter(Boolean))];
+        const pendingGames = await base44.asServiceRole.entities.Game.filter({ id: { $in: gameIds }, status: 'pending' });
+        pendingApprovalsCount = pendingGames.length;
+      }
+
+      const podInviteNotifs = notifications.filter((n) => n.type === 'pod_invite');
+      const systemNotifs = notifications.filter((n) => n.type === 'system_message' || !n.type);
+
+      const unreadInvites = podInviteNotifs.filter((n) => !n.read_at).length;
+      const unreadSystem = systemNotifs.filter((n) => !n.read_at).length;
+      const totalUnread = pendingApprovalsCount + unreadInvites + unreadSystem;
+
+      return Response.json({
+        totalUnread,
+        pendingApprovalsCount,
+        unreadInvites,
+        unreadSystem,
+      });
+    }
+
+    // ── deletePOD ─────────────────────────────────────────────────────────────
+    // Permanently deletes a POD. Admin-only. Cleans up memberships and notifications.
+    // Game history is preserved (games/participants are kept but pod_id reference remains
+    // as an archived reference — games are not deleted to preserve historical records).
+    if (action === 'deletePOD') {
+      const { podId: delPodId, callerAuthUserId, callerProfileId } = body;
+      let step = 'validate_input';
+      try {
+        if (!delPodId || !callerAuthUserId || !callerProfileId) {
+          return Response.json({ error: 'podId, callerAuthUserId, callerProfileId required' }, { status: 400 });
+        }
+
+        step = 'validate_identity';
+        const callerRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerRows.length || callerRows[0].user_id !== callerAuthUserId) {
+          return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+        }
+
+        step = 'validate_admin';
+        const adminMembership = await base44.asServiceRole.entities.PODMembership.filter({
+          pod_id: delPodId, user_id: callerAuthUserId, role: 'admin', membership_status: 'active',
+        });
+        if (adminMembership.length === 0) {
+          return Response.json({ error: 'Forbidden: admin access required' }, { status: 403 });
+        }
+
+        step = 'load_pod';
+        const podRows = await base44.asServiceRole.entities.POD.filter({ id: delPodId });
+        if (!podRows.length) return Response.json({ error: 'POD not found' }, { status: 404 });
+
+        // Clean up all memberships for this pod
+        step = 'delete_memberships';
+        const allMemberships = await base44.asServiceRole.entities.PODMembership.filter({ pod_id: delPodId });
+        await Promise.all(allMemberships.map((m) =>
+          base44.asServiceRole.entities.PODMembership.delete(m.id).catch(() => {})
+        ));
+        console.log('[deletePOD] deleted memberships', allMemberships.length, 'for pod', delPodId);
+
+        // Clean up pod_invite notifications for this pod
+        step = 'delete_notifications';
+        const podNotifs = await base44.asServiceRole.entities.Notification.filter({ pod_id: delPodId });
+        await Promise.all(podNotifs.map((n) =>
+          base44.asServiceRole.entities.Notification.delete(n.id).catch(() => {})
+        ));
+        console.log('[deletePOD] deleted notifications', podNotifs.length, 'for pod', delPodId);
+
+        // Delete the POD record
+        step = 'delete_pod';
+        await base44.asServiceRole.entities.POD.delete(delPodId);
+        console.log('[deletePOD] deleted pod', delPodId);
+
+        // Note: Games and GameParticipants are preserved intentionally.
+        // They retain pod_id as a historical reference but the POD record is gone.
+        // This is the safest default — game history is not orphaned destructively.
+
+        return Response.json({ success: true });
+      } catch (err) {
+        console.error('[deletePOD] FAILED', { step, delPodId, callerAuthUserId, error: err?.message });
+        return Response.json({ error: err.message || 'Delete POD failed' }, { status: 500 });
+      }
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });

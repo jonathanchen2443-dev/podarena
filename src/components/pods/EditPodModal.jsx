@@ -149,23 +149,21 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
 
             <div className="border-t border-gray-700/50" />
 
-            {/* Public / Private toggle */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-white font-medium">{isPublic ? "Public POD" : "Private POD"}</p>
-                <p className="text-xs text-gray-500">{isPublic ? "Discoverable in Explore" : "Not listed publicly. Invite only."}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPublic((v) => !v)}
-                className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200"
-                style={{ backgroundColor: isPublic ? "rgb(var(--ds-primary-rgb))" : "#4B5563" }}
-              >
-                <span
-                  className="absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
-                  style={{ transform: isPublic ? "translateX(22px)" : "translateX(4px)" }}
+            {/* Private POD checkbox */}
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!isPublic}
+                  onChange={(e) => setIsPublic(!e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 cursor-pointer"
+                  style={{ accentColor: "rgb(var(--ds-primary-rgb))" }}
                 />
-              </button>
+                <span className="text-sm text-white font-medium">Private POD</span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1.5 ml-7">
+                Private PODs can only be joined via invite link. They do not show a request to join button.
+              </p>
             </div>
           </div>
 

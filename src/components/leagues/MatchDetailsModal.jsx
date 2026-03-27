@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Trophy, User, CheckCircle, XCircle, Clock, ChevronDown, Loader2 } from "lucide-react";
+import { X, Trophy, User, CheckCircle, XCircle, Clock, ChevronDown, Loader2, Layers } from "lucide-react";
 import { format } from "date-fns";
 import { approveGame, rejectGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
@@ -133,7 +133,8 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
   const game = gameProp || fetchedGame;
 
   const currentProfileId = auth.currentUser?.id;
-  const currentAuthUserId = auth.currentUser?.user_id || null;
+  // auth.authUserId is the canonical Auth User ID from context — always prefer over currentUser.user_id
+  const currentAuthUserId = auth.authUserId || auth.currentUser?.user_id || null;
 
   // canAct: I have a pending review row — derived from GameParticipant, not GameApproval
   const myParticipant = game?.participants?.find((p) => p.authUserId === currentAuthUserId);
@@ -235,6 +236,17 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+          {/* POD identity row — POD games only */}
+          {game.context_type === "pod" && (game.pod_name || game.pod_id) && (
+            <div className="flex items-center gap-2 bg-gray-800/60 border border-gray-700/50 rounded-xl px-3 py-2">
+              <Layers className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
+              <span className="text-xs text-gray-300 font-medium truncate">
+                {game.pod_name || "POD Game"}
+              </span>
+              <span className="ml-auto text-xs text-gray-500 flex-shrink-0">POD</span>
+            </div>
+          )}
+
           {/* Date */}
           <div>
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Date</p>

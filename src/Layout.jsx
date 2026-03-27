@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import { User, Bell } from "lucide-react";
 import { ROUTES } from "@/components/utils/routes";
 import { onInboxUpdated } from "@/components/services/inboxBus";
-import { listMyPendingApprovals } from "@/components/services/gameService";
+import { fetchInboxSummary } from "@/components/services/inboxCountService";
 import TopBar from "@/components/shell/TopBar";
 import BottomNav from "@/components/shell/BottomNav";
 import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
@@ -127,19 +126,11 @@ function AuthActionSlot() {
   const fetchUnread = useCallback(async () => {
     if (!currentUser || !authUserId) return;
     try {
-      // authUserId = Auth User ID from context (profile.user_id) — no extra me() call needed
-      // Notification.recipient_user_id uses Auth User ID for RLS
-      const [notifs, approvals] = await Promise.all([
-        base44.entities.Notification.list("-created_date", 100).then(
-          (list) => list.filter((n) => n.recipient_user_id === authUserId)
-        ),
-        listMyPendingApprovals({ isGuest: false, currentUser, authUserId, isAuthenticated: true }),
-      ]);
-      const unreadNotifs = notifs.filter((n) => !n.read_at).length;
-      const count = unreadNotifs + approvals.length;
-      setUnreadCount(count);
+      // Use the shared inboxCountService — same source of truth as Inbox page
+      const summary = await fetchInboxSummary(authUserId, currentUser.id);
+      setUnreadCount(summary.totalUnread || 0);
     } catch (_) {}
-  }, [currentUser]);
+  }, [currentUser, authUserId]);
 
   useEffect(() => {
     if (!currentUser || !authUserId) return;

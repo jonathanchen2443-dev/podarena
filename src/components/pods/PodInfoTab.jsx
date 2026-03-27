@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Users, Crown, Share2, LogOut, Settings, Check, X, AlertCircle, Copy, Link } from "lucide-react";
+import { Users, Share2, LogOut, Settings, Check, X, Trash2 } from "lucide-react";
 import {
   acceptJoinRequest,
   rejectJoinRequest,
@@ -10,6 +10,8 @@ import {
   removeMember,
 } from "@/components/services/podService";
 import { createPageUrl } from "@/utils";
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/components/utils/routes";
 import { toast } from "sonner";
 
 function MemberRow({ membership, profile, isAdmin, canManage, onRemove }) {
@@ -85,12 +87,15 @@ function PendingRequestRow({ membership, profile, onAccept, onReject }) {
 }
 
 export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onLeft, onOpenEdit }) {
-  const { currentUser } = useAuth();
+  const { currentUser, authUserId } = useAuth();
+  const navigate = useNavigate();
   const [members, setMembers] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isAdmin = myMembership?.role === "admin" && myMembership?.membership_status === "active";
   const isActiveMember = myMembership?.membership_status === "active";
@@ -146,6 +151,26 @@ export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onL
     } finally {
       setLeaving(false);
       setShowLeaveConfirm(false);
+    }
+  }
+
+  async function handleDeletePOD() {
+    if (!authUserId || !currentUser?.id) return;
+    setDeleting(true);
+    try {
+      await base44.functions.invoke('publicProfiles', {
+        action: 'deletePOD',
+        podId,
+        callerAuthUserId: authUserId,
+        callerProfileId: currentUser.id,
+      });
+      toast.success("POD deleted.");
+      navigate(ROUTES.MY_PODS);
+    } catch (err) {
+      toast.error(err.message || "Failed to delete POD.");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   }
 
@@ -234,6 +259,41 @@ export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onL
             <Settings className="w-4 h-4" />
             Edit POD
           </Button>
+        )}
+        {isAdmin && !showDeleteConfirm && (
+          <Button
+            onClick={() => setShowDeleteConfirm(true)}
+            variant="outline"
+            className="w-full h-10 rounded-xl text-sm border-red-800/40 text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete POD
+          </Button>
+        )}
+        {isAdmin && showDeleteConfirm && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 space-y-3">
+            <p className="text-red-400 text-sm font-medium text-center">Delete this POD?</p>
+            <p className="text-gray-400 text-xs text-center">Deleting this POD is permanent. All memberships will be removed. Game history is preserved.</p>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowDeleteConfirm(false)}
+                variant="outline"
+                size="sm"
+                className="flex-1 border-gray-700 text-gray-300"
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeletePOD}
+                disabled={deleting}
+                size="sm"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleting ? "Deleting…" : "I want to delete"}
+              </Button>
+            </div>
+          </div>
         )}
         {isActiveMember && !isAdmin && (
           <>
