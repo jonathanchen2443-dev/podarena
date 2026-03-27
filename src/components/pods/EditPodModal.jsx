@@ -104,7 +104,7 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-gray-900 border border-gray-700 rounded-t-3xl w-full max-w-lg flex flex-col max-h-[90vh]">
+      <div className="bg-gray-900 border border-gray-700 rounded-t-3xl w-full max-w-lg flex flex-col" style={{ maxHeight: "calc(100vh - 80px)" }}>
 
         {/* Fixed header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-800/50 flex-shrink-0">
