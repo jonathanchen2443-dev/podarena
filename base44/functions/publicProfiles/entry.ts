@@ -44,21 +44,34 @@ function sanitizeDeck(raw) {
 }
 
 /**
- * Sanitized participant row for game history displays.
- * Exposes only snapshot deck fields — never raw selected_deck_id or owner-linked data.
+ * Normalizes a raw GameParticipant row for display.
+ * Builds a consistent `deck` object using all available snapshot fallbacks.
+ * Exposes only snapshot fields — never raw selected_deck_id or owner-linked data.
  */
-function sanitizeParticipant(raw) {
+function normalizeParticipant(raw) {
+  const snap = raw.deck_snapshot_json || {};
+  const deckName = raw.deck_name_at_time || snap.name || null;
+  const commanderName = raw.commander_name_at_time || snap.commander_name || null;
+  const commanderImage = raw.commander_image_at_time || snap.commander_image_url || null;
+  const colorIdentity = snap.color_identity || [];
   return {
     participant_profile_id: raw.participant_profile_id,
     is_creator: raw.is_creator || false,
     result: raw.result || null,
     placement: raw.placement || null,
     approval_status: raw.approval_status || "pending",
-    deck_name_at_time: raw.deck_name_at_time || null,
-    commander_name_at_time: raw.commander_name_at_time || null,
-    commander_image_at_time: raw.commander_image_at_time || null,
-    color_identity: raw.deck_snapshot_json?.color_identity || [],
+    deck: deckName ? {
+      name: deckName,
+      color_identity: colorIdentity,
+      commander_name: commanderName,
+      commander_image: commanderImage,
+    } : null,
   };
+}
+
+// Keep sanitizeParticipant as an alias for legacy call sites that don't need the deck object
+function sanitizeParticipant(raw) {
+  return normalizeParticipant(raw);
 }
 
 /** Sanitized game row for history surfaces. Omits internal user_id fields. */
@@ -190,11 +203,6 @@ Deno.serve(async (req) => {
         )
       );
 
-      const participantMap = {};
-      gameIds.forEach((gid, i) => {
-        participantMap[gid] = participantArrays[i].map(sanitizeParticipant);
-      });
-
       // Collect all profile IDs needed for display
       const allProfileIds = [...new Set(
         participantArrays.flat().map((p) => p.participant_profile_id).filter(Boolean)
@@ -207,6 +215,22 @@ Deno.serve(async (req) => {
         );
         profileMap = Object.fromEntries(profiles.map((p) => [p.id, sanitizeProfile(p)]));
       }
+
+      // Build participant map with normalized deck objects + inlined profile display fields
+      const participantMap = {};
+      gameIds.forEach((gid, i) => {
+        participantMap[gid] = participantArrays[i].map((raw) => {
+          const normalized = normalizeParticipant(raw);
+          const profile = profileMap[raw.participant_profile_id] || {};
+          return {
+            ...normalized,
+            userId: raw.participant_profile_id,
+            authUserId: raw.participant_user_id || null,
+            display_name: profile.display_name || "Unknown",
+            avatar_url: profile.avatar_url || null,
+          };
+        });
+      });
 
       return Response.json({
         games: podGames.map(sanitizeGame),
@@ -271,11 +295,6 @@ Deno.serve(async (req) => {
         )
       );
 
-      const participantMap = {};
-      games.forEach((g, i) => {
-        participantMap[g.id] = participantArrays[i].map(sanitizeParticipant);
-      });
-
       // Profiles for co-participants
       const allProfileIds = [...new Set(
         participantArrays.flat().map((p) => p.participant_profile_id).filter(Boolean)
@@ -288,6 +307,22 @@ Deno.serve(async (req) => {
         );
         profileMap = Object.fromEntries(profiles.map((p) => [p.id, sanitizeProfile(p)]));
       }
+
+      // Build participant map with normalized deck objects + inlined profile display fields
+      const participantMap = {};
+      games.forEach((g, i) => {
+        participantMap[g.id] = participantArrays[i].map((raw) => {
+          const normalized = normalizeParticipant(raw);
+          const profile = profileMap[raw.participant_profile_id] || {};
+          return {
+            ...normalized,
+            userId: raw.participant_profile_id,
+            authUserId: raw.participant_user_id || null,
+            display_name: profile.display_name || "Unknown",
+            avatar_url: profile.avatar_url || null,
+          };
+        });
+      });
 
       return Response.json({
         games: games.map(sanitizeGame),
@@ -586,21 +621,13 @@ Deno.serve(async (req) => {
 
           const participants = allParticipants.map((p) => {
             const profile = profileMap[p.participant_profile_id] || {};
+            const normalized = normalizeParticipant(p);
             return {
+              ...normalized,
               userId: p.participant_profile_id,
               authUserId: p.participant_user_id || null,
               display_name: profile.display_name || 'Unknown',
               avatar_url: profile.avatar_url || null,
-              result: p.result || null,
-              placement: p.placement || null,
-              approval_status: p.approval_status || 'pending',
-              is_creator: p.is_creator || false,
-              deck: p.deck_name_at_time ? {
-                name: p.deck_name_at_time,
-                color_identity: p.deck_snapshot_json?.color_identity || [],
-                commander_name: p.commander_name_at_time || null,
-                commander_image: p.commander_image_at_time || null,
-              } : null,
             };
           });
 

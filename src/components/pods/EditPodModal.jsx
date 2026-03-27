@@ -228,25 +228,34 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
           )}
         </div>
 
-        {/* Sticky footer — always visible above bottom nav */}
-        <div className="flex-shrink-0 border-t border-gray-800/50 px-5 py-4 bg-gray-900">
-          <div className="flex gap-2">
+        {/* Sticky footer — always visible, high-contrast */}
+        <div className="flex-shrink-0 border-t-2 border-gray-700 px-5 py-4 bg-gray-900">
+          {/* Status hint when nothing has changed yet */}
+          {!isDirty && toAdd.length === 0 && !saving && (
+            <p className="text-xs text-gray-500 text-center mb-3">Make a change above to enable saving</p>
+          )}
+          <div className="flex gap-3">
             <Button
               type="button"
               onClick={onClose}
               variant="outline"
-              className="flex-1 h-11 rounded-xl border-gray-700 text-gray-300 hover:bg-gray-800"
+              className="flex-1 h-12 rounded-xl border-gray-600 text-gray-300 hover:bg-gray-800 text-sm font-medium"
             >
               Cancel
             </Button>
-            <Button
+            <button
               type="button"
               disabled={saving || (!isDirty && toAdd.length === 0)}
               onClick={handleSave}
-              className="flex-1 h-11 rounded-xl ds-btn-primary font-semibold disabled:opacity-40"
+              className="flex-1 h-12 rounded-xl text-sm font-bold transition-all"
+              style={
+                saving || (!isDirty && toAdd.length === 0)
+                  ? { backgroundColor: "#374151", color: "#6B7280", cursor: "not-allowed" }
+                  : { backgroundColor: "rgb(var(--ds-primary-rgb))", color: "#fff" }
+              }
             >
               {saving ? "Saving…" : "Save Changes"}
-            </Button>
+            </button>
           </div>
         </div>
 

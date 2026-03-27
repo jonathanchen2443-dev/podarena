@@ -27,8 +27,8 @@ function resultLabel(p) {
 
 function ParticipantRow({ p, onNavigate }) {
   const result = resultLabel(p);
-  // Resolve deck display: prefer p.deck object, fall back to top-level snapshot fields.
-  // This handles cases where the backend sets deck_name_at_time but p.deck wasn't assembled.
+  // All backend paths now return a normalized p.deck object.
+  // p.deck_name_at_time is kept as a last-resort fallback for any pre-fix cached data.
   const deckName = p.deck?.name || p.deck_name_at_time || null;
   const deckColors = p.deck?.color_identity || p.color_identity || [];
   const hasRealColors = deckColors.some((c) => ["W","U","B","R","G"].includes(c));
