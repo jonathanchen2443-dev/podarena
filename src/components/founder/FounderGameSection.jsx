@@ -298,7 +298,7 @@ export default function FounderGameSection({ auth }) {
     setSearched(true);
     setSearchError(null);
     try {
-      const res = await base44.functions.invoke('publicProfiles', {
+      const res = await base44.functions.invoke('founderGameActions', {
         action: 'founderListGames',
         callerProfileId: auth.currentUser?.id,
         callerAuthUserId: auth.authUserId,
@@ -323,7 +323,7 @@ export default function FounderGameSection({ auth }) {
   }
 
   async function hideGame(gameId) {
-    const res = await base44.functions.invoke('publicProfiles', {
+    const res = await base44.functions.invoke('founderGameActions', {
       action: 'founderHideGame',
       callerProfileId: auth.currentUser?.id,
       callerAuthUserId: auth.authUserId,
@@ -335,7 +335,7 @@ export default function FounderGameSection({ auth }) {
   }
 
   async function restoreGame(gameId) {
-    const res = await base44.functions.invoke('publicProfiles', {
+    const res = await base44.functions.invoke('founderGameActions', {
       action: 'founderRestoreGame',
       callerProfileId: auth.currentUser?.id,
       callerAuthUserId: auth.authUserId,
@@ -347,15 +347,24 @@ export default function FounderGameSection({ auth }) {
   }
 
   async function hardDeleteGame(gameId) {
-    const res = await base44.functions.invoke('publicProfiles', {
+    const res = await base44.functions.invoke('founderGameActions', {
       action: 'founderHardDeleteGame',
       callerProfileId: auth.currentUser?.id,
       callerAuthUserId: auth.authUserId,
       gameId,
     });
-    if (res.data?.error) throw new Error(res.data.error);
-    if (!res.data?.success) throw new Error("Delete was not confirmed by backend.");
-    // Only remove from list after backend confirms success
+    const data = res.data || {};
+
+    // Surface structured error including partial-delete info
+    if (!data.success) {
+      const isPartial = data.partial === true;
+      const step = data.failed_step ? ` (failed at: ${data.failed_step})` : '';
+      const partialWarning = isPartial ? '\n⚠️ Partial delete may have occurred.' : '';
+      const msg = (data.error || 'Delete was not confirmed by backend.') + step + partialWarning;
+      throw new Error(msg);
+    }
+
+    // Only remove from list after backend confirms full success + verification
     setGames((prev) => prev.filter((g) => g.id !== gameId));
   }
 
