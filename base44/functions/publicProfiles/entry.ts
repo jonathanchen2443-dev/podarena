@@ -1752,9 +1752,9 @@ Deno.serve(async (req) => {
     }
 
     // ── founderListGames ──────────────────────────────────────────────────────
-    // Founder-only: search/list games with optional ID, date range, hidden filter.
+    // Founder-only: search/list games with optional ID, participant, date range, hidden filter.
     if (action === 'founderListGames') {
-      const { callerProfileId, callerAuthUserId, gameId: searchGameId, dateFrom, dateTo, includeHidden } = body;
+      const { callerProfileId, callerAuthUserId, gameId: searchGameId, participantProfileId, dateFrom, dateTo, includeHidden } = body;
       if (!callerProfileId || !callerAuthUserId) return Response.json({ error: 'callerProfileId and callerAuthUserId required' }, { status: 400 });
 
       // Gate: verify Founder
@@ -1769,9 +1769,20 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Forbidden: Founder only' }, { status: 403 });
       }
 
+      // If participant filter provided, first resolve game IDs via GameParticipant
+      let participantGameIds = null;
+      if (participantProfileId) {
+        const participantRows = await base44.asServiceRole.entities.GameParticipant.filter(
+          { participant_profile_id: participantProfileId }, '-created_date', 200
+        );
+        participantGameIds = [...new Set(participantRows.map((p) => p.game_id).filter(Boolean))];
+        if (participantGameIds.length === 0) return Response.json({ games: [] });
+      }
+
       // Build filter
       const filter = {};
       if (searchGameId) filter.id = { $regex: searchGameId.trim() };
+      if (participantGameIds) filter.id = { $in: participantGameIds };
       if (dateFrom) filter.played_at = { ...(filter.played_at || {}), $gte: new Date(dateFrom).toISOString() };
       if (dateTo) {
         const endOfDay = new Date(dateTo);
@@ -1780,12 +1791,13 @@ Deno.serve(async (req) => {
       }
 
       const rawGames = await base44.asServiceRole.entities.Game.filter(filter, '-played_at', 100);
-      const visibleGames = includeHidden ? rawGames : rawGames;
+      // Filter hidden unless explicitly requested
+      const visibleGames = includeHidden ? rawGames : rawGames.filter((g) => !g.is_hidden || includeHidden);
 
-      if (rawGames.length === 0) return Response.json({ games: [] });
+      if (visibleGames.length === 0) return Response.json({ games: [] });
 
       // Fetch participants to build summary
-      const gameIds = rawGames.map((g) => g.id);
+      const gameIds = visibleGames.map((g) => g.id);
       const participantArrays = await Promise.all(
         gameIds.map((gid) =>
           base44.asServiceRole.entities.GameParticipant.filter({ game_id: gid }, '-created_date', 20).catch(() => [])
@@ -1808,7 +1820,7 @@ Deno.serve(async (req) => {
         podNameMap = Object.fromEntries(pods.map((p) => [p.id, p.pod_name]));
       }
 
-      const games = rawGames.map((g, i) => {
+      const games = visibleGames.map((g, i) => {
         const parts = participantArrays[i] || [];
         const names = parts.map((p) => profileMap[p.participant_profile_id] || '?').join(', ');
         return {
