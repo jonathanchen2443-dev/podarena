@@ -14,9 +14,11 @@ import EntityBrowserSection from "@/components/founder/EntityBrowserSection";
 import NotificationSenderSection from "@/components/founder/NotificationSenderSection";
 import ConfigEditorSection from "@/components/founder/ConfigEditorSection";
 import QAHealthSection from "@/components/founder/QAHealthSection";
+import FounderGameSection from "@/components/founder/FounderGameSection";
 
 const TABS = [
   { key: "overview",    label: "Overview" },
+  { key: "games",       label: "Games" },
   { key: "founders",    label: "Founders" },
   { key: "nav",         label: "Navigation" },
   { key: "flags",       label: "Flags" },
@@ -155,6 +157,7 @@ export default function Founder() {
 
       {/* Tab content */}
       {activeTab === "overview"  && <OverviewSection settings={settings} />}
+      {activeTab === "games"     && <FounderGameSection auth={auth} />}
       {activeTab === "founders"  && <FoundersSection settings={settings} auth={auth} onRefresh={handleRefresh} />}
       {activeTab === "nav"       && <NavBuilderSection settings={settings} onRefresh={handleRefresh} />}
       {activeTab === "flags"     && <FeatureFlagsSection settings={settings} onRefresh={handleRefresh} />}

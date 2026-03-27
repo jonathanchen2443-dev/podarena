@@ -1,0 +1,106 @@
+{
+  "name": "Game",
+  "type": "object",
+  "properties": {
+    "pod_id": {
+      "type": "string",
+      "description": "ID of the POD this game belongs to (null for casual games). Set when context_type = pod."
+    },
+    "context_type": {
+      "type": "string",
+      "enum": [
+        "casual",
+        "pod"
+      ],
+      "default": "casual",
+      "description": "Whether this is a casual game or POD competitive game"
+    },
+    "played_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the game was played"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "description": "Overall game status \u2014 recalculated from GameParticipant approval states"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes about the game"
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "Auth User ID of the player who submitted this game."
+    },
+    "created_by_profile_id": {
+      "type": "string",
+      "description": "Profile entity ID of the player who submitted this game."
+    },
+    "is_hidden": {
+      "type": "boolean",
+      "default": false,
+      "description": "Founder-only soft-hide flag. Hidden games are excluded from all normal surfaces but remain recoverable. NOT a user-facing field."
+    },
+    "hidden_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When a Founder hid this game. Null if not hidden."
+    },
+    "hidden_by_profile_id": {
+      "type": "string",
+      "description": "Profile entity ID of the Founder who hid this game."
+    }
+  },
+  "required": [],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.created_by_user_id": "{{user.id}}"
+        },
+        {
+          "data.id": {
+            "$inQuery": {
+              "entity": "GameParticipant",
+              "field": "game_id",
+              "filters": {
+                "participant_user_id": "{{user.id}}"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.created_by_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

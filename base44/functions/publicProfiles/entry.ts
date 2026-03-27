@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.Game.filter({ id: { $in: chunk }, status: 'approved' }, '-played_at', 50)
           )
         );
-        approvedGameIds = new Set(gameResults.flat().map((g) => g.id));
+        approvedGameIds = new Set(gameResults.flat().filter((g) => !g.is_hidden).map((g) => g.id));
       }
 
       const approvedParticipations = participations.filter((p) => approvedGameIds.has(p.game_id));
@@ -188,10 +188,11 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Forbidden: not an active pod member' }, { status: 403 });
       }
 
-      // Fetch all pod games (all statuses — pod members see full history)
-      const podGames = await base44.asServiceRole.entities.Game.filter(
+      // Fetch all pod games (all statuses — pod members see full history; hidden games excluded)
+      const rawPodGames = await base44.asServiceRole.entities.Game.filter(
         { pod_id: podId, context_type: 'pod' }, '-played_at', 100
       );
+      const podGames = rawPodGames.filter((g) => !g.is_hidden);
       if (podGames.length === 0) return Response.json({ games: [], participants: {} });
 
       const gameIds = podGames.map((g) => g.id);
@@ -278,7 +279,7 @@ Deno.serve(async (req) => {
 
       const gameIds = [...new Set(myParticipations.map((p) => p.game_id))];
 
-      // Fetch games in batches
+      // Fetch games in batches (hidden games excluded from normal user history)
       const chunks = [];
       for (let i = 0; i < gameIds.length; i += 50) chunks.push(gameIds.slice(i, i + 50));
       const gameResults = await Promise.all(
@@ -286,7 +287,7 @@ Deno.serve(async (req) => {
           base44.asServiceRole.entities.Game.filter({ id: { $in: chunk } }, '-played_at', 50).catch(() => [])
         )
       );
-      const games = gameResults.flat();
+      const games = gameResults.flat().filter((g) => !g.is_hidden);
 
       // Fetch all participant rows per game
       const participantArrays = await Promise.all(
@@ -462,10 +463,11 @@ Deno.serve(async (req) => {
         statsMap[m.profile_id] = { profileId: m.profile_id, games: 0, wins: 0, points: 0 };
       }
 
-      // Fetch approved games for this pod and compute stats
-      const allGames = await base44.asServiceRole.entities.Game.filter(
+      // Fetch approved games for this pod and compute stats (hidden games excluded)
+      const allRawGames = await base44.asServiceRole.entities.Game.filter(
         { pod_id: podId, status: 'approved' }, '-played_at', 200
       );
+      const allGames = allRawGames.filter((g) => !g.is_hidden);
       if (allGames.length > 0) {
         const participantArrays = await Promise.all(
           allGames.map((g) =>
@@ -949,6 +951,7 @@ Deno.serve(async (req) => {
       if (gameIds.length > 0) {
         const games = await base44.asServiceRole.entities.Game.filter({ id: { $in: gameIds } }, '-played_at', 10);
         recentGames = games
+          .filter((g) => !g.is_hidden)
           .sort((a, b) => new Date(b.played_at || b.created_date) - new Date(a.played_at || a.created_date))
           .slice(0, 5)
           .map((g) => ({ id: g.id, context_type: g.context_type || 'casual', pod_id: g.pod_id || null, status: g.status, played_at: g.played_at || g.created_date }));
@@ -1745,6 +1748,182 @@ Deno.serve(async (req) => {
       } catch (err) {
         console.error('[deletePOD] FAILED', { step, delPodId, callerAuthUserId, error: err?.message });
         return Response.json({ error: err.message || 'Delete POD failed' }, { status: 500 });
+      }
+    }
+
+    // ── founderListGames ──────────────────────────────────────────────────────
+    // Founder-only: search/list games with optional ID, date range, hidden filter.
+    if (action === 'founderListGames') {
+      const { callerProfileId, callerAuthUserId, gameId: searchGameId, dateFrom, dateTo, includeHidden } = body;
+      if (!callerProfileId || !callerAuthUserId) return Response.json({ error: 'callerProfileId and callerAuthUserId required' }, { status: 400 });
+
+      // Gate: verify Founder
+      const settingsRows = await base44.asServiceRole.entities.AppSettings.filter({ singleton_key: 'global' });
+      const founderIds = settingsRows[0]?.founder_user_ids || [];
+      const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+      if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+        return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+      }
+      const callerProfileEntityId = callerProfileRows[0].id;
+      if (!founderIds.includes(callerProfileEntityId)) {
+        return Response.json({ error: 'Forbidden: Founder only' }, { status: 403 });
+      }
+
+      // Build filter
+      const filter = {};
+      if (searchGameId) filter.id = { $regex: searchGameId.trim() };
+      if (dateFrom) filter.played_at = { ...(filter.played_at || {}), $gte: new Date(dateFrom).toISOString() };
+      if (dateTo) {
+        const endOfDay = new Date(dateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        filter.played_at = { ...(filter.played_at || {}), $lte: endOfDay.toISOString() };
+      }
+
+      const rawGames = await base44.asServiceRole.entities.Game.filter(filter, '-played_at', 100);
+      const visibleGames = includeHidden ? rawGames : rawGames;
+
+      if (rawGames.length === 0) return Response.json({ games: [] });
+
+      // Fetch participants to build summary
+      const gameIds = rawGames.map((g) => g.id);
+      const participantArrays = await Promise.all(
+        gameIds.map((gid) =>
+          base44.asServiceRole.entities.GameParticipant.filter({ game_id: gid }, '-created_date', 20).catch(() => [])
+        )
+      );
+
+      // Fetch profile names
+      const allProfileIds = [...new Set(participantArrays.flat().map((p) => p.participant_profile_id).filter(Boolean))];
+      let profileMap = {};
+      if (allProfileIds.length > 0) {
+        const profiles = await base44.asServiceRole.entities.Profile.filter({ id: { $in: allProfileIds } }, '-created_date', 200);
+        profileMap = Object.fromEntries(profiles.map((p) => [p.id, p.display_name || 'Unknown']));
+      }
+
+      // Fetch pod names
+      const podIdsNeeded = [...new Set(rawGames.map((g) => g.pod_id).filter(Boolean))];
+      let podNameMap = {};
+      if (podIdsNeeded.length > 0) {
+        const pods = await base44.asServiceRole.entities.POD.filter({ id: { $in: podIdsNeeded } }, '-created_date', 50);
+        podNameMap = Object.fromEntries(pods.map((p) => [p.id, p.pod_name]));
+      }
+
+      const games = rawGames.map((g, i) => {
+        const parts = participantArrays[i] || [];
+        const names = parts.map((p) => profileMap[p.participant_profile_id] || '?').join(', ');
+        return {
+          id: g.id,
+          status: g.status,
+          context_type: g.context_type || 'casual',
+          pod_id: g.pod_id || null,
+          pod_name: g.pod_id ? (podNameMap[g.pod_id] || null) : null,
+          played_at: g.played_at || g.created_date || null,
+          created_date: g.created_date || null,
+          notes: g.notes || '',
+          is_hidden: g.is_hidden || false,
+          hidden_at: g.hidden_at || null,
+          participant_count: parts.length,
+          participant_names: names,
+        };
+      });
+
+      return Response.json({ games });
+    }
+
+    // ── founderHideGame ───────────────────────────────────────────────────────
+    // Founder-only: soft-hide a game from all normal surfaces.
+    if (action === 'founderHideGame') {
+      const { callerProfileId, callerAuthUserId, gameId: hideGameId } = body;
+      if (!callerProfileId || !callerAuthUserId || !hideGameId) return Response.json({ error: 'callerProfileId, callerAuthUserId, gameId required' }, { status: 400 });
+
+      // Gate: verify Founder
+      const settingsRows = await base44.asServiceRole.entities.AppSettings.filter({ singleton_key: 'global' });
+      const founderIds = settingsRows[0]?.founder_user_ids || [];
+      const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+      if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+      if (!founderIds.includes(callerProfileRows[0].id)) return Response.json({ error: 'Forbidden: Founder only' }, { status: 403 });
+
+      await base44.asServiceRole.entities.Game.update(hideGameId, {
+        is_hidden: true,
+        hidden_at: new Date().toISOString(),
+        hidden_by_profile_id: callerProfileId,
+      });
+      console.log('[founderHideGame] hidden', hideGameId, 'by', callerProfileId);
+      return Response.json({ success: true });
+    }
+
+    // ── founderRestoreGame ────────────────────────────────────────────────────
+    // Founder-only: restore a previously hidden game back to normal surfaces.
+    if (action === 'founderRestoreGame') {
+      const { callerProfileId, callerAuthUserId, gameId: restoreGameId } = body;
+      if (!callerProfileId || !callerAuthUserId || !restoreGameId) return Response.json({ error: 'callerProfileId, callerAuthUserId, gameId required' }, { status: 400 });
+
+      // Gate: verify Founder
+      const settingsRows = await base44.asServiceRole.entities.AppSettings.filter({ singleton_key: 'global' });
+      const founderIds = settingsRows[0]?.founder_user_ids || [];
+      const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+      if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+      if (!founderIds.includes(callerProfileRows[0].id)) return Response.json({ error: 'Forbidden: Founder only' }, { status: 403 });
+
+      await base44.asServiceRole.entities.Game.update(restoreGameId, {
+        is_hidden: false,
+        hidden_at: null,
+        hidden_by_profile_id: null,
+      });
+      console.log('[founderRestoreGame] restored', restoreGameId, 'by', callerProfileId);
+      return Response.json({ success: true });
+    }
+
+    // ── founderHardDeleteGame ─────────────────────────────────────────────────
+    // Founder-only: permanently delete a game and all its related live records.
+    // Cleans up: Game, GameParticipant rows, GameApproval rows, Notification rows tied to this game.
+    if (action === 'founderHardDeleteGame') {
+      const { callerProfileId, callerAuthUserId, gameId: delGameId } = body;
+      let step = 'validate_input';
+      try {
+        if (!callerProfileId || !callerAuthUserId || !delGameId) return Response.json({ error: 'callerProfileId, callerAuthUserId, gameId required' }, { status: 400 });
+
+        // Gate: verify Founder
+        step = 'verify_founder';
+        const settingsRows = await base44.asServiceRole.entities.AppSettings.filter({ singleton_key: 'global' });
+        const founderIds = settingsRows[0]?.founder_user_ids || [];
+        const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+        if (!founderIds.includes(callerProfileRows[0].id)) return Response.json({ error: 'Forbidden: Founder only' }, { status: 403 });
+
+        // Verify game exists
+        step = 'load_game';
+        const gameRows = await base44.asServiceRole.entities.Game.filter({ id: delGameId });
+        if (!gameRows.length) return Response.json({ error: 'Game not found' }, { status: 404 });
+
+        // Delete GameParticipant rows
+        step = 'delete_participants';
+        const participants = await base44.asServiceRole.entities.GameParticipant.filter({ game_id: delGameId });
+        await Promise.all(participants.map((p) => base44.asServiceRole.entities.GameParticipant.delete(p.id).catch(() => {})));
+        console.log('[founderHardDeleteGame] deleted', participants.length, 'participants for game', delGameId);
+
+        // Delete GameApproval rows
+        step = 'delete_approvals';
+        const approvals = await base44.asServiceRole.entities.GameApproval.filter({ game_id: delGameId }).catch(() => []);
+        await Promise.all(approvals.map((a) => base44.asServiceRole.entities.GameApproval.delete(a.id).catch(() => {})));
+        console.log('[founderHardDeleteGame] deleted', approvals.length, 'approvals for game', delGameId);
+
+        // Delete Notifications tied to this game (via metadata.game_id)
+        step = 'delete_notifications';
+        const allNotifs = await base44.asServiceRole.entities.Notification.filter({ type: 'game_review_request' }, '-created_date', 500).catch(() => []);
+        const gameNotifs = allNotifs.filter((n) => n.metadata?.game_id === delGameId);
+        await Promise.all(gameNotifs.map((n) => base44.asServiceRole.entities.Notification.delete(n.id).catch(() => {})));
+        console.log('[founderHardDeleteGame] deleted', gameNotifs.length, 'notifications for game', delGameId);
+
+        // Delete the Game record
+        step = 'delete_game';
+        await base44.asServiceRole.entities.Game.delete(delGameId);
+        console.log('[founderHardDeleteGame] deleted game', delGameId, 'by founder', callerProfileId);
+
+        return Response.json({ success: true });
+      } catch (err) {
+        console.error('[founderHardDeleteGame] FAILED', { step, delGameId, callerProfileId, error: err?.message });
+        return Response.json({ error: err.message || 'Hard delete failed' }, { status: 500 });
       }
     }
 
