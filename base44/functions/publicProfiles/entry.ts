@@ -351,6 +351,12 @@ Deno.serve(async (req) => {
       // Assemble sanitized participant rows with inlined profile display data
       const participants = participantArr.map((p) => {
         const profile = profileMap[p.participant_profile_id] || {};
+        const snap = p.deck_snapshot_json || {};
+        // Resolve deck fields: prefer explicit snapshot columns, fall back to deck_snapshot_json fields
+        const deckName = p.deck_name_at_time || snap.name || null;
+        const commanderName = p.commander_name_at_time || snap.commander_name || null;
+        const commanderImage = p.commander_image_at_time || snap.commander_image_url || null;
+        const colorIdentity = (p.deck_snapshot_json?.color_identity) || [];
         return {
           userId: p.participant_profile_id,
           authUserId: p.participant_user_id || null,
@@ -360,11 +366,11 @@ Deno.serve(async (req) => {
           result: p.result || null,
           placement: p.placement || null,
           approval_status: p.approval_status || "pending",
-          deck: p.deck_name_at_time ? {
-            name: p.deck_name_at_time,
-            color_identity: p.deck_snapshot_json?.color_identity || [],
-            commander_name: p.commander_name_at_time || null,
-            commander_image: p.commander_image_at_time || null,
+          deck: deckName ? {
+            name: deckName,
+            color_identity: colorIdentity,
+            commander_name: commanderName,
+            commander_image: commanderImage,
           } : null,
         };
       });
@@ -1052,6 +1058,11 @@ Deno.serve(async (req) => {
 
       const participants = participantArr.map((p) => {
         const profile = profileMap[p.participant_profile_id] || {};
+        const snap = p.deck_snapshot_json || {};
+        const deckName = p.deck_name_at_time || snap.name || null;
+        const commanderName = p.commander_name_at_time || snap.commander_name || null;
+        const commanderImage = p.commander_image_at_time || snap.commander_image_url || null;
+        const colorIdentity = snap.color_identity || [];
         return {
           userId: p.participant_profile_id,
           authUserId: p.participant_user_id || null,
@@ -1061,11 +1072,11 @@ Deno.serve(async (req) => {
           placement: p.placement || null,
           approval_status: p.approval_status || 'pending',
           is_creator: p.is_creator || false,
-          deck: p.deck_name_at_time ? {
-            name: p.deck_name_at_time,
-            color_identity: p.deck_snapshot_json?.color_identity || [],
-            commander_name: p.commander_name_at_time || null,
-            commander_image: p.commander_image_at_time || null,
+          deck: deckName ? {
+            name: deckName,
+            color_identity: colorIdentity,
+            commander_name: commanderName,
+            commander_image: commanderImage,
           } : null,
         };
       });

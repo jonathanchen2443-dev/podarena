@@ -10,12 +10,28 @@ import { toast } from "sonner";
 
 export default function EditPodModal({ pod, onClose, onUpdated }) {
   const { currentUser, authUserId } = useAuth();
-  const [podName, setPodName] = useState(pod.pod_name || "");
-  const [description, setDescription] = useState(pod.description || "");
-  const [maxMembers, setMaxMembers] = useState(Math.min(6, Math.max(2, pod.max_members || 4)));
-  const [isPublic, setIsPublic] = useState(pod.is_public !== false);
+
+  // Capture initial values for dirty detection
+  const initial = {
+    pod_name: pod.pod_name || "",
+    description: pod.description || "",
+    max_members: Math.min(6, Math.max(2, pod.max_members || 4)),
+    is_public: pod.is_public !== false,
+  };
+
+  const [podName, setPodName] = useState(initial.pod_name);
+  const [description, setDescription] = useState(initial.description);
+  const [maxMembers, setMaxMembers] = useState(initial.max_members);
+  const [isPublic, setIsPublic] = useState(initial.is_public);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Dirty: true when any field differs from initial OR new players staged to invite
+  const isDirty =
+    podName.trim() !== initial.pod_name ||
+    description.trim() !== initial.description ||
+    maxMembers !== initial.max_members ||
+    isPublic !== initial.is_public;
 
   const [activeMemberProfileIds, setActiveMemberProfileIds] = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);
@@ -225,9 +241,9 @@ export default function EditPodModal({ pod, onClose, onUpdated }) {
             </Button>
             <Button
               type="button"
-              disabled={saving}
+              disabled={saving || (!isDirty && toAdd.length === 0)}
               onClick={handleSave}
-              className="flex-1 h-11 rounded-xl ds-btn-primary font-semibold"
+              className="flex-1 h-11 rounded-xl ds-btn-primary font-semibold disabled:opacity-40"
             >
               {saving ? "Saving…" : "Save Changes"}
             </Button>
