@@ -21,6 +21,7 @@ export const ROUTES = {
   ALL_PODS: createPageUrl("AllPods"),
   EXPLORE_PODS: createPageUrl("ExplorePods"),
   POD: (podId) => `${createPageUrl("Pod")}?podId=${podId}`,
+  EDIT_POD: (podId) => `${createPageUrl("EditPod")}?podId=${podId}`,
   CREATE_POD: createPageUrl("CreatePod"),
   LOG_GAME: createPageUrl("LogGame"),
   INBOX: createPageUrl("Inbox"),

@@ -8,7 +8,6 @@ import { Layers, Trophy, Clock, Info, Users, ArrowLeft, PlusCircle } from "lucid
 import PodLeaderboardTab from "@/components/pods/PodLeaderboardTab";
 import PodActivityTab from "@/components/pods/PodActivityTab";
 import PodInfoTab from "@/components/pods/PodInfoTab";
-import EditPodModal from "@/components/pods/EditPodModal";
 import { requestJoinPOD } from "@/components/services/podService";
 import { ROUTES } from "@/components/utils/routes";
 import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
@@ -59,8 +58,8 @@ export default function Pod() {
   const [activeMemberCount, setActiveMemberCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null); // null | "not_found" | "forbidden" | "error"
-  const [activeTab, setActiveTab] = useState("leaderboard");
-  const [showEditModal, setShowEditModal] = useState(false);
+  const tabParam = params.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam || "leaderboard");
   const [requesting, setRequesting] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
 
@@ -275,15 +274,6 @@ export default function Pod() {
           podId={podId}
           onPodUpdated={handlePodUpdated}
           onLeft={handleLeft}
-          onOpenEdit={() => setShowEditModal(true)}
-        />
-      )}
-
-      {showEditModal && (
-        <EditPodModal
-          pod={pod}
-          onClose={() => setShowEditModal(false)}
-          onUpdated={() => { setShowEditModal(false); load(); }}
         />
       )}
 

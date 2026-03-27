@@ -9,7 +9,6 @@ import {
   leavePOD,
   removeMember,
 } from "@/components/services/podService";
-import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { toast } from "sonner";
@@ -86,7 +85,7 @@ function PendingRequestRow({ membership, profile, onAccept, onReject }) {
   );
 }
 
-export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onLeft, onOpenEdit }) {
+export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onLeft }) {
   const { currentUser, authUserId } = useAuth();
   const navigate = useNavigate();
   const [members, setMembers] = useState([]);
@@ -255,7 +254,7 @@ export default function PodInfoTab({ pod, myMembership, podId, onPodUpdated, onL
           </Button>
         )}
         {isAdmin && (
-          <Button onClick={onOpenEdit} variant="outline" className="w-full h-10 rounded-xl text-sm border-gray-700 text-gray-300 hover:bg-gray-800 flex items-center gap-2">
+          <Button onClick={() => navigate(ROUTES.EDIT_POD(podId))} variant="outline" className="w-full h-10 rounded-xl text-sm border-gray-700 text-gray-300 hover:bg-gray-800 flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Edit POD
           </Button>

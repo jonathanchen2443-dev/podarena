@@ -48,6 +48,7 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AllPods from './pages/AllPods';
+import EditPod from './pages/EditPod';
 import Approvals from './pages/Approvals';
 import Badges from './pages/Badges';
 import CreatePod from './pages/CreatePod';
@@ -70,6 +71,7 @@ import __Layout from './Layout.jsx';
 
 export const PAGES = {
     "AllPods": AllPods,
+    "EditPod": EditPod,
     "Approvals": Approvals,
     "Badges": Badges,
     "CreatePod": CreatePod,
