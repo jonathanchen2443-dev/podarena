@@ -6,7 +6,7 @@ import { updatePOD, inviteUserToPOD } from "@/components/services/podService";
 import { ROUTES } from "@/components/utils/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import PlayerSearchInput from "@/components/pods/PlayerSearchInput";
 import { toast } from "sonner";
 
@@ -166,8 +166,8 @@ export default function EditPod() {
         <AlertCircle className="w-10 h-10 text-red-500" />
         <h2 className="text-white font-semibold text-lg">Access Denied</h2>
         <p className="text-gray-400 text-sm">Only POD admins can edit this POD.</p>
-        <Button onClick={goBackToPod} variant="outline" className="gap-2 text-sm border-gray-700 text-gray-300">
-          <ArrowLeft className="w-4 h-4" /> Back to POD
+        <Button onClick={goBackToPod} variant="outline" className="text-sm border-gray-700 text-gray-300">
+          Back to POD
         </Button>
       </div>
     );
@@ -177,8 +177,8 @@ export default function EditPod() {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center px-6">
         <p className="text-gray-400 text-sm">Could not load POD. Please try again.</p>
-        <Button onClick={goBackToPod} variant="outline" className="gap-2 text-sm border-gray-700 text-gray-300">
-          <ArrowLeft className="w-4 h-4" /> Back
+        <Button onClick={goBackToPod} variant="outline" className="text-sm border-gray-700 text-gray-300">
+          Back
         </Button>
       </div>
     );
@@ -187,17 +187,8 @@ export default function EditPod() {
   // ── Edit screen ───────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5 pb-8">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={goBackToPod}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-800 text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <h1 className="text-white font-bold text-lg">Edit POD</h1>
-      </div>
+    <div className="space-y-5 pb-4">
+      <h1 className="text-white font-bold text-lg">Edit POD</h1>
 
       {/* Form */}
       <div className="space-y-4">
