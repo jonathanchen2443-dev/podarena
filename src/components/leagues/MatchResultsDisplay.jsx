@@ -27,7 +27,7 @@ function sortedParticipants(participants) {
 // overlapPx = half of imgSize — how far the image sits inside the block from the top.
 // The block's top padding = overlapPx so text starts below the image overlap zone.
 
-function PlayerCard({ p, imgSize, blockH, cardWidth, showCrown = false }) {
+function PlayerCard({ p, imgSize, blockH, cardWidth, maxWidth, showCrown = false }) {
   const deckLabel      = p.deck?.name || null;
   const commanderImage = p.deck?.commander_image || null;
   const isWinner       = p.placement === 1 || p.result === "win";
@@ -71,7 +71,10 @@ function PlayerCard({ p, imgSize, blockH, cardWidth, showCrown = false }) {
   const crownCls = "w-6 h-6";
 
   return (
-    <div className="flex flex-col items-center" style={{ width: cardWidth }}>
+    <div
+      className="flex flex-col items-center flex-1 min-w-0"
+      style={{ maxWidth: maxWidth ?? cardWidth ?? 120 }}
+    >
       {/* Crown — sits above everything, only for winner */}
       {showCrown && isWinner && (
         <Crown className={`${crownCls} text-amber-400 mb-1 flex-shrink-0`} />
@@ -150,15 +153,15 @@ function PodiumLayout({ top3 }) {
   const third  = top3.find((p) => p.placement === 3) || top3[2];
 
   return (
-    <div className="flex items-end justify-center gap-1 py-0 px-3 overflow-x-hidden">
+    <div className="flex items-end justify-center gap-2 py-0 px-4 w-full overflow-x-hidden">
       {second && (
-        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} cardWidth={110} showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} maxWidth={110} showCrown={false} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    cardWidth={110} showCrown />
+        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    maxWidth={120} showCrown />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} cardWidth={110} showCrown={false} />
+        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} maxWidth={100} showCrown={false} />
       )}
     </div>
   );
