@@ -177,7 +177,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-2">
+        <div className="overflow-y-auto flex-1 px-2 py-3 space-y-1">
           {/* POD pill — compact, purple-styled, clickable */}
           {game.context_type === "pod" && (game.pod_name || game.pod_id) && (
             <div className="flex justify-center">
