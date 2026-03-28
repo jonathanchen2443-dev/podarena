@@ -178,15 +178,19 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
-          {/* POD pill — compact, wraps content only */}
+          {/* POD pill — compact, purple-styled, clickable */}
           {game.context_type === "pod" && (game.pod_name || game.pod_id) && (
             <div className="flex justify-center">
-              <div className="inline-flex items-center gap-1.5 bg-gray-800/70 border border-gray-700/50 rounded-full px-3 py-1">
-                <Layers className="w-3 h-3 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
-                <span className="text-xs text-gray-300 font-medium">
+              <button
+                onClick={() => { if (game.pod_id) { onClose(); navigate(ROUTES.POD(game.pod_id)); } }}
+                disabled={!game.pod_id}
+                className="inline-flex items-center gap-2 bg-[rgba(124,58,237,0.12)] border border-[rgba(124,58,237,0.30)] rounded-full px-3.5 py-1.5 transition-colors hover:bg-[rgba(124,58,237,0.20)] disabled:cursor-default"
+              >
+                <Layers className="w-3.5 h-3.5 flex-shrink-0 text-violet-400" />
+                <span className="text-sm text-violet-300 font-semibold">
                   {game.pod_name || "POD Game"}
                 </span>
-              </div>
+              </button>
             </div>
           )}
 
