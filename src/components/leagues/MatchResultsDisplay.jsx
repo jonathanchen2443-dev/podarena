@@ -72,8 +72,8 @@ function PlayerCard({ p, imgSize, blockH, cardWidth, maxWidth, showCrown = false
 
   return (
     <div
-      className="flex flex-col items-center flex-1 min-w-0"
-      style={{ maxWidth: maxWidth ?? cardWidth ?? 120 }}
+      className="flex flex-col items-center flex-shrink-0"
+      style={{ width: 110 }}
     >
       {/* Crown — sits above everything, only for winner */}
       {showCrown && isWinner && (
@@ -153,15 +153,15 @@ function PodiumLayout({ top3 }) {
   const third  = top3.find((p) => p.placement === 3) || top3[2];
 
   return (
-    <div className="flex items-end justify-center gap-2 py-0 px-4 w-full overflow-x-hidden">
+    <div className="flex items-end justify-center gap-4 py-0 w-full overflow-x-hidden">
       {second && (
-        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} maxWidth={110} showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} showCrown={false} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    maxWidth={120} showCrown />
+        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    showCrown />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} maxWidth={100} showCrown={false} />
+        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} showCrown={false} />
       )}
     </div>
   );
