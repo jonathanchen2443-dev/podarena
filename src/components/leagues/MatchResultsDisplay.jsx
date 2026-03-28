@@ -152,13 +152,13 @@ function PodiumLayout({ top3 }) {
   return (
     <div className="flex items-end justify-center gap-1 py-0 px-3 overflow-x-hidden">
       {second && (
-        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} cardWidth={148} showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} cardWidth={118} showCrown={false} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    cardWidth={174} showCrown />
+        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    cardWidth={139} showCrown />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} cardWidth={128} showCrown={false} />
+        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} cardWidth={102} showCrown={false} />
       )}
     </div>
   );
