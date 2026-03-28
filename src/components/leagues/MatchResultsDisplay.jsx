@@ -51,10 +51,10 @@ function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false 
     ? "bg-amber-700/80 text-white"
     : "bg-gray-700/90 text-gray-300";
 
-  // Text sizing — unchanged
+  // Text sizing — unchanged; crown is always large for winner
   const nameCls  = imgSize >= 96 ? "text-sm"     : "text-xs";
   const deckCls  = imgSize >= 96 ? "text-[11px]" : "text-[10px]";
-  const crownCls = imgSize >= 96 ? "w-5 h-5"     : "w-4 h-4";
+  const crownCls = "w-8 h-8"; // fixed large crown for all winners
 
   return (
     <div className="flex flex-col items-center" style={{ width: cardWidth }}>
@@ -109,11 +109,11 @@ function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false 
 // ── TwoPlayerLayout ───────────────────────────────────────────────────────────
 
 function TwoPlayerLayout({ sorted }) {
-  // imgSize=104, cardWidth=130 (≈25% wider)
+  // imgSize=104, cardWidth=163 (≈25% wider than prev 130)
   return (
-    <div className="flex items-end justify-center gap-5 py-2">
+    <div className="flex items-end justify-center gap-4 py-1">
       {sorted.map((p) => (
-        <PlayerCard key={p.userId} p={p} imgSize={104} cardWidth={130} cardExtraHeight={60} showCrown />
+        <PlayerCard key={p.userId} p={p} imgSize={104} cardWidth={163} cardExtraHeight={75} showCrown />
       ))}
     </div>
   );
@@ -121,14 +121,14 @@ function TwoPlayerLayout({ sorted }) {
 
 // ── PodiumLayout ──────────────────────────────────────────────────────────────
 // Bottom-aligned. cardExtraHeight drives the podium silhouette:
-//   1st: 120px → tallest
-//   2nd:  60px → ~half of 1st
-//   3rd:  28px → ~quarter of 1st
+//   1st: 150px → tallest
+//   2nd:  75px → exactly half of 1st
+//   3rd:  37px → ~quarter of 1st
 //
-// imgSize / cardWidth (≈25% wider than image):
-//   1st: 104px img → 130px card
-//   2nd:  88px img → 110px card
-//   3rd:  76px img →  96px card
+// imgSize unchanged; cardWidth increased ≈25% from previous values:
+//   1st: 104px img → 163px card  (prev 130 → +25%)
+//   2nd:  88px img → 138px card  (prev 110 → +25%)
+//   3rd:  76px img → 120px card  (prev  96 → +25%)
 
 function PodiumLayout({ top3 }) {
   const first  = top3.find((p) => p.placement === 1) || top3[0];
@@ -136,15 +136,15 @@ function PodiumLayout({ top3 }) {
   const third  = top3.find((p) => p.placement === 3) || top3[2];
 
   return (
-    <div className="flex items-end justify-center gap-2 py-2 px-1">
+    <div className="flex items-end justify-center gap-1.5 py-1 px-0">
       {second && (
-        <PlayerCard p={second} imgSize={88}  cardWidth={110} cardExtraHeight={60}  showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  cardWidth={138} cardExtraHeight={75}  showCrown={false} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={104} cardWidth={130} cardExtraHeight={120} showCrown />
+        <PlayerCard p={first}  imgSize={104} cardWidth={163} cardExtraHeight={150} showCrown />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={76}  cardWidth={96}  cardExtraHeight={28}  showCrown={false} />
+        <PlayerCard p={third}  imgSize={76}  cardWidth={120} cardExtraHeight={37}  showCrown={false} />
       )}
     </div>
   );
