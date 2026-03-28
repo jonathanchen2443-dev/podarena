@@ -73,7 +73,7 @@ function PlayerCard({ p, imgSize, blockH, cardWidth, maxWidth, showCrown = false
   return (
     <div
       className="flex flex-col items-center flex-shrink-0"
-      style={{ width: 110 }}
+      style={{ width: 100 }}
     >
       {/* Crown — sits above everything, only for winner */}
       {showCrown && isWinner && (
