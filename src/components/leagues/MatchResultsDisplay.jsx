@@ -153,15 +153,15 @@ function PodiumLayout({ top3 }) {
   const third  = top3.find((p) => p.placement === 3) || top3[2];
 
   return (
-    <div className="flex items-end justify-center gap-4 py-0 w-full overflow-x-hidden">
+    <div className="flex items-end justify-center gap-2 py-0 w-full overflow-x-hidden">
       {second && (
         <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} showCrown={false} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    showCrown />
+        <PlayerCard p={first}  imgSize={88} blockH={PODIUM_H}                    showCrown />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} showCrown={false} />
+        <PlayerCard p={third}  imgSize={88}  blockH={Math.round(PODIUM_H * 0.50)} showCrown={false} />
       )}
     </div>
   );
