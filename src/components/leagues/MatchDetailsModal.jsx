@@ -154,7 +154,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className="relative z-10 w-full sm:max-w-md bg-gray-950 border border-gray-800 rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col"
+        className="relative z-10 w-full sm:max-w-md bg-gray-950 border border-gray-800 rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Handle */}
@@ -177,7 +177,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 px-2 py-3 space-y-1">
+        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1">
           {/* POD pill — compact, purple-styled, clickable */}
           {game.context_type === "pod" && (game.pod_name || game.pod_id) && (
             <div className="flex justify-center">

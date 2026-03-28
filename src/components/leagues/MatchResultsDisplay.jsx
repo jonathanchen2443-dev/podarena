@@ -124,9 +124,9 @@ function PlayerCard({ p, imgSize, blockH, cardWidth, showCrown = false }) {
 
 function TwoPlayerLayout({ sorted }) {
   return (
-    <div className="flex items-end justify-center gap-3 py-0">
+    <div className="flex items-end justify-center gap-3 py-0 px-3 overflow-x-hidden">
       {sorted.map((p) => (
-        <PlayerCard key={p.userId} p={p} imgSize={104} blockH={160} cardWidth={204} showCrown />
+        <PlayerCard key={p.userId} p={p} imgSize={104} blockH={160} cardWidth={174} showCrown />
       ))}
     </div>
   );
@@ -142,7 +142,7 @@ function TwoPlayerLayout({ sorted }) {
 // overflow:hidden on the block prevents any content from breaking the fixed height.
 // items-end on the row aligns all three blocks to a shared bottom baseline.
 
-const PODIUM_H = 200; // 1st place reference block height in px
+const PODIUM_H = 220; // 1st place reference block height in px (+10% from 200)
 
 function PodiumLayout({ top3 }) {
   const first  = top3.find((p) => p.placement === 1) || top3[0];
@@ -150,15 +150,15 @@ function PodiumLayout({ top3 }) {
   const third  = top3.find((p) => p.placement === 3) || top3[2];
 
   return (
-    <div className="flex items-end justify-center gap-1 py-0 px-0">
+    <div className="flex items-end justify-center gap-1 py-0 px-3 overflow-x-hidden">
       {second && (
-        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} cardWidth={173} showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} cardWidth={148} showCrown={false} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    cardWidth={204} showCrown />
+        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    cardWidth={174} showCrown />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} cardWidth={150} showCrown={false} />
+        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} cardWidth={128} showCrown={false} />
       )}
     </div>
   );
