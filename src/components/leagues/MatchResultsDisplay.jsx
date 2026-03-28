@@ -19,11 +19,15 @@ function sortedParticipants(participants) {
 }
 
 // ── PlayerCard ────────────────────────────────────────────────────────────────
-// Vertical card. Commander image overlaps above the card body.
-// cardExtraHeight = visible card height below the image overlap point.
-// cardWidth is explicitly wider than imgSize (≈ 25% wider) for a solid podium block.
+// Vertical card. Commander image overlaps above the podium block.
+//
+// blockH = the FIXED height of the rectangular podium block (the coloured rectangle).
+//          This is the sole driver of the podium silhouette — content cannot stretch it.
+//          overflow:hidden on the block ensures text never escapes.
+// overlapPx = half of imgSize — how far the image sits inside the block from the top.
+// The block's top padding = overlapPx so text starts below the image overlap zone.
 
-function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false }) {
+function PlayerCard({ p, imgSize, blockH, cardWidth, showCrown = false }) {
   const deckLabel      = p.deck?.name || null;
   const commanderImage = p.deck?.commander_image || null;
   const isWinner       = p.placement === 1 || p.result === "win";
@@ -62,20 +66,19 @@ function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false 
     ? "bg-amber-700/80 text-white"
     : "bg-gray-700/90 text-gray-300";
 
-  // Text sizing — unchanged; crown is always large for winner
   const nameCls  = imgSize >= 96 ? "text-sm"     : "text-xs";
   const deckCls  = imgSize >= 96 ? "text-[11px]" : "text-[10px]";
-  const crownCls = "w-6 h-6"; // reduced to 50% of w-12
+  const crownCls = "w-6 h-6";
 
   return (
     <div className="flex flex-col items-center" style={{ width: cardWidth }}>
-      {/* Crown */}
+      {/* Crown — sits above everything, only for winner */}
       {showCrown && isWinner && (
         <Crown className={`${crownCls} text-amber-400 mb-1 flex-shrink-0`} />
       )}
 
       <div className="relative w-full flex flex-col items-center">
-        {/* Commander image — overlaps into card below */}
+        {/* Commander image — absolute z-10, overlaps into podium block below */}
         <div
           className={`rounded-xl overflow-hidden ${borderCls} bg-gray-800 flex-shrink-0 relative z-10`}
           style={{ width: imgSize, height: imgSize, marginBottom: -overlapPx }}
@@ -100,15 +103,15 @@ function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false 
           )}
         </div>
 
-        {/* Card body — full card width, taller than image */}
+        {/* Podium block — FIXED height, overflow hidden. Content cannot grow this. */}
         <div
-          className={`w-full rounded-xl ${cardBg} flex flex-col items-center justify-end px-2 pb-3`}
-          style={{ paddingTop: overlapPx + 6, minHeight: overlapPx + cardExtraHeight }}
+          className={`w-full rounded-xl ${cardBg} flex flex-col items-center justify-end px-2 pb-3 overflow-hidden`}
+          style={{ height: blockH, paddingTop: overlapPx + 4 }}
         >
           <p className={`${nameCls} text-white font-semibold text-center leading-tight w-full truncate`}>
             {formatName(p.display_name)}
           </p>
-          <p className={`${deckCls} text-gray-500 text-center leading-tight w-full line-clamp-2 mt-0.5`}>
+          <p className={`${deckCls} text-gray-500 text-center leading-tight w-full truncate mt-0.5`}>
             {deckLabel || <span className="text-gray-700 italic">No deck</span>}
           </p>
         </div>
@@ -120,25 +123,26 @@ function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false 
 // ── TwoPlayerLayout ───────────────────────────────────────────────────────────
 
 function TwoPlayerLayout({ sorted }) {
-  // imgSize=104, cardWidth=204 (+25% from 163)
   return (
     <div className="flex items-end justify-center gap-3 py-0">
       {sorted.map((p) => (
-        <PlayerCard key={p.userId} p={p} imgSize={104} cardWidth={204} cardExtraHeight={94} showCrown />
+        <PlayerCard key={p.userId} p={p} imgSize={104} blockH={160} cardWidth={204} showCrown />
       ))}
     </div>
   );
 }
 
 // ── PodiumLayout ──────────────────────────────────────────────────────────────
-// Bottom-aligned. Visual total card height = overlapPx + cardExtraHeight.
-// Rule: 2nd = 50% of 1st total height; 3rd = 50% of 2nd total height.
+// H = reference podium block height for 1st place = 200px (fixed, content-independent).
+// 2nd block = 0.75 × H = 150px
+// 3rd block = 0.50 × H = 100px
 //
-// 1st: overlapPx=52, cardExtraHeight=188 → total=240
-// 2nd: target total=120 → overlapPx(2nd)=44, cardExtraHeight=76
-// 3rd: target total=60  → overlapPx(3rd)=38, cardExtraHeight=22
-//
-// cardWidth unchanged from previous pass.
+// "blockH" is the explicit height of the coloured rectangle only.
+// The commander image sits above, overlapping down into the block via negative margin.
+// overflow:hidden on the block prevents any content from breaking the fixed height.
+// items-end on the row aligns all three blocks to a shared bottom baseline.
+
+const PODIUM_H = 200; // 1st place reference block height in px
 
 function PodiumLayout({ top3 }) {
   const first  = top3.find((p) => p.placement === 1) || top3[0];
@@ -148,13 +152,13 @@ function PodiumLayout({ top3 }) {
   return (
     <div className="flex items-end justify-center gap-1 py-0 px-0">
       {second && (
-        <PlayerCard p={second} imgSize={88}  cardWidth={173} cardExtraHeight={76}  showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} cardWidth={173} showCrown={false} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={104} cardWidth={204} cardExtraHeight={188} showCrown />
+        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    cardWidth={204} showCrown />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={76}  cardWidth={150} cardExtraHeight={22}  showCrown={false} />
+        <PlayerCard p={third}  imgSize={76}  blockH={Math.round(PODIUM_H * 0.50)} cardWidth={150} showCrown={false} />
       )}
     </div>
   );
