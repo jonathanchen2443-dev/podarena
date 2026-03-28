@@ -29,12 +29,23 @@ function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false 
   const isWinner       = p.placement === 1 || p.result === "win";
   const overlapPx      = Math.round(imgSize / 2);
 
+  const is2nd = p.placement === 2;
+  const is3rd = p.placement === 3;
+
   const borderCls = isWinner
     ? "border-2 border-amber-400/70 shadow-lg shadow-amber-500/20"
+    : is2nd
+    ? "border border-slate-400/50 shadow-md shadow-slate-400/15"
+    : is3rd
+    ? "border border-amber-700/50 shadow-md shadow-amber-700/15"
     : "border border-gray-700/60";
 
   const cardBg = isWinner
     ? "bg-gray-800/80 border border-amber-400/20"
+    : is2nd
+    ? "bg-gray-800/60 border border-slate-400/20"
+    : is3rd
+    ? "bg-gray-800/60 border border-amber-700/20"
     : "bg-gray-800/50 border border-gray-700/30";
 
   const placementLabel =
@@ -54,7 +65,7 @@ function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false 
   // Text sizing — unchanged; crown is always large for winner
   const nameCls  = imgSize >= 96 ? "text-sm"     : "text-xs";
   const deckCls  = imgSize >= 96 ? "text-[11px]" : "text-[10px]";
-  const crownCls = "w-12 h-12"; // +50% from w-8 h-8
+  const crownCls = "w-6 h-6"; // reduced to 50% of w-12
 
   return (
     <div className="flex flex-col items-center" style={{ width: cardWidth }}>
@@ -120,15 +131,14 @@ function TwoPlayerLayout({ sorted }) {
 }
 
 // ── PodiumLayout ──────────────────────────────────────────────────────────────
-// Bottom-aligned. cardExtraHeight drives the podium silhouette:
-//   1st: 188px → tallest  (+25% from 150)
-//   2nd:  94px → exactly 50% of 1st
-//   3rd:  47px → exactly 25% of 1st
+// Bottom-aligned. Visual total card height = overlapPx + cardExtraHeight.
+// Rule: 2nd = 50% of 1st total height; 3rd = 50% of 2nd total height.
 //
-// imgSize unchanged; cardWidth +25% from previous values:
-//   1st: 104px img → 204px card  (163 → +25%)
-//   2nd:  88px img → 173px card  (138 → +25%)
-//   3rd:  76px img → 150px card  (120 → +25%)
+// 1st: overlapPx=52, cardExtraHeight=188 → total=240
+// 2nd: target total=120 → overlapPx(2nd)=44, cardExtraHeight=76
+// 3rd: target total=60  → overlapPx(3rd)=38, cardExtraHeight=22
+//
+// cardWidth unchanged from previous pass.
 
 function PodiumLayout({ top3 }) {
   const first  = top3.find((p) => p.placement === 1) || top3[0];
@@ -138,13 +148,13 @@ function PodiumLayout({ top3 }) {
   return (
     <div className="flex items-end justify-center gap-1 py-0 px-0">
       {second && (
-        <PlayerCard p={second} imgSize={88}  cardWidth={173} cardExtraHeight={94}  showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  cardWidth={173} cardExtraHeight={76}  showCrown={false} />
       )}
       {first && (
         <PlayerCard p={first}  imgSize={104} cardWidth={204} cardExtraHeight={188} showCrown />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={76}  cardWidth={150} cardExtraHeight={47}  showCrown={false} />
+        <PlayerCard p={third}  imgSize={76}  cardWidth={150} cardExtraHeight={22}  showCrown={false} />
       )}
     </div>
   );
