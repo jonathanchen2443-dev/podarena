@@ -20,16 +20,14 @@ function sortedParticipants(participants) {
 
 // ── PlayerCard ────────────────────────────────────────────────────────────────
 // Vertical card. Commander image overlaps above the card body.
-// cardExtraHeight controls the visible card height below the image overlap —
-// this is what creates the podium silhouette when cards share a bottom baseline.
+// cardExtraHeight = visible card height below the image overlap point.
+// cardWidth is explicitly wider than imgSize (≈ 25% wider) for a solid podium block.
 
-function PlayerCard({ p, imgSize, cardExtraHeight, showCrown = false }) {
+function PlayerCard({ p, imgSize, cardWidth, cardExtraHeight, showCrown = false }) {
   const deckLabel      = p.deck?.name || null;
   const commanderImage = p.deck?.commander_image || null;
   const isWinner       = p.placement === 1 || p.result === "win";
-
-  // How far the image overlaps into the card (half the image height)
-  const overlapPx = Math.round(imgSize / 2);
+  const overlapPx      = Math.round(imgSize / 2);
 
   const borderCls = isWinner
     ? "border-2 border-amber-400/70 shadow-lg shadow-amber-500/20"
@@ -53,13 +51,10 @@ function PlayerCard({ p, imgSize, cardExtraHeight, showCrown = false }) {
     ? "bg-amber-700/80 text-white"
     : "bg-gray-700/90 text-gray-300";
 
-  // Text sizing — unchanged from previous pass
+  // Text sizing — unchanged
   const nameCls  = imgSize >= 96 ? "text-sm"     : "text-xs";
   const deckCls  = imgSize >= 96 ? "text-[11px]" : "text-[10px]";
   const crownCls = imgSize >= 96 ? "w-5 h-5"     : "w-4 h-4";
-
-  // Card width = image width
-  const cardWidth = imgSize;
 
   return (
     <div className="flex flex-col items-center" style={{ width: cardWidth }}>
@@ -69,7 +64,7 @@ function PlayerCard({ p, imgSize, cardExtraHeight, showCrown = false }) {
       )}
 
       <div className="relative w-full flex flex-col items-center">
-        {/* Commander image — overlaps into the card below */}
+        {/* Commander image — overlaps into card below */}
         <div
           className={`rounded-xl overflow-hidden ${borderCls} bg-gray-800 flex-shrink-0 relative z-10`}
           style={{ width: imgSize, height: imgSize, marginBottom: -overlapPx }}
@@ -94,10 +89,10 @@ function PlayerCard({ p, imgSize, cardExtraHeight, showCrown = false }) {
           )}
         </div>
 
-        {/* Card body — visible portion = overlapPx + cardExtraHeight */}
+        {/* Card body — full card width, taller than image */}
         <div
-          className={`w-full rounded-xl ${cardBg} flex flex-col items-center justify-end px-1.5 pb-2.5`}
-          style={{ paddingTop: overlapPx + 4, minHeight: overlapPx + cardExtraHeight }}
+          className={`w-full rounded-xl ${cardBg} flex flex-col items-center justify-end px-2 pb-3`}
+          style={{ paddingTop: overlapPx + 6, minHeight: overlapPx + cardExtraHeight }}
         >
           <p className={`${nameCls} text-white font-semibold text-center leading-tight w-full truncate`}>
             {formatName(p.display_name)}
@@ -114,21 +109,26 @@ function PlayerCard({ p, imgSize, cardExtraHeight, showCrown = false }) {
 // ── TwoPlayerLayout ───────────────────────────────────────────────────────────
 
 function TwoPlayerLayout({ sorted }) {
+  // imgSize=104, cardWidth=130 (≈25% wider)
   return (
-    <div className="flex items-end justify-center gap-6 py-3">
+    <div className="flex items-end justify-center gap-5 py-2">
       {sorted.map((p) => (
-        <PlayerCard key={p.userId} p={p} imgSize={96} cardExtraHeight={52} showCrown />
+        <PlayerCard key={p.userId} p={p} imgSize={104} cardWidth={130} cardExtraHeight={60} showCrown />
       ))}
     </div>
   );
 }
 
 // ── PodiumLayout ──────────────────────────────────────────────────────────────
-// All three cards share items-end (bottom-aligned).
-// Height difference achieved purely via cardExtraHeight:
-//   1st: 80px extra  → tallest
-//   2nd: 44px extra  → ~half of 1st
-//   3rd: 22px extra  → ~quarter of 1st
+// Bottom-aligned. cardExtraHeight drives the podium silhouette:
+//   1st: 120px → tallest
+//   2nd:  60px → ~half of 1st
+//   3rd:  28px → ~quarter of 1st
+//
+// imgSize / cardWidth (≈25% wider than image):
+//   1st: 104px img → 130px card
+//   2nd:  88px img → 110px card
+//   3rd:  76px img →  96px card
 
 function PodiumLayout({ top3 }) {
   const first  = top3.find((p) => p.placement === 1) || top3[0];
@@ -136,20 +136,15 @@ function PodiumLayout({ top3 }) {
   const third  = top3.find((p) => p.placement === 3) || top3[2];
 
   return (
-    <div className="flex items-end justify-center gap-3 py-3 px-2">
-      {/* 2nd — medium image, medium card */}
+    <div className="flex items-end justify-center gap-2 py-2 px-1">
       {second && (
-        <PlayerCard p={second} imgSize={80} cardExtraHeight={44} showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  cardWidth={110} cardExtraHeight={60}  showCrown={false} />
       )}
-
-      {/* 1st — largest image, tallest card */}
       {first && (
-        <PlayerCard p={first} imgSize={96} cardExtraHeight={80} showCrown />
+        <PlayerCard p={first}  imgSize={104} cardWidth={130} cardExtraHeight={120} showCrown />
       )}
-
-      {/* 3rd — small image, shortest card */}
       {third && (
-        <PlayerCard p={third} imgSize={72} cardExtraHeight={22} showCrown={false} />
+        <PlayerCard p={third}  imgSize={76}  cardWidth={96}  cardExtraHeight={28}  showCrown={false} />
       )}
     </div>
   );
@@ -192,6 +187,7 @@ export default function MatchResultsDisplay({ participants }) {
   if (count === 2) return <TwoPlayerLayout sorted={sorted} />;
   if (count === 3) return <PodiumLayout top3={sorted} />;
 
+  // 4+: podium stays full-size, rest scrolls below
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
 
