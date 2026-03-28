@@ -3,77 +3,19 @@ import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Trophy, User, CheckCircle, XCircle, Clock, ChevronDown, Loader2, Layers } from "lucide-react";
+import { X, Trophy, CheckCircle, XCircle, Clock, ChevronDown, Loader2, Layers } from "lucide-react";
 import { format } from "date-fns";
 import { approveGame, rejectGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
 import { getPodGameDetails, getGameDetailsForParticipant } from "@/components/services/profileService.jsx";
 import { ROUTES } from "@/components/utils/routes";
-import RecentDecksIcon from "@/components/leagues/RecentDecksIcon";
+import MatchResultsDisplay from "@/components/leagues/MatchResultsDisplay";
 import { toast } from "sonner";
 
 function statusBadge(status) {
   if (status === "approved") return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Approved</Badge>;
   if (status === "rejected") return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Rejected</Badge>;
   return <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20">Pending</Badge>;
-}
-
-function resultLabel(p) {
-  if (p.result === "win" || p.placement === 1) return { text: "Win", cls: "text-emerald-400" };
-  if (p.result === "draw") return { text: "Draw", cls: "text-blue-400" };
-  if (p.result === "loss" || (p.placement != null && p.placement > 1)) return { text: "Loss", cls: "text-red-400" };
-  return null;
-}
-
-function ParticipantRow({ p, onNavigate }) {
-  const result = resultLabel(p);
-  // All backend paths now return a normalized p.deck object.
-  // p.deck_name_at_time is kept as a last-resort fallback for any pre-fix cached data.
-  const deckName = p.deck?.name || p.deck_name_at_time || null;
-  const deckColors = p.deck?.color_identity || p.color_identity || [];
-  const hasRealColors = deckColors.some((c) => ["W","U","B","R","G"].includes(c));
-  const hasDeck = !!deckName;
-  const deckVariant = !hasDeck ? "didNotPlay" : hasRealColors ? "deck" : "colorless";
-
-  const approvalIcon =
-    p.approval_status === "approved" ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" /> :
-    p.approval_status === "rejected" ? <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" /> :
-    <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />;
-
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-gray-800/40 last:border-0">
-      <div className="w-8 h-8 rounded-full ds-accent-bg ds-accent-bd border flex items-center justify-center flex-shrink-0">
-        {p.avatar_url ? (
-          <img src={p.avatar_url} alt={p.display_name} className="w-8 h-8 rounded-full object-cover" />
-        ) : (
-          <User className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <button
-          onClick={() => p.userId && onNavigate && onNavigate(p.userId)}
-          className="text-sm text-white font-medium truncate hover:underline text-left disabled:cursor-default"
-          disabled={!p.userId || !onNavigate}
-        >
-          {p.display_name}
-          {p.is_creator && <span className="ml-1 text-xs text-gray-500">(recorder)</span>}
-        </button>
-        {hasDeck ? (
-          <p className="text-xs text-gray-500 truncate">{deckName}</p>
-        ) : (
-          <p className="text-xs text-gray-600 italic">
-            {p.approval_status === "pending" ? "Deck choice pending" : "No deck"}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {approvalIcon}
-        <RecentDecksIcon variant={deckVariant} colors={deckColors} size={20} title={deckName} />
-        {result && <span className={`text-xs font-semibold ${result.cls}`}>{result.text}</span>}
-        {p.placement != null && <span className="text-xs text-gray-500">#{p.placement}</span>}
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -253,22 +195,12 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
             <p className="text-sm text-white">{format(new Date(game.played_at), "PPP · p")}</p>
           </div>
 
-          {/* Participants */}
+          {/* Participants — visual results display */}
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
-              Players · {game.participants.length}
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+              Results · {game.participants.length} players
             </p>
-            <div>
-              {game.participants
-                .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))
-                .map((p) => (
-                  <ParticipantRow
-                    key={p.userId}
-                    p={p}
-                    onNavigate={(uid) => { onClose(); navigate(ROUTES.USER_PROFILE(uid)); }}
-                  />
-                ))}
-            </div>
+            <MatchResultsDisplay participants={game.participants} />
           </div>
 
           {/* Review status summary */}
