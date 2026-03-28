@@ -50,7 +50,8 @@ function sanitizeDeck(raw) {
  */
 function normalizeParticipant(raw) {
   const snap = raw.deck_snapshot_json || {};
-  const deckName = raw.deck_name_at_time || snap.name || null;
+  // Fallback order: deck_name_at_time → snap.name → commander_name_at_time → snap.commander_name
+  const deckName = raw.deck_name_at_time || snap.name || raw.commander_name_at_time || snap.commander_name || null;
   const commanderName = raw.commander_name_at_time || snap.commander_name || null;
   const commanderImage = raw.commander_image_at_time || snap.commander_image_url || null;
   const colorIdentity = snap.color_identity || [];
@@ -828,7 +829,8 @@ Deno.serve(async (req) => {
             is_creator: isCreator,
             selected_deck_id: isCreator ? (p.deck_id || null) : null,
             deck_snapshot_json: snap,
-            deck_name_at_time: snap?.name || null,
+            // Fallback: if deck has no name, use commander name as historical label
+            deck_name_at_time: snap?.name || snap?.commander_name || null,
             commander_name_at_time: snap?.commander_name || null,
             commander_image_at_time: snap?.commander_image_url || null,
             result: p.result || null,
@@ -1222,9 +1224,10 @@ Deno.serve(async (req) => {
           rejected_at: null,
           selected_deck_id: deckId,
           deck_snapshot_json: snap,
-          deck_name_at_time: snap.name,
-          commander_name_at_time: snap.commander_name,
-          commander_image_at_time: snap.commander_image_url,
+          // Fallback: if deck has no name, use commander name as historical label
+          deck_name_at_time: snap.name || snap.commander_name || null,
+          commander_name_at_time: snap.commander_name || null,
+          commander_image_at_time: snap.commander_image_url || null,
         });
         console.log('[approveGameReview] participant updated', { gameId, participantId: myParticipant.id, callerAuthUserId });
 
