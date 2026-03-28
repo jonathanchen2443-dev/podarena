@@ -178,66 +178,56 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
-          {/* POD identity row — POD games only */}
+          {/* POD pill — compact, wraps content only */}
           {game.context_type === "pod" && (game.pod_name || game.pod_id) && (
-            <div className="flex items-center gap-2 bg-gray-800/60 border border-gray-700/50 rounded-xl px-3 py-2">
-              <Layers className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
-              <span className="text-xs text-gray-300 font-medium truncate">
-                {game.pod_name || "POD Game"}
-              </span>
-              <span className="ml-auto text-xs text-gray-500 flex-shrink-0">POD</span>
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-1.5 bg-gray-800/70 border border-gray-700/50 rounded-full px-3 py-1">
+                <Layers className="w-3 h-3 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
+                <span className="text-xs text-gray-300 font-medium">
+                  {game.pod_name || "POD Game"}
+                </span>
+              </div>
             </div>
           )}
 
-          {/* Date */}
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Date</p>
-            <p className="text-sm text-white">{format(new Date(game.played_at), "PPP · p")}</p>
-          </div>
+          {/* Participants — visual results display (no heading) */}
+          <MatchResultsDisplay participants={game.participants} />
 
-          {/* Participants — visual results display */}
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
-              Results · {game.participants.length} players
-            </p>
-            <MatchResultsDisplay participants={game.participants} />
-          </div>
+          {/* Date — centered, below results */}
+          <p className="text-xs text-gray-500 text-center">
+            {format(new Date(game.played_at), "PPP · p")}
+          </p>
 
-          {/* Review status summary */}
+          {/* Approval confirmation — heading removed, content only */}
           {total > 0 && (
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
-                Reviews · {approved}/{total} complete
-              </p>
-              <div className="space-y-1.5">
-                {game.participants.filter((p) => !p.is_creator && p.approval_status === "approved").length > 0 && (
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-emerald-400 font-medium">Approved: </span>
-                    <span className="text-xs text-gray-300">
-                      {game.participants.filter((p) => !p.is_creator && p.approval_status === "approved").map((p) => p.display_name).join(", ")}
-                    </span>
-                  </div>
-                )}
-                {game.participants.filter((p) => !p.is_creator && p.approval_status === "pending").length > 0 && (
-                  <div className="flex items-start gap-2">
-                    <Clock className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-amber-400 font-medium">Pending: </span>
-                    <span className="text-xs text-gray-300">
-                      {game.participants.filter((p) => !p.is_creator && p.approval_status === "pending").map((p) => p.display_name).join(", ")}
-                    </span>
-                  </div>
-                )}
-                {game.participants.filter((p) => !p.is_creator && p.approval_status === "rejected").length > 0 && (
-                  <div className="flex items-start gap-2">
-                    <XCircle className="w-3.5 h-3.5 text-red-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-red-400 font-medium">Rejected: </span>
-                    <span className="text-xs text-gray-300">
-                      {game.participants.filter((p) => !p.is_creator && p.approval_status === "rejected").map((p) => p.display_name).join(", ")}
-                    </span>
-                  </div>
-                )}
-              </div>
+            <div className="space-y-1.5">
+              {game.participants.filter((p) => !p.is_creator && p.approval_status === "approved").length > 0 && (
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs text-emerald-400 font-medium">Approved: </span>
+                  <span className="text-xs text-gray-300">
+                    {game.participants.filter((p) => !p.is_creator && p.approval_status === "approved").map((p) => p.display_name).join(", ")}
+                  </span>
+                </div>
+              )}
+              {game.participants.filter((p) => !p.is_creator && p.approval_status === "pending").length > 0 && (
+                <div className="flex items-start gap-2">
+                  <Clock className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs text-amber-400 font-medium">Pending: </span>
+                  <span className="text-xs text-gray-300">
+                    {game.participants.filter((p) => !p.is_creator && p.approval_status === "pending").map((p) => p.display_name).join(", ")}
+                  </span>
+                </div>
+              )}
+              {game.participants.filter((p) => !p.is_creator && p.approval_status === "rejected").length > 0 && (
+                <div className="flex items-start gap-2">
+                  <XCircle className="w-3.5 h-3.5 text-red-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs text-red-400 font-medium">Rejected: </span>
+                  <span className="text-xs text-gray-300">
+                    {game.participants.filter((p) => !p.is_creator && p.approval_status === "rejected").map((p) => p.display_name).join(", ")}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
