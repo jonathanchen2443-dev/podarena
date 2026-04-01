@@ -6,11 +6,11 @@ import { createGameWithParticipants } from "@/components/services/gameService";
 import { ROUTES } from "@/components/utils/routes";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Layers } from "lucide-react";
+import { ArrowLeft, Layers, Swords, Hash } from "lucide-react";
 import { toast } from "sonner";
 import CasualParticipantPicker from "@/components/loggame/CasualParticipantPicker";
 import ParticipantPicker from "@/components/loggame/ParticipantPicker";
-import PlacementInput from "@/components/loggame/PlacementInput";
+import ParticipantSetupCard from "@/components/loggame/ParticipantSetupCard";
 import PodSearchPicker from "@/components/loggame/PodSearchPicker";
 
 function defaultPlayedAt() {
@@ -22,8 +22,6 @@ function defaultPlayedAt() {
 }
 
 export default function LogGame() {
-  // authUserId = Auth User ID (profile.user_id) — for RLS fields, GameParticipant.participant_user_id
-  // currentUser.id = Profile ID (Profile entity UUID) — for display joins, deck lookups
   const { currentUser, authUserId, isGuest, authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -31,16 +29,12 @@ export default function LogGame() {
   const podIdFromUrl = urlParams.get("podId");
   const lockedPodMode = !!podIdFromUrl;
 
-  // ── Mode ──────────────────────────────────────────────────────────────────
   const [mode, setMode] = useState(lockedPodMode ? "pod" : "casual");
-
-  // ── POD ───────────────────────────────────────────────────────────────────
   const [pod, setPod] = useState(null);
   const [podLoading, setPodLoading] = useState(lockedPodMode);
   const [podMembers, setPodMembers] = useState([]);
   const [podMembersLoading, setPodMembersLoading] = useState(false);
 
-  // ── Form ──────────────────────────────────────────────────────────────────
   const [participants, setParticipants] = useState([]);
   const [memberData, setMemberData] = useState({});
   const [placements, setPlacements] = useState({});
@@ -50,19 +44,16 @@ export default function LogGame() {
   const [myDecks, setMyDecks] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Load decks on mount ────────────────────────────────────────────────────
   useEffect(() => {
     if (authLoading || !currentUser) return;
-    // owner_id = Profile ID (Deck schema uses Profile ID for ownership lookups)
     base44.entities.Deck.filter({ owner_id: currentUser.id }).then(setMyDecks).catch(() => {});
   }, [authLoading, currentUser]);
 
-  // ── Auto-add self (casual mode) ────────────────────────────────────────────
   useEffect(() => {
     if (authLoading || !currentUser || mode !== "casual") return;
     const selfData = {
-      profileId: currentUser.id,   // Profile ID (entity UUID) — for display/deck joins
-      authUserId: authUserId || null, // Auth User ID — for GameParticipant.participant_user_id / RLS
+      profileId: currentUser.id,
+      authUserId: authUserId || null,
       display_name: currentUser.display_name,
       avatar_url: currentUser.avatar_url || null,
     };
@@ -72,7 +63,6 @@ export default function LogGame() {
     setDeckSelections({});
   }, [authLoading, currentUser?.id, mode]);
 
-  // ── Load locked POD via backend (logGamePodContext) ───────────────────────
   useEffect(() => {
     if (!podIdFromUrl || authLoading || !currentUser || !authUserId) return;
     setPodLoading(true);
@@ -83,21 +73,13 @@ export default function LogGame() {
       callerProfileId: currentUser.id,
     }).then((res) => {
       const data = res.data || {};
-      if (data.error || !data.pod) {
-        console.error('[LogGame] logGamePodContext error', data.error);
-        return;
-      }
+      if (data.error || !data.pod) return;
       setPod(data.pod);
       applyPodMembers(data.members || []);
-    }).catch((err) => {
-      console.error('[LogGame] logGamePodContext failed', err?.message);
-    }).finally(() => setPodLoading(false));
+    }).catch(() => {}).finally(() => setPodLoading(false));
   }, [podIdFromUrl, authLoading, currentUser?.id, authUserId]);
 
-  // Apply members list to state (shared between locked + free POD mode)
   function applyPodMembers(rawMembers) {
-    // rawMembers from logGamePodContext: { profileId, user_id, display_name, avatar_url }
-    // rawMembers from podMembers action:  { profileId, user_id, display_name, avatar_url }
     const members = rawMembers.map((m) => ({
       userId: m.profileId,
       authUserId: m.user_id,
@@ -105,8 +87,6 @@ export default function LogGame() {
       avatar_url: m.avatar_url,
     }));
     setPodMembers(members);
-
-    // Auto-add self if in the member list
     if (currentUser) {
       const selfMember = members.find((m) => m.userId === currentUser.id);
       if (selfMember) {
@@ -146,7 +126,6 @@ export default function LogGame() {
     }
   }
 
-  // ── Mode switch ────────────────────────────────────────────────────────────
   function handleModeSwitch(newMode) {
     if (lockedPodMode) return;
     setMode(newMode);
@@ -158,7 +137,6 @@ export default function LogGame() {
     setDeckSelections({});
   }
 
-  // ── POD selected (free mode) ───────────────────────────────────────────────
   function handlePodSelected(selectedPod) {
     setPod(selectedPod);
     setParticipants([]);
@@ -168,7 +146,6 @@ export default function LogGame() {
     loadPodMembers(selectedPod.id);
   }
 
-  // ── Participant helpers ────────────────────────────────────────────────────
   function handleAddPodParticipant(profileId) {
     if (participants.includes(profileId)) return;
     const member = podMembers.find((m) => m.userId === profileId);
@@ -204,9 +181,8 @@ export default function LogGame() {
     setDeckSelections((prev) => { const n = { ...prev }; delete n[profileId]; return n; });
   }
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   async function handleSubmit(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (isGuest || !currentUser) { base44.auth.redirectToLogin(); return; }
     if (participants.length < 2) { toast.error("Add at least 2 participants."); return; }
     if (participants.some((id) => !placements[id])) { toast.error("Set a placement for all participants."); return; }
@@ -214,12 +190,9 @@ export default function LogGame() {
 
     setSubmitting(true);
     try {
-      // authUserId is sourced from AuthContext (profile.user_id = Auth User ID) — no me() needed
       const participantList = participants.map((profileId) => {
         const data = memberData[profileId] || {};
         const isCreator = profileId === currentUser.id;
-        // Only the recorder/creator sets their own deck at log time
-        // Other participants choose their deck during their own review flow
         const deckId = isCreator ? (deckSelections[profileId] || null) : null;
         const deckObj = isCreator && deckId ? myDecks.find((d) => d.id === deckId) : null;
         return {
@@ -235,8 +208,8 @@ export default function LogGame() {
       await createGameWithParticipants({
         podId: mode === "pod" ? (pod?.id || null) : null,
         contextType: mode,
-        creatorProfileId: currentUser.id,   // Profile ID (entity UUID) — for display joins
-        creatorAuthUserId: authUserId,       // Auth User ID — for RLS / created_by_user_id
+        creatorProfileId: currentUser.id,
+        creatorAuthUserId: authUserId,
         playedAt: new Date(playedAt).toISOString(),
         notes,
         participants: participantList,
@@ -254,7 +227,6 @@ export default function LogGame() {
     }
   }
 
-  // ── Loading / guest guards ─────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div className="flex justify-center py-20">
@@ -280,6 +252,9 @@ export default function LogGame() {
     avatar_url: memberData[id]?.avatar_url || null,
   }));
 
+  const usedPlacements = new Set(Object.values(placements).filter(Boolean).map(Number));
+  const canSubmit = participants.length >= 2 && participants.every((id) => placements[id]);
+
   function goBack() {
     if (lockedPodMode && podIdFromUrl) {
       navigate(`${createPageUrl("Pod")}?podId=${podIdFromUrl}`);
@@ -289,135 +264,133 @@ export default function LogGame() {
   }
 
   return (
-    <div className="space-y-4 pb-6">
-      {/* Header */}
-      <div className="flex items-center gap-2 py-3">
+    // Extra bottom padding: sticky submit bar (~72px) + bottom nav (~64px) + some breathing room
+    <div className="space-y-5 pb-40">
+
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 pt-2 pb-1">
         <button
           onClick={goBack}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-800"
+          className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-800 transition-colors flex-shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <h1 className="text-white font-bold text-lg">Log Game</h1>
+        <div>
+          <h1 className="text-white font-bold text-lg leading-none">Log Game</h1>
+          <p className="text-gray-500 text-xs mt-0.5">Record a match result</p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* Mode toggle — hidden in locked POD mode */}
-        {!lockedPodMode && (
-          <div className="flex bg-gray-900/60 border border-gray-800/50 rounded-2xl p-1 gap-1">
-            {["casual", "pod"].map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => handleModeSwitch(m)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all capitalize"
-                style={
-                  mode === m
-                    ? { backgroundColor: "rgb(var(--ds-primary-rgb))", color: "#fff" }
-                    : { color: "#9CA3AF" }
-                }
-              >
-                {m === "casual" ? "Casual" : "POD"}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* ── Section A: Game Context ──────────────────────────────────────── */}
+        <section className="space-y-3">
+          <SectionLabel icon={<Swords className="w-3.5 h-3.5" />} label="Game Type" />
 
-        {/* POD selector / locked badge */}
-        {mode === "pod" && (
-          <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4">
-            {lockedPodMode ? (
-              podLoading ? (
-                <div className="flex items-center gap-2 text-gray-400 text-sm">
-                  <div className="w-4 h-4 border-2 border-gray-600 border-t-white rounded-full animate-spin" />
-                  Loading POD…
-                </div>
+          {/* Mode segmented control — hidden in locked POD mode */}
+          {!lockedPodMode && (
+            <div className="grid grid-cols-2 gap-2">
+              <ModeCard
+                active={mode === "casual"}
+                onClick={() => handleModeSwitch("casual")}
+                label="Casual"
+                description="Open game, any players"
+              />
+              <ModeCard
+                active={mode === "pod"}
+                onClick={() => handleModeSwitch("pod")}
+                label="POD"
+                description="Competitive, tracked game"
+                isPod
+              />
+            </div>
+          )}
+
+          {/* POD identity area */}
+          {mode === "pod" && (
+            <div>
+              {lockedPodMode ? (
+                podLoading ? (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm bg-gray-900/60 border border-gray-800/50 rounded-2xl px-4 py-3">
+                    <div className="w-4 h-4 border-2 border-gray-600 border-t-white rounded-full animate-spin" />
+                    Loading POD…
+                  </div>
+                ) : pod ? (
+                  <LockedPodChip pod={pod} />
+                ) : null
               ) : pod ? (
-                <div>
-                  <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">
-                    POD <span className="text-xs text-gray-600 normal-case">(locked)</span>
-                  </label>
-                  <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700/50 rounded-xl px-3 py-2.5">
-                    <Layers className="w-4 h-4 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
-                    <div>
-                      <p className="text-white text-sm font-medium">{pod.pod_name}</p>
-                      <p className="text-xs font-mono text-gray-500">{pod.pod_code}</p>
-                    </div>
-                    <span className="ml-auto text-[10px] text-gray-600 bg-gray-800 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      Locked
-                    </span>
-                  </div>
+                <SelectedPodChip
+                  pod={pod}
+                  onClear={() => { setPod(null); setPodMembers([]); setParticipants([]); setMemberData({}); }}
+                />
+              ) : (
+                <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4">
+                  <PodSearchPicker authUserId={authUserId} profileId={currentUser?.id} onSelect={handlePodSelected} />
                 </div>
-              ) : null
-            ) : pod ? (
-              <div>
-                <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">POD</label>
-                <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700/50 rounded-xl px-3 py-2.5">
-                  <Layers className="w-4 h-4 flex-shrink-0" style={{ color: "var(--ds-primary-text)" }} />
-                  <div>
-                    <p className="text-white text-sm font-medium">{pod.pod_name}</p>
-                    <p className="text-xs font-mono text-gray-500">{pod.pod_code}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setPod(null); setPodMembers([]); setParticipants([]); setMemberData({}); }}
-                    className="ml-auto text-xs text-gray-500 hover:text-red-400 transition-colors"
-                  >
-                    Change
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <PodSearchPicker authUserId={authUserId} profileId={currentUser?.id} onSelect={handlePodSelected} />
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </section>
 
-        {/* Participants */}
+        {/* ── Section B: Participants ──────────────────────────────────────── */}
         {(mode === "casual" || (mode === "pod" && pod)) && (
-          <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4">
-            {mode === "casual" ? (
-              <CasualParticipantPicker
-                selectedIds={participants}
-                onAdd={handleAddCasualParticipant}
-                onRemove={handleRemoveCasualParticipant}
-                currentUserProfileId={currentUser?.id}
-                currentUserProfile={currentUser ? { display_name: currentUser.display_name, avatar_url: currentUser.avatar_url || null } : null}
-              />
-            ) : (
-              <ParticipantPicker
-                members={podMembers}
-                selectedIds={participants}
-                onAdd={handleAddPodParticipant}
-                onRemove={handleRemovePodParticipant}
-                currentUserId={currentUser?.id}
-                membersLoading={podMembersLoading}
-              />
-            )}
-          </div>
+          <section className="space-y-3">
+            <SectionLabel icon={<Hash className="w-3.5 h-3.5" />} label="Participants" />
+            <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4">
+              {mode === "casual" ? (
+                <CasualParticipantPicker
+                  selectedIds={participants}
+                  onAdd={handleAddCasualParticipant}
+                  onRemove={handleRemoveCasualParticipant}
+                  currentUserProfileId={currentUser?.id}
+                  currentUserProfile={currentUser ? { display_name: currentUser.display_name, avatar_url: currentUser.avatar_url || null } : null}
+                />
+              ) : (
+                <ParticipantPicker
+                  members={podMembers}
+                  selectedIds={participants}
+                  onAdd={handleAddPodParticipant}
+                  onRemove={handleRemovePodParticipant}
+                  currentUserId={currentUser?.id}
+                  membersLoading={podMembersLoading}
+                />
+              )}
+            </div>
+          </section>
         )}
 
-        {/* Placements + deck */}
+        {/* ── Section C: Match Setup — per-participant cards ───────────────── */}
         {participants.length >= 2 && (
-          <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4">
-            <PlacementInput
-              participants={participants}
-              members={membersForPlacement}
-              placements={placements}
-              onPlacementChange={(id, val) => setPlacements((prev) => ({ ...prev, [id]: val }))}
-              myDecks={myDecks}
-              deckSelections={deckSelections}
-              onDeckChange={(id, val) => setDeckSelections((prev) => ({ ...prev, [id]: val }))}
-              currentUserProfileId={currentUser?.id}
-            />
-          </div>
+          <section className="space-y-3">
+            <SectionLabel icon={<Layers className="w-3.5 h-3.5" />} label="Match Setup" />
+            <div className="space-y-2">
+              {participants.map((uid) => {
+                const member = membersForPlacement.find((m) => m.userId === uid);
+                const isCurrentUser = uid === currentUser?.id;
+                return (
+                  <ParticipantSetupCard
+                    key={uid}
+                    uid={uid}
+                    member={member}
+                    isCurrentUser={isCurrentUser}
+                    placement={placements[uid] || ""}
+                    participantCount={participants.length}
+                    usedPlacements={usedPlacements}
+                    onPlacementChange={(val) => setPlacements((prev) => ({ ...prev, [uid]: val }))}
+                    myDecks={isCurrentUser ? myDecks : []}
+                    selectedDeckId={isCurrentUser ? (deckSelections[uid] || "") : ""}
+                    onDeckChange={isCurrentUser ? (val) => setDeckSelections((prev) => ({ ...prev, [uid]: val })) : null}
+                  />
+                );
+              })}
+            </div>
+          </section>
         )}
 
-        {/* Date + Notes */}
+        {/* ── Date & Notes ─────────────────────────────────────────────────── */}
         <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4 space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs text-gray-500 font-medium mb-1.5 uppercase tracking-wider">
               Date &amp; Time
             </label>
             <input
@@ -428,8 +401,8 @@ export default function LogGame() {
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 font-medium mb-1.5 uppercase tracking-wider">
-              Notes <span className="text-gray-600 normal-case">(optional)</span>
+            <label className="block text-xs text-gray-500 font-medium mb-1.5 uppercase tracking-wider">
+              Notes <span className="text-gray-700 normal-case font-normal">(optional)</span>
             </label>
             <textarea
               value={notes}
@@ -441,22 +414,129 @@ export default function LogGame() {
           </div>
         </div>
 
-        {/* Submit */}
-        <Button
-          type="submit"
-          disabled={submitting || participants.length < 2}
-          className="w-full h-12 rounded-2xl text-base font-semibold"
-          style={{
-            backgroundColor:
-              submitting || participants.length < 2
-                ? undefined
-                : "rgb(var(--ds-primary-rgb))",
-            color: "#fff",
-          }}
-        >
-          {submitting ? "Logging…" : "Log Game"}
-        </Button>
       </form>
+
+      {/* ── Sticky Submit Bar ─────────────────────────────────────────────── */}
+      {/* Positioned above bottom nav (z-40 < nav z-50). Bottom offset accounts for BottomNav h-16 */}
+      <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 pt-3 bg-gradient-to-t from-gray-950 via-gray-950/95 to-transparent">
+        <div className="max-w-lg mx-auto">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting || !canSubmit}
+            className="w-full h-13 rounded-2xl text-base font-bold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              height: "52px",
+              backgroundColor: canSubmit && !submitting ? "rgb(var(--ds-primary-rgb))" : undefined,
+              background: !canSubmit || submitting ? "#1f2937" : undefined,
+            }}
+          >
+            {submitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
+                Logging…
+              </span>
+            ) : (
+              "Submit Game"
+            )}
+          </button>
+          {!canSubmit && participants.length >= 2 && (
+            <p className="text-center text-xs text-gray-600 mt-1.5">Set a placement for every participant</p>
+          )}
+          {participants.length < 2 && (
+            <p className="text-center text-xs text-gray-600 mt-1.5">Add at least 2 participants to continue</p>
+          )}
+        </div>
+      </div>
+
     </div>
+  );
+}
+
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+function SectionLabel({ icon, label }) {
+  return (
+    <div className="flex items-center gap-2 px-1">
+      <span className="text-gray-500">{icon}</span>
+      <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{label}</span>
+    </div>
+  );
+}
+
+function ModeCard({ active, onClick, label, description, isPod }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-start gap-1 rounded-2xl px-4 py-3.5 border text-left transition-all"
+      style={
+        active
+          ? {
+              backgroundColor: isPod ? "rgba(124,58,237,0.12)" : "rgba(var(--ds-primary-rgb),0.12)",
+              borderColor: isPod ? "rgba(124,58,237,0.40)" : "rgb(var(--ds-primary-rgb))",
+            }
+          : { backgroundColor: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }
+      }
+    >
+      <span
+        className="text-sm font-bold"
+        style={
+          active
+            ? { color: isPod ? "#a78bfa" : "var(--ds-primary-text)" }
+            : { color: "#6b7280" }
+        }
+      >
+        {label}
+      </span>
+      <span className="text-xs" style={{ color: active ? "#9ca3af" : "#4b5563" }}>
+        {description}
+      </span>
+    </button>
+  );
+}
+
+function PodChipBase({ pod, right }) {
+  return (
+    <div className="flex items-center gap-3 bg-[rgba(124,58,237,0.08)] border border-[rgba(124,58,237,0.25)] rounded-2xl px-4 py-3">
+      <div className="w-8 h-8 rounded-xl bg-[rgba(124,58,237,0.15)] border border-[rgba(124,58,237,0.25)] flex items-center justify-center flex-shrink-0">
+        <Layers className="w-4 h-4 text-violet-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-white truncate">{pod.pod_name}</p>
+        <p className="text-xs font-mono text-violet-400/60">{pod.pod_code}</p>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function LockedPodChip({ pod }) {
+  return (
+    <PodChipBase
+      pod={pod}
+      right={
+        <span className="text-[10px] text-gray-600 bg-gray-800/80 px-2 py-0.5 rounded-md uppercase tracking-wider flex-shrink-0">
+          Locked
+        </span>
+      }
+    />
+  );
+}
+
+function SelectedPodChip({ pod, onClear }) {
+  return (
+    <PodChipBase
+      pod={pod}
+      right={
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-xs text-gray-500 hover:text-red-400 transition-colors flex-shrink-0 px-1"
+        >
+          Change
+        </button>
+      }
+    />
   );
 }
