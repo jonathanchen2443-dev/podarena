@@ -135,31 +135,60 @@ Deno.serve(async (req) => {
       return Response.json({ decks: activeDecks });
     }
 
-    // ── getStats ──────────────────────────────────────────────────────────────
-    if (action === 'getStats') {
-      if (!profileId) return Response.json({ error: 'profileId required' }, { status: 400 });
+    // ── getStats / myProfileStats ─────────────────────────────────────────────
+    // getStats: public stats for any profile (used by UserProfile page).
+    // myProfileStats: self-only stats with POD count, identity-verified.
+    //   Uses union of participant_user_id + participant_profile_id to cover all records.
+    if (action === 'getStats' || action === 'myProfileStats') {
+      const isSelf = action === 'myProfileStats';
+      const { callerAuthUserId, callerProfileId } = body;
 
-      const [participations, decks] = await Promise.all([
-        base44.asServiceRole.entities.GameParticipant.filter({ participant_profile_id: profileId }, '-created_date', 500),
-        base44.asServiceRole.entities.Deck.filter({ owner_id: profileId }, '-created_date', 100),
+      // For myProfileStats: identity gate required
+      if (isSelf) {
+        if (!callerAuthUserId || !callerProfileId) return Response.json({ error: 'callerAuthUserId and callerProfileId required' }, { status: 400 });
+        const callerRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerRows.length || callerRows[0].user_id !== callerAuthUserId) return Response.json({ error: 'Forbidden' }, { status: 403 });
+      } else {
+        if (!profileId) return Response.json({ error: 'profileId required' }, { status: 400 });
+      }
+
+      const targetProfileId = isSelf ? callerProfileId : profileId;
+
+      // For self: union both query paths to catch all records regardless of linkage
+      const [byProfileId, byUserId, decks, podMemberships] = await Promise.all([
+        base44.asServiceRole.entities.GameParticipant.filter({ participant_profile_id: targetProfileId }, '-created_date', 500).catch(() => []),
+        isSelf && callerAuthUserId
+          ? base44.asServiceRole.entities.GameParticipant.filter({ participant_user_id: callerAuthUserId }, '-created_date', 500).catch(() => [])
+          : Promise.resolve([]),
+        base44.asServiceRole.entities.Deck.filter({ owner_id: targetProfileId }, '-created_date', 200).catch(() => []),
+        isSelf
+          ? base44.asServiceRole.entities.PODMembership.filter({ user_id: callerAuthUserId, membership_status: 'active' }, '-created_date', 200).catch(() => [])
+          : Promise.resolve([]),
       ]);
 
-      const gameIds = [...new Set(participations.map((p) => p.game_id))];
+      // Deduplicate union
+      const seenPIds = new Set();
+      const allParticipations = [];
+      for (const p of [...byProfileId, ...byUserId]) {
+        if (!seenPIds.has(p.id)) { seenPIds.add(p.id); allParticipations.push(p); }
+      }
+
+      const gameIds = [...new Set(allParticipations.map((p) => p.game_id))];
       let approvedGameIds = new Set();
       if (gameIds.length > 0) {
         const chunks = [];
         for (let i = 0; i < gameIds.length; i += 50) chunks.push(gameIds.slice(i, i + 50));
         const gameResults = await Promise.all(
           chunks.map((chunk) =>
-            base44.asServiceRole.entities.Game.filter({ id: { $in: chunk }, status: 'approved' }, '-played_at', 50)
+            base44.asServiceRole.entities.Game.filter({ id: { $in: chunk }, status: 'approved' }, '-played_at', 50).catch(() => [])
           )
         );
         approvedGameIds = new Set(gameResults.flat().filter((g) => !g.is_hidden).map((g) => g.id));
       }
 
-      const approvedParticipations = participations.filter((p) => approvedGameIds.has(p.game_id));
-      const gamesPlayed = approvedParticipations.length;
-      const wins = approvedParticipations.filter((p) => p.placement === 1).length;
+      const approved = allParticipations.filter((p) => approvedGameIds.has(p.game_id));
+      const gamesPlayed = approved.length;
+      const wins = approved.filter((p) => p.placement === 1).length;
 
       return Response.json({
         stats: {
@@ -167,6 +196,8 @@ Deno.serve(async (req) => {
           wins,
           decksCount: decks.length,
           activeDecksCount: decks.filter((d) => d.is_active !== false).length,
+          // Only included for myProfileStats (private to owner)
+          ...(isSelf ? { leaguesCount: podMemberships.length, podsCount: podMemberships.length } : {}),
         }
       });
     }

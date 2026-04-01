@@ -1,7 +1,15 @@
 /**
- * profileStatsService — fetches stat counts for the profile page.
- * Stats: gamesPlayed (approved), wins (approved, placement==1), decks, leagues.
- * 60s TTL cache + in-flight dedup.
+ * profileStatsService — fetches self profile stats via backend (myProfileStats action).
+ *
+ * All stat computation is done server-side via asServiceRole, which:
+ *  - Bypasses RLS (regular users can't reliably filter GameParticipant client-side)
+ *  - Unions participant_user_id + participant_profile_id queries to cover all records
+ *  - Verifies identity server-side before returning private data (POD count etc.)
+ *
+ * Shape returned: { gamesPlayed, wins, decksCount, activeDecksCount, leaguesCount, podsCount }
+ * leaguesCount is an alias for podsCount, kept for UI contract compatibility.
+ *
+ * 60s TTL cache + in-flight dedup — same pattern as profileService.
  */
 import { base44 } from "@/api/base44Client";
 
@@ -25,54 +33,39 @@ export function invalidateProfileStatsCache(userId) {
 
 /**
  * getProfileStats(auth)
- * Returns { gamesPlayed, wins, decksCount, leaguesCount }
+ * Returns { gamesPlayed, wins, decksCount, activeDecksCount, leaguesCount, podsCount }
+ * Stats are computed server-side via the myProfileStats backend action.
  */
 export async function getProfileStats(auth) {
-  if (auth.isGuest || !auth.currentUser || !auth.currentUser.id) return null;
-  const userId = auth.currentUser.id;
-  const cKey = `profileStats::${userId}`;
+  if (auth.isGuest || !auth.currentUser || !auth.currentUser.id || !auth.authUserId) return null;
+
+  const profileId = auth.currentUser.id;
+  const authUserId = auth.authUserId;
+  const cKey = `profileStats::${profileId}`;
 
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
   const promise = (async () => {
-    // Fetch each entity independently so one RLS failure doesn't block all stats
-    const [participations, decks, memberships] = await Promise.all([
-      // RLS scopes to current user's participant rows; filter by profile_id for new records
-      base44.entities.GameParticipant.filter({ participant_profile_id: userId }, "-created_date", 500).catch(() => []),
-      base44.entities.Deck.filter({ owner_id: userId }, "-updated_date", 200).catch(() => []),
-      base44.entities.LeagueMember.filter({ user_id: userId }, "-created_date", 200).catch(() => []),
-    ]);
+    const res = await base44.functions.invoke('publicProfiles', {
+      action: 'myProfileStats',
+      callerAuthUserId: authUserId,
+      callerProfileId: profileId,
+    });
 
-    // Fetch only the games this user participated in, filtering by approved status
-    const rawGameIds = [...new Set(participations.map((p) => p.game_id))];
-    let approvedGameIds = new Set();
-    if (rawGameIds.length > 0) {
-      // Fetch game records for just these IDs
-      const gameResults = await Promise.all(
-        rawGameIds.map((gid) => base44.entities.Game.filter({ id: gid }).then((r) => r[0]).catch(() => null))
-      );
-      approvedGameIds = new Set(
-        gameResults.filter((g) => g && g.status === "approved").map((g) => g.id)
-      );
-    }
+    const stats = res.data?.stats;
+    if (!stats) throw new Error(res.data?.error || 'myProfileStats returned no data');
 
-    let gamesPlayed = 0;
-    let wins = 0;
-    for (const p of participations) {
-      if (!approvedGameIds.has(p.game_id)) continue;
-      gamesPlayed++;
-      if (p.placement === 1) wins++;
-    }
-
-    const result = {
-      gamesPlayed,
-      wins,
-      decksCount: decks.length,
-      leaguesCount: memberships.filter((m) => m.status === "active").length,
-    };
-    return cacheSet(cKey, result);
+    return cacheSet(cKey, {
+      gamesPlayed:      stats.gamesPlayed      ?? 0,
+      wins:             stats.wins             ?? 0,
+      decksCount:       stats.decksCount       ?? 0,
+      activeDecksCount: stats.activeDecksCount ?? 0,
+      // leaguesCount kept as UI-compatible alias for podsCount
+      leaguesCount:     stats.leaguesCount     ?? stats.podsCount ?? 0,
+      podsCount:        stats.podsCount        ?? 0,
+    });
   })();
 
   _inflight.set(cKey, promise);
