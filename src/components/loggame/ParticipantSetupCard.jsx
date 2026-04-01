@@ -1,14 +1,6 @@
 import React from "react";
 import { User, ChevronDown } from "lucide-react";
 
-/**
- * ParticipantSetupCard
- * One card per participant in the Match Setup section.
- * - Shows player name + avatar
- * - Placement selector (dropdown, deduplication)
- * - Deck selector ONLY for the current user (isCurrentUser=true)
- */
-
 function formatName(name) {
   if (!name) return "Player";
   const parts = name.trim().split(/\s+/);
@@ -23,6 +15,12 @@ const PLACE_LABELS = {
   4: "4th place",
   5: "5th place",
   6: "6th place",
+};
+
+// Shared dark select style — makes native browser dropdown render dark
+const DARK_SELECT_BASE = {
+  colorScheme: "dark",
+  backgroundColor: "transparent",
 };
 
 export default function ParticipantSetupCard({
@@ -41,6 +39,12 @@ export default function ParticipantSetupCard({
   const avatarUrl = member?.avatar_url || null;
   const hasPlacement = !!placement;
 
+  // Build placement options: show current user's own selection even if in usedPlacements,
+  // hide options taken by others entirely (cleaner than disabled grey).
+  const placementOptions = Array.from({ length: participantCount }, (_, i) => i + 1).filter(
+    (place) => !usedPlacements.has(place) || Number(placement) === place
+  );
+
   return (
     <div
       className="rounded-2xl border transition-all overflow-hidden"
@@ -55,7 +59,7 @@ export default function ParticipantSetupCard({
     >
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Avatar */}
-        <div className="relative flex-shrink-0">
+        <div className="flex-shrink-0">
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -95,22 +99,20 @@ export default function ParticipantSetupCard({
             onChange={(e) => onPlacementChange(e.target.value ? Number(e.target.value) : null)}
             className="appearance-none text-sm font-semibold rounded-xl px-3 pr-7 py-2 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))] transition-colors"
             style={{
-              backgroundColor: hasPlacement ? "rgba(var(--ds-primary-rgb),0.15)" : "rgba(255,255,255,0.06)",
+              ...DARK_SELECT_BASE,
+              backgroundColor: hasPlacement ? "rgba(var(--ds-primary-rgb),0.18)" : "rgba(255,255,255,0.06)",
               borderWidth: "1px",
               borderStyle: "solid",
-              borderColor: hasPlacement ? "rgba(var(--ds-primary-rgb),0.35)" : "rgba(255,255,255,0.10)",
+              borderColor: hasPlacement ? "rgba(var(--ds-primary-rgb),0.40)" : "rgba(255,255,255,0.10)",
               color: hasPlacement ? "var(--ds-primary-text)" : "#6b7280",
             }}
           >
-            <option value="">Place…</option>
-            {Array.from({ length: participantCount }, (_, i) => i + 1).map((place) => {
-              const alreadyUsed = usedPlacements.has(place) && Number(placement) !== place;
-              return (
-                <option key={place} value={place} disabled={alreadyUsed}>
-                  {PLACE_LABELS[place] || `${place}th`}
-                </option>
-              );
-            })}
+            <option value="" style={{ backgroundColor: "#1a1f2e", color: "#9ca3af" }}>Place…</option>
+            {placementOptions.map((place) => (
+              <option key={place} value={place} style={{ backgroundColor: "#1a1f2e", color: "#f3f4f6" }}>
+                {PLACE_LABELS[place] || `${place}th`}
+              </option>
+            ))}
           </select>
           <ChevronDown
             className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none"
@@ -121,27 +123,30 @@ export default function ParticipantSetupCard({
 
       {/* Deck row — only for current user */}
       {isCurrentUser && myDecks.length > 0 && (
-        <div
-          className="px-4 pb-3"
-        >
+        <div className="px-4 pb-3">
           <div
-            className="rounded-xl border px-3 py-2.5 flex items-center gap-2"
+            className="rounded-xl border flex items-center gap-2 px-3 py-2"
             style={{
-              backgroundColor: "rgba(0,0,0,0.2)",
-              borderColor: "rgba(var(--ds-primary-rgb),0.15)",
+              backgroundColor: "rgba(0,0,0,0.25)",
+              borderColor: "rgba(var(--ds-primary-rgb),0.18)",
             }}
           >
-            <span className="text-xs text-gray-500 flex-shrink-0 font-medium">Deck</span>
+            <span className="text-xs text-gray-500 flex-shrink-0 font-medium w-8">Deck</span>
             <div className="relative flex-1 min-w-0">
               <select
                 value={selectedDeckId}
                 onChange={(e) => onDeckChange(e.target.value || null)}
-                className="w-full appearance-none bg-transparent text-sm focus:outline-none truncate pr-5"
-                style={{ color: selectedDeckId ? "#e5e7eb" : "#6b7280" }}
+                className="w-full appearance-none text-sm focus:outline-none pr-5 bg-transparent"
+                style={{
+                  ...DARK_SELECT_BASE,
+                  color: selectedDeckId ? "#e5e7eb" : "#6b7280",
+                  // Ensure native popup width matches the visible field
+                  minWidth: 0,
+                }}
               >
-                <option value="">No deck / not tracked</option>
+                <option value="" style={{ backgroundColor: "#1a1f2e", color: "#9ca3af" }}>No deck / not tracked</option>
                 {myDecks.map((d) => (
-                  <option key={d.id} value={d.id}>
+                  <option key={d.id} value={d.id} style={{ backgroundColor: "#1a1f2e", color: "#f3f4f6" }}>
                     {d.name}{d.commander_name ? ` — ${d.commander_name}` : ""}
                   </option>
                 ))}

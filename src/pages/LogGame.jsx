@@ -418,33 +418,42 @@ export default function LogGame() {
 
       {/* ── Sticky Submit Bar ─────────────────────────────────────────────── */}
       {/* Positioned above bottom nav (z-40 < nav z-50). Bottom offset accounts for BottomNav h-16 */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 pt-3 bg-gradient-to-t from-gray-950 via-gray-950/95 to-transparent">
-        <div className="max-w-lg mx-auto">
+      <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-3 pt-4" style={{ background: "linear-gradient(to top, #030712 60%, transparent)" }}>
+        <div className="max-w-lg mx-auto space-y-1.5">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting || !canSubmit}
-            className="w-full h-13 rounded-2xl text-base font-bold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full rounded-2xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2"
             style={{
-              height: "52px",
-              backgroundColor: canSubmit && !submitting ? "rgb(var(--ds-primary-rgb))" : undefined,
-              background: !canSubmit || submitting ? "#1f2937" : undefined,
+              height: "50px",
+              backgroundColor: canSubmit && !submitting
+                ? "rgb(var(--ds-primary-rgb))"
+                : "#1c2333",
+              border: canSubmit && !submitting
+                ? "1px solid rgba(var(--ds-primary-rgb),0.5)"
+                : "1px solid rgba(255,255,255,0.07)",
+              boxShadow: canSubmit && !submitting
+                ? "0 0 20px rgba(var(--ds-primary-rgb),0.35), 0 4px 12px rgba(0,0,0,0.5)"
+                : "none",
+              opacity: submitting ? 0.7 : 1,
+              cursor: !canSubmit || submitting ? "not-allowed" : "pointer",
             }}
           >
             {submitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
-                Logging…
-              </span>
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Logging…</span>
+              </>
             ) : (
               "Submit Game"
             )}
           </button>
           {!canSubmit && participants.length >= 2 && (
-            <p className="text-center text-xs text-gray-600 mt-1.5">Set a placement for every participant</p>
+            <p className="text-center text-xs text-gray-600">Set a placement for every participant</p>
           )}
           {participants.length < 2 && (
-            <p className="text-center text-xs text-gray-600 mt-1.5">Add at least 2 participants to continue</p>
+            <p className="text-center text-xs text-gray-600">Add at least 2 participants to continue</p>
           )}
         </div>
       </div>
