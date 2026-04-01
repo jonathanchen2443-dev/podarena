@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { User, ChevronDown } from "lucide-react";
 
 function formatName(name) {
@@ -17,11 +17,100 @@ const PLACE_LABELS = {
   6: "6th place",
 };
 
-// Shared dark select style — makes native browser dropdown render dark
 const DARK_SELECT_BASE = {
   colorScheme: "dark",
   backgroundColor: "transparent",
 };
+
+// ── Custom deck dropdown — width-constrained, aligned, truncating ─────────────
+function DeckDropdown({ decks, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  const selected = decks.find((d) => d.id === value) || null;
+  const selectedLabel = selected
+    ? `${selected.name}${selected.commander_name ? ` — ${selected.commander_name}` : ""}`
+    : null;
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  function handleSelect(id) {
+    onChange(id || null);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-1 text-sm focus:outline-none"
+        style={{ color: value ? "#e5e7eb" : "#6b7280" }}
+      >
+        <span className="flex-1 min-w-0 text-left truncate">
+          {selectedLabel || "No deck / not tracked"}
+        </span>
+        <ChevronDown
+          className="flex-shrink-0 w-3 h-3 text-gray-600 transition-transform"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        />
+      </button>
+
+      {/* Dropdown panel — full width of container, positioned below */}
+      {open && (
+        <div
+          className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl overflow-hidden border"
+          style={{
+            backgroundColor: "#1a1f2e",
+            borderColor: "rgba(var(--ds-primary-rgb),0.25)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
+          }}
+        >
+          <div className="max-h-48 overflow-y-auto">
+            {/* No deck option */}
+            <button
+              type="button"
+              onClick={() => handleSelect("")}
+              className="w-full text-left px-3 py-2.5 text-sm truncate transition-colors hover:bg-white/5"
+              style={{ color: !value ? "var(--ds-primary-text)" : "#9ca3af" }}
+            >
+              No deck / not tracked
+            </button>
+            {decks.map((d) => {
+              const label = `${d.name}${d.commander_name ? ` — ${d.commander_name}` : ""}`;
+              const isSelected = d.id === value;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => handleSelect(d.id)}
+                  className="w-full text-left px-3 py-2.5 text-sm truncate transition-colors hover:bg-white/5"
+                  style={{ color: isSelected ? "var(--ds-primary-text)" : "#e5e7eb" }}
+                  title={label}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function ParticipantSetupCard({
   uid,
@@ -39,15 +128,13 @@ export default function ParticipantSetupCard({
   const avatarUrl = member?.avatar_url || null;
   const hasPlacement = !!placement;
 
-  // Build placement options: show current user's own selection even if in usedPlacements,
-  // hide options taken by others entirely (cleaner than disabled grey).
   const placementOptions = Array.from({ length: participantCount }, (_, i) => i + 1).filter(
     (place) => !usedPlacements.has(place) || Number(placement) === place
   );
 
   return (
     <div
-      className="rounded-2xl border transition-all overflow-hidden"
+      className="rounded-2xl border transition-all overflow-visible"
       style={{
         backgroundColor: isCurrentUser ? "rgba(var(--ds-primary-rgb),0.06)" : "rgba(255,255,255,0.03)",
         borderColor: isCurrentUser
@@ -92,7 +179,7 @@ export default function ParticipantSetupCard({
           )}
         </div>
 
-        {/* Placement selector */}
+        {/* Placement selector — native select, options are short so native is fine here */}
         <div className="relative flex-shrink-0">
           <select
             value={placement}
@@ -121,7 +208,7 @@ export default function ParticipantSetupCard({
         </div>
       </div>
 
-      {/* Deck row — only for current user */}
+      {/* Deck row — only for current user, custom dropdown */}
       {isCurrentUser && myDecks.length > 0 && (
         <div className="px-4 pb-3">
           <div
@@ -132,27 +219,11 @@ export default function ParticipantSetupCard({
             }}
           >
             <span className="text-xs text-gray-500 flex-shrink-0 font-medium w-8">Deck</span>
-            <div className="relative flex-1 min-w-0">
-              <select
-                value={selectedDeckId}
-                onChange={(e) => onDeckChange(e.target.value || null)}
-                className="w-full appearance-none text-sm focus:outline-none pr-5 bg-transparent"
-                style={{
-                  ...DARK_SELECT_BASE,
-                  color: selectedDeckId ? "#e5e7eb" : "#6b7280",
-                  // Ensure native popup width matches the visible field
-                  minWidth: 0,
-                }}
-              >
-                <option value="" style={{ backgroundColor: "#1a1f2e", color: "#9ca3af" }}>No deck / not tracked</option>
-                {myDecks.map((d) => (
-                  <option key={d.id} value={d.id} style={{ backgroundColor: "#1a1f2e", color: "#f3f4f6" }}>
-                    {d.name}{d.commander_name ? ` — ${d.commander_name}` : ""}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600 pointer-events-none" />
-            </div>
+            <DeckDropdown
+              decks={myDecks}
+              value={selectedDeckId}
+              onChange={onDeckChange}
+            />
           </div>
         </div>
       )}
