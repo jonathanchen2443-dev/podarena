@@ -191,8 +191,8 @@ export default function PraiseSelector({
       {/* Section header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Props</span>
-          <span className="text-gray-700 text-xs font-normal">(optional)</span>
+          <span className="text-sm font-semibold text-gray-200">Props</span>
+          <span className="text-gray-600 text-xs font-normal">(optional)</span>
         </div>
         <button
           type="button"

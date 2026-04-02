@@ -175,7 +175,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800/60">
           <div className="flex items-center gap-2.5">
             <Trophy className="w-4 h-4" style={{ color: "var(--ds-primary-text)" }} />
-            <span className="text-white font-semibold text-sm">Match Details</span>
+            <span className="text-white font-bold text-base">Match Details</span>
           </div>
           <div className="flex items-center gap-2">
             {statusBadge(game.status)}
@@ -260,11 +260,11 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
 
         {/* Review action footer — only shown when current user has a pending review */}
         {canAct && (
-          <div className="px-5 py-4 border-t border-gray-800/60 space-y-3">
+          <div className="px-5 py-4 border-t border-gray-800/60 space-y-3 flex-shrink-0">
             {/* Deck selector — current user's own active decks only */}
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">
-                Your deck <span className="text-red-400">(required to approve)</span>
+              <label className="block text-sm font-semibold text-gray-200 mb-1.5">
+                Your deck <span className="text-red-400 text-xs font-normal">(required to approve)</span>
               </label>
               {decksLoading ? (
                 <div className="h-10 rounded-lg bg-gray-800/50 animate-pulse" />
@@ -293,6 +293,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
             </div>
             {/* Props section — optional praise before approving */}
             {game?.participants && (
+              <div className="overflow-y-auto max-h-[280px] -mx-1 px-1">
               <PraiseSelector
                 participants={(game.participants || []).map((p) => ({
                   // assembled game shape uses 'userId' as the profile ID for UI joins
@@ -306,9 +307,10 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
                 onReceiverChange={(val) => { setPraiseReceiver(val); if (!val) setPraiseType(null); }}
                 onPraiseChange={setPraiseType}
               />
+              </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-shrink-0">
               <Button
                 className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
                 disabled={actionLoading !== null}

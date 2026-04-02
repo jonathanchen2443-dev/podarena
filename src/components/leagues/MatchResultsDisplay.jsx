@@ -124,13 +124,16 @@ function PlayerCard({ p, imgSize, blockH, cardWidth, maxWidth, showCrown = false
 }
 
 // ── TwoPlayerLayout ───────────────────────────────────────────────────────────
+// 1st place: imgSize=104, blockH=200 (winner reference)
+// 2nd place: imgSize=88,  blockH=140 (0.70 × 200) — clear visual hierarchy
 
 function TwoPlayerLayout({ sorted }) {
+  const first  = sorted.find((p) => p.placement === 1) || sorted[0];
+  const second = sorted.find((p) => p.placement === 2) || sorted[1];
   return (
-    <div className="flex items-end justify-center gap-3 py-0 px-3 overflow-x-hidden">
-      {sorted.map((p) => (
-        <PlayerCard key={p.userId} p={p} imgSize={104} blockH={160} cardWidth={174} showCrown />
-      ))}
+    <div className="flex items-end justify-center gap-4 py-0 px-3 overflow-x-hidden">
+      {second && <PlayerCard key={second.userId} p={second} imgSize={88}  blockH={140} showCrown={false} />}
+      {first  && <PlayerCard key={first.userId}  p={first}  imgSize={104} blockH={200} showCrown />}
     </div>
   );
 }
