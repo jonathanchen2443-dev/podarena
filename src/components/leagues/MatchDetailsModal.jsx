@@ -308,30 +308,28 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
               </div>
 
               {actionError && <p className="text-red-400 text-xs">{actionError}</p>}
+
+              {/* Action buttons — in normal scroll flow, after Props section */}
+              <div className="flex gap-3 pt-2 pb-2">
+                <Button
+                  className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
+                  disabled={actionLoading !== null}
+                  onClick={handleReject}
+                >
+                  {actionLoading === "reject" ? "Rejecting…" : "Reject"}
+                </Button>
+                <Button
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11"
+                  disabled={actionLoading !== null || !selectedDeckId || decksLoading}
+                  onClick={handleApprove}
+                >
+                  {actionLoading === "approve" ? "Approving…" : "Approve"}
+                </Button>
+              </div>
             </>
           )}
 
         </div>
-
-        {/* Action buttons — fixed footer, always visible */}
-        {canAct && (
-          <div className="px-5 py-4 border-t border-gray-800/60 flex gap-3 flex-shrink-0">
-            <Button
-              className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
-              disabled={actionLoading !== null}
-              onClick={handleReject}
-            >
-              {actionLoading === "reject" ? "Rejecting…" : "Reject"}
-            </Button>
-            <Button
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11"
-              disabled={actionLoading !== null || !selectedDeckId || decksLoading}
-              onClick={handleApprove}
-            >
-              {actionLoading === "approve" ? "Approving…" : "Approve"}
-            </Button>
-          </div>
-        )}
 
         {!canAct && !auth.isGuest && game.status === "pending" && (
           <div className="px-5 py-3 border-t border-gray-800/60">
