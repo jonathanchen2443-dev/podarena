@@ -1,15 +1,16 @@
 /**
  * Praises — full praise collection screen.
- * Shows all 6 praise types with total counts for a player.
+ * Tile-based 2×3 grid layout. Per-tile ? help popover.
+ * Shows all 6 praise types; zero-count tiles rendered muted.
+ *
  * Accessible for:
  *   - own profile: no ?userId param (uses currentUser.id)
  *   - public profile: ?userId=<profileId>
- *
- * Praise counts come from the backend via getPlayerPraiseSummary (no direct client scans).
  */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, HelpCircle, X } from "lucide-react";
+import ReactDOM from "react-dom";
 import { useAuth } from "@/components/auth/AuthContext";
 import { ROUTES } from "@/components/utils/routes";
 import { PRAISE_TYPES, PRAISE_META, getPlayerPraiseSummary } from "@/components/services/praiseService";
@@ -17,13 +18,57 @@ import { PRAISE_ICONS } from "@/components/praise/PraiseHelpModal";
 import { getPublicProfile } from "@/components/services/profileService.jsx";
 import { LoadingState } from "@/components/shell/PageStates";
 
-function PraiseCard({ praiseKey, count }) {
+// ── Per-tile help modal ───────────────────────────────────────────────────────
+
+function PraiseHelpSheet({ praiseKey, onClose }) {
+  const meta = PRAISE_META[praiseKey];
+  const modal = (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div
+        className="relative z-10 w-full sm:max-w-xs bg-gray-950 border border-gray-800 rounded-t-2xl sm:rounded-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Mobile handle */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-gray-700" />
+        </div>
+        <div className="flex items-center gap-4 px-5 py-4">
+          <img
+            src={PRAISE_ICONS[praiseKey]}
+            alt={meta.label}
+            className="w-12 h-12 object-contain flex-shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-semibold text-sm">{meta.label}</p>
+            <p className="text-gray-400 text-xs mt-1 leading-snug">{meta.description}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors flex-shrink-0 self-start"
+          >
+            <X className="w-3.5 h-3.5 text-gray-400" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+  const root = document.getElementById("modal-root");
+  return root ? ReactDOM.createPortal(modal, root) : modal;
+}
+
+// ── Praise tile ───────────────────────────────────────────────────────────────
+
+function PraiseTile({ praiseKey, count, onHelp }) {
   const meta = PRAISE_META[praiseKey];
   const active = count > 0;
 
   return (
     <div
-      className="flex items-center gap-4 rounded-2xl border px-4 py-3.5 transition-all"
+      className="relative flex flex-col items-center gap-2.5 rounded-2xl border pt-4 pb-3 px-2 transition-all"
       style={{
         backgroundColor: active
           ? "rgba(var(--ds-primary-rgb),0.07)"
@@ -33,33 +78,34 @@ function PraiseCard({ praiseKey, count }) {
           : "rgba(255,255,255,0.05)",
       }}
     >
+      {/* ? help trigger — top-right corner */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onHelp(praiseKey); }}
+        className="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full transition-colors hover:bg-white/10"
+        style={{ color: active ? "rgba(var(--ds-primary-rgb),0.5)" : "#374151" }}
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+      </button>
+
       {/* Icon */}
       <img
         src={PRAISE_ICONS[praiseKey]}
         alt={meta.label}
-        className="w-11 h-11 object-contain flex-shrink-0"
-        style={{ opacity: active ? 1 : 0.25 }}
+        className="w-14 h-14 object-contain"
+        style={{ opacity: active ? 1 : 0.2 }}
       />
 
-      {/* Label + description */}
-      <div className="flex-1 min-w-0">
-        <p
-          className="text-sm font-semibold leading-none"
-          style={{ color: active ? "#f5f7fa" : "#374151" }}
-        >
-          {meta.label}
-        </p>
-        <p
-          className="text-xs mt-1 leading-snug"
-          style={{ color: active ? "#9ca3af" : "#1f2937" }}
-        >
-          {meta.description}
-        </p>
-      </div>
+      {/* Name */}
+      <p
+        className="text-[11px] font-semibold text-center leading-tight px-1"
+        style={{ color: active ? "var(--ds-primary-text)" : "#374151" }}
+      >
+        {meta.label}
+      </p>
 
-      {/* Count badge */}
+      {/* Count */}
       <div
-        className="flex-shrink-0 min-w-[36px] h-9 flex items-center justify-center rounded-xl px-2"
+        className="rounded-lg px-2.5 py-0.5 min-w-[32px] flex items-center justify-center"
         style={{
           backgroundColor: active
             ? "rgba(var(--ds-primary-rgb),0.15)"
@@ -67,8 +113,8 @@ function PraiseCard({ praiseKey, count }) {
         }}
       >
         <span
-          className="text-sm font-bold tabular-nums"
-          style={{ color: active ? "var(--ds-primary-text)" : "#374151" }}
+          className="text-xs font-bold tabular-nums"
+          style={{ color: active ? "#f5f7fa" : "#1f2937" }}
         >
           {active ? count : "—"}
         </span>
@@ -77,17 +123,20 @@ function PraiseCard({ praiseKey, count }) {
   );
 }
 
+// ── Main screen ───────────────────────────────────────────────────────────────
+
 export default function Praises() {
   const navigate = useNavigate();
   const { currentUser, authLoading } = useAuth();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const queryUserId = urlParams.get("userId"); // may be a profileId or absent (own profile)
+  const queryUserId = urlParams.get("userId");
 
   const [profileId, setProfileId] = useState(null);
   const [displayName, setDisplayName] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [helpKey, setHelpKey] = useState(null); // which praise tile's help is open
 
   useEffect(() => {
     if (authLoading) return;
@@ -99,14 +148,12 @@ export default function Praises() {
     setLoading(true);
     try {
       if (queryUserId) {
-        // Public profile path — resolve the profile by its record ID
         const p = await getPublicProfile(queryUserId);
         setProfileId(p.id);
         setDisplayName(p.display_name);
         const s = await getPlayerPraiseSummary(p.id);
         setSummary(s);
       } else if (currentUser?.id) {
-        // Own profile path
         setProfileId(currentUser.id);
         setDisplayName(currentUser.display_name);
         const s = await getPlayerPraiseSummary(currentUser.id);
@@ -130,8 +177,8 @@ export default function Praises() {
   const total = summary?.total ?? 0;
 
   return (
-    <div className="space-y-5 pb-10">
-      {/* Back nav */}
+    <div className="space-y-5 pt-2">
+      {/* Back */}
       <button
         onClick={goBack}
         className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
@@ -142,34 +189,39 @@ export default function Praises() {
       {/* Header */}
       <div>
         <p className="text-xs text-gray-600 uppercase tracking-wider font-medium">
-          {isOwnProfile ? "My Praises" : `${displayName || "Player"}'s Praises`}
+          {isOwnProfile ? "My Props" : `${displayName || "Player"}'s Props`}
         </p>
         <div className="flex items-end gap-3 mt-1">
           <h1 className="text-white font-bold text-xl leading-none">Props</h1>
           {total > 0 && (
-            <span
-              className="text-xs font-semibold pb-0.5"
-              style={{ color: "var(--ds-primary-text)" }}
-            >
+            <span className="text-xs font-semibold pb-0.5" style={{ color: "var(--ds-primary-text)" }}>
               {total} total
             </span>
           )}
         </div>
         {total === 0 && (
           <p className="text-gray-600 text-xs mt-1">
-            {isOwnProfile
-              ? "No praises received yet. Keep playing!"
-              : "No praises received yet."}
+            {isOwnProfile ? "No props received yet. Keep playing!" : "No props received yet."}
           </p>
         )}
       </div>
 
-      {/* All 6 praise types */}
-      <div className="space-y-2">
+      {/* 2×3 tile grid */}
+      <div className="grid grid-cols-2 gap-3">
         {PRAISE_TYPES.map((key) => (
-          <PraiseCard key={key} praiseKey={key} count={summary?.[key] ?? 0} />
+          <PraiseTile
+            key={key}
+            praiseKey={key}
+            count={summary?.[key] ?? 0}
+            onHelp={setHelpKey}
+          />
         ))}
       </div>
+
+      {/* Per-tile help sheet */}
+      {helpKey && (
+        <PraiseHelpSheet praiseKey={helpKey} onClose={() => setHelpKey(null)} />
+      )}
     </div>
   );
 }
