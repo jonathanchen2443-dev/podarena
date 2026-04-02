@@ -15,6 +15,7 @@ import { ROUTES } from "@/components/utils/routes";
 import PublicStatRings from "@/components/profile/PublicStatRings";
 import PublicBadges from "@/components/profile/PublicBadges";
 import PublicDeckGrid from "@/components/profile/PublicDeckGrid";
+import ProfilePraisePreview from "@/components/praise/ProfilePraisePreview";
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -170,6 +171,15 @@ export default function UserProfile() {
 
       {/* Stats */}
       <PublicStatRings stats={stats} loading={statsLoading} />
+
+      {/* Praises preview */}
+      {profile?.id && (
+        <ProfilePraisePreview
+          profileId={profile.id}
+          userId={profile.id}
+          isOwn={isOwnProfile}
+        />
+      )}
 
       {/* Badges (icon-only) */}
       <PublicBadges stats={stats} />

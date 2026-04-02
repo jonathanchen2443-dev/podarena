@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { approveGameWithPraise, rejectGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
 import PraiseSelector from "@/components/praise/PraiseSelector";
+import GamePropsSection from "@/components/praise/GamePropsSection";
 import { getPodGameDetails, getGameDetailsForParticipant } from "@/components/services/profileService.jsx";
 import { ROUTES } from "@/components/utils/routes";
 import MatchResultsDisplay from "@/components/leagues/MatchResultsDisplay";
@@ -209,6 +210,9 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
           <p className="text-xs text-gray-500 text-center">
             {format(new Date(game.played_at), "PPP · p")}
           </p>
+
+          {/* Props from this game — only for approved games with praises */}
+          <GamePropsSection game={game} callerAuthUserId={currentAuthUserId} />
 
           {/* Approval confirmation — heading removed, content only */}
           {total > 0 && (

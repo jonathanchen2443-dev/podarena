@@ -13,6 +13,7 @@ import DeleteDeckModal from "@/components/decks/DeleteDeckModal";
 import AvatarUpload from "@/components/profile/AvatarUpload";
 import StatRingCards from "@/components/profile/StatRingCards";
 import BadgesSection from "@/components/profile/BadgesSection";
+import ProfilePraisePreview from "@/components/praise/ProfilePraisePreview";
 import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
 import { getProfileStats, invalidateProfileStatsCache } from "@/components/services/profileStatsService";
 import { listMyDecks, deleteDeck } from "@/components/services/deckService";
@@ -284,6 +285,13 @@ export default function Profile() {
 
       {/* Stat ring cards */}
       <StatRingCards stats={stats} decks={decks} loading={decksLoading} />
+
+      {/* Praises preview — top 3, with entry point to full screen */}
+      <ProfilePraisePreview
+        profileId={currentUser?.id}
+        userId={currentUser?.id}
+        isOwn={true}
+      />
 
       {/* Badges section */}
       <BadgesSection stats={stats} decks={decks} />

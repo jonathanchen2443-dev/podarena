@@ -37,4 +37,8 @@ export const ROUTES = {
 
   // Public user profile — read-only, id via ?userId= query param
   USER_PROFILE: (userId) => `${createPageUrl("UserProfile")}?userId=${userId}`,
+
+  // Praises — full collection screen; own profile or public (?userId=profileId)
+  PRAISES: createPageUrl("Praises"),
+  PRAISES_FOR: (userId) => `${createPageUrl("Praises")}?userId=${userId}`,
 };
