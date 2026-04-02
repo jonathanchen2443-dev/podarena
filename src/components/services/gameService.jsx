@@ -151,6 +151,11 @@ async function _doGetOrCreate(user) {
  *   placement?: number,
  * }>} params.participants
  */
+/**
+ * Extended params vs previous version:
+ *   praise?: { receiverProfileId: string, praiseType: string } — optional logger praise
+ *   If praise is provided, it is saved after the game is created. Omitting it is always safe.
+ */
 export async function createGameWithParticipants({
   podId,
   contextType = "casual",
@@ -159,6 +164,7 @@ export async function createGameWithParticipants({
   playedAt,
   notes,
   participants,
+  praise,   // optional: { receiverProfileId, praiseType }
 }) {
   // Route entire creation through backend — asServiceRole bypasses RLS for all participant/notification writes
   const res = await base44.functions.invoke('publicProfiles', {
@@ -172,7 +178,22 @@ export async function createGameWithParticipants({
     participants,
   });
   if (res.data?.error) throw new Error(res.data.error);
-  return res.data?.game;
+
+  const game = res.data?.game;
+
+  // If the logger chose a praise, save it now (fire-and-forget — never blocks game creation)
+  if (game?.id && praise?.receiverProfileId && praise?.praiseType) {
+    base44.functions.invoke('praises', {
+      action: 'savePraise',
+      gameId: game.id,
+      receiverProfileId: praise.receiverProfileId,
+      praiseType: praise.praiseType,
+      callerAuthUserId: creatorAuthUserId,
+      callerProfileId: creatorProfileId,
+    }).catch(() => {});
+  }
+
+  return game;
 }
 
 /**
@@ -193,6 +214,16 @@ export async function approveGame(gameId, approverAuthUserId, approverProfileId,
     deckId,
   });
   if (res.data?.error) throw new Error(res.data.error);
+
+  // If game is now fully approved, activate praises (fire-and-forget — non-critical)
+  if (res.data?.gameStatus === 'approved') {
+    base44.functions.invoke('praises', {
+      action: 'activateGamePraises',
+      gameId,
+      approvedAt: new Date().toISOString(),
+    }).catch(() => {});
+  }
+
   return res.data;
 }
 
@@ -214,9 +245,43 @@ export async function rejectGame(gameId, approverAuthUserId, approverProfileId, 
     reason: reason || '',
   });
   if (res.data?.error) throw new Error(res.data.error);
+
+  // Deactivate praises when game is rejected (fire-and-forget — non-critical)
+  base44.functions.invoke('praises', {
+    action: 'deactivateGamePraises',
+    gameId,
+  }).catch(() => {});
+
   return res.data;
 }
 
+
+/**
+ * approveGameWithPraise — approves a game and optionally saves a praise in one call.
+ * The praise is saved fire-and-forget after approval — never blocks or fails the approval.
+ *
+ * @param {string} gameId
+ * @param {string} approverAuthUserId
+ * @param {string} approverProfileId
+ * @param {string} deckId
+ * @param {{ receiverProfileId: string, praiseType: string }|null} praise - optional
+ */
+export async function approveGameWithPraise(gameId, approverAuthUserId, approverProfileId, deckId, praise) {
+  const result = await approveGame(gameId, approverAuthUserId, approverProfileId, deckId);
+
+  if (praise?.receiverProfileId && praise?.praiseType) {
+    base44.functions.invoke('praises', {
+      action: 'savePraise',
+      gameId,
+      receiverProfileId: praise.receiverProfileId,
+      praiseType: praise.praiseType,
+      callerAuthUserId: approverAuthUserId,
+      callerProfileId: approverProfileId,
+    }).catch(() => {});
+  }
+
+  return result;
+}
 
 export async function recalculateGameStatus(gameId) {
   // Route through backend so asServiceRole reads ALL participant rows (not just caller's own)

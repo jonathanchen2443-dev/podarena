@@ -1,0 +1,115 @@
+{
+  "name": "Praise",
+  "type": "object",
+  "properties": {
+    "game_id": {
+      "type": "string",
+      "description": "ID of the game this praise belongs to."
+    },
+    "giver_user_id": {
+      "type": "string",
+      "description": "Auth User ID ({{user.id}}) of the player giving the praise. Used for RLS and one-per-giver enforcement."
+    },
+    "giver_profile_id": {
+      "type": "string",
+      "description": "Profile entity ID of the giver. Used for display and joins."
+    },
+    "receiver_profile_id": {
+      "type": "string",
+      "description": "Profile entity ID of the player receiving the praise."
+    },
+    "receiver_user_id": {
+      "type": "string",
+      "description": "Auth User ID of the player receiving the praise. Stored for index/query convenience."
+    },
+    "praise_type": {
+      "type": "string",
+      "enum": [
+        "on_fire",
+        "no_mercy",
+        "puppet_master",
+        "fortress",
+        "clutch",
+        "crowned_commander"
+      ],
+      "description": "The type of praise given. Must be one of the 6 fixed praise keys."
+    },
+    "receiver_deck_id_at_time": {
+      "type": "string",
+      "description": "ID of the deck the receiver played in this game (from GameParticipant.selected_deck_id). Stored at praise-save time \u2014 never re-read from live Deck."
+    },
+    "receiver_deck_name_at_time": {
+      "type": "string",
+      "description": "Snapshot of the deck name at time of the game. From GameParticipant deck snapshot fields."
+    },
+    "receiver_commander_name_at_time": {
+      "type": "string",
+      "description": "Snapshot of the commander name at time of the game. From GameParticipant deck snapshot fields."
+    },
+    "game_approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Denormalized timestamp: when the game became fully approved. Null until the game is approved. Used to exclude praises from non-approved games without a Game join."
+    },
+    "is_visible": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set to true only when the parent game is fully approved and not hidden. Managed by backend only \u2014 never client-writeable."
+    }
+  },
+  "required": [
+    "game_id",
+    "giver_user_id",
+    "giver_profile_id",
+    "receiver_profile_id",
+    "praise_type"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.giver_user_id": "{{user.id}}"
+        },
+        {
+          "data.receiver_user_id": "{{user.id}}"
+        },
+        {
+          "data.game_id": {
+            "$inQuery": {
+              "entity": "GameParticipant",
+              "field": "game_id",
+              "filters": {
+                "participant_user_id": "{{user.id}}"
+              }
+            }
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.giver_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
