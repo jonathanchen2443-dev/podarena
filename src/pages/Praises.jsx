@@ -188,11 +188,10 @@ export default function Praises() {
 
       {/* Header */}
       <div>
-        <p className="text-xs text-gray-600 uppercase tracking-wider font-medium">
-          {isOwnProfile ? "My Props" : `${displayName || "Player"}'s Props`}
-        </p>
-        <div className="flex items-end gap-3 mt-1">
-          <h1 className="text-white font-bold text-xl leading-none">Props</h1>
+        <div className="flex items-end gap-3">
+          <h1 className="text-white font-bold text-xl leading-none">
+            {isOwnProfile ? "My Props" : `${displayName || "Player"}'s Props`}
+          </h1>
           {total > 0 && (
             <span className="text-xs font-semibold pb-0.5" style={{ color: "var(--ds-primary-text)" }}>
               {total} total
