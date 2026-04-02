@@ -183,19 +183,21 @@ Deno.serve(async (req) => {
 
         // Pre-load all dependent records before any deletes
         // This ensures we know the full scope upfront and can report what remains on failure.
-        const [participants, approvals, allNotifs] = await Promise.all([
+        const [participants, approvals, allNotifs, praises] = await Promise.all([
           base44.asServiceRole.entities.GameParticipant.filter({ game_id: delGameId }).catch(() => []),
           base44.asServiceRole.entities.GameApproval.filter({ game_id: delGameId }).catch(() => []),
           base44.asServiceRole.entities.Notification.filter({ type: 'game_review_request' }, '-created_date', 500).catch(() => []),
+          base44.asServiceRole.entities.Praise.filter({ game_id: delGameId }).catch(() => []),
         ]);
         const gameNotifs = allNotifs.filter((n) => n.metadata?.game_id === delGameId);
         const participantIds = participants.map((p) => p.id);
         const approvalIds = approvals.map((a) => a.id);
         const notifIds = gameNotifs.map((n) => n.id);
+        const praiseIds = praises.map((p) => p.id);
 
         console.log('[founderHardDeleteGame] scope', {
           gameId: delGameId, participants: participantIds.length,
-          approvals: approvalIds.length, notifications: notifIds.length,
+          approvals: approvalIds.length, notifications: notifIds.length, praises: praiseIds.length,
         });
 
         // Step 1: Notifications — stop inbox from showing this game immediately
@@ -209,7 +211,7 @@ Deno.serve(async (req) => {
               success: false, partial: false, failed_step: 'delete_notifications',
               error: `Failed to delete ${failed.length} notification(s): ${errMsg}`,
               deleted_entities: deleted,
-              remaining_entities: ['notifications', 'game_approvals', 'game_participants', 'game'],
+              remaining_entities: ['notifications', 'game_approvals', 'praises', 'game_participants', 'game'],
               game_id: delGameId,
               message: 'No records were deleted. The game is still fully intact. Safe to retry.',
             }, { status: 500 });
@@ -229,14 +231,34 @@ Deno.serve(async (req) => {
               success: false, partial: true, failed_step: 'delete_approvals',
               error: `Failed to delete ${failed.length} approval record(s): ${errMsg}`,
               deleted_entities: deleted,
-              remaining_entities: ['game_approvals', 'game_participants', 'game'],
+              remaining_entities: ['game_approvals', 'praises', 'game_participants', 'game'],
               game_id: delGameId,
-              message: 'Partial delete: notifications removed but approvals, participants, and game remain. Game still visible. Retry is safe.',
+              message: 'Partial delete: notifications removed but approvals, praises, participants, and game remain. Game still visible. Retry is safe.',
             }, { status: 500 });
           }
         }
         deleted.push('game_approvals');
         console.log('[founderHardDeleteGame] step=delete_approvals count=', approvalIds.length);
+
+        // Step 2.5: Praises — permanently delete all praise rows for this game
+        if (praiseIds.length > 0) {
+          const results = await Promise.allSettled(praiseIds.map((id) => base44.asServiceRole.entities.Praise.delete(id)));
+          const failed = praiseIds.filter((_, i) => results[i].status === 'rejected');
+          if (failed.length > 0) {
+            const errMsg = results.find((r) => r.status === 'rejected')?.reason?.message || 'Unknown';
+            console.error('[founderHardDeleteGame] FAILED at delete_praises', { failedCount: failed.length, error: errMsg });
+            return Response.json({
+              success: false, partial: true, failed_step: 'delete_praises',
+              error: `Failed to delete ${failed.length} praise row(s): ${errMsg}`,
+              deleted_entities: deleted,
+              remaining_entities: ['praises', 'game_participants', 'game'],
+              game_id: delGameId,
+              message: 'Partial delete: notifications and approvals removed but praises, participants, and game remain. Retry is safe.',
+            }, { status: 500 });
+          }
+        }
+        deleted.push('praises');
+        console.log('[founderHardDeleteGame] step=delete_praises count=', praiseIds.length);
 
         // Step 3: GameParticipant — CRITICAL: drives all stats, leaderboard, history, inbox
         // After this step the game is invisible on all user-facing surfaces.
@@ -252,7 +274,7 @@ Deno.serve(async (req) => {
               deleted_entities: deleted,
               remaining_entities: ['game_participants', 'game'],
               game_id: delGameId,
-              message: 'Partial delete: some participant rows and the game record remain. Game may still affect stats. Retry is safe.',
+              message: 'Partial delete: praises deleted, but some participant rows and the game record remain. Game may still affect stats. Retry is safe.',
             }, { status: 500 });
           }
         }
@@ -278,15 +300,17 @@ Deno.serve(async (req) => {
         console.log('[founderHardDeleteGame] step=delete_game gameId=', delGameId, 'by founder=', callerProfileId);
 
         // Post-delete verification: confirm all targeted records are truly gone
-        const [verifyGame, verifyParticipants, verifyApprovals] = await Promise.all([
+        const [verifyGame, verifyParticipants, verifyApprovals, verifyPraises] = await Promise.all([
           base44.asServiceRole.entities.Game.filter({ id: delGameId }).catch(() => []),
           base44.asServiceRole.entities.GameParticipant.filter({ game_id: delGameId }).catch(() => []),
           base44.asServiceRole.entities.GameApproval.filter({ game_id: delGameId }).catch(() => []),
+          base44.asServiceRole.entities.Praise.filter({ game_id: delGameId }).catch(() => []),
         ]);
         const verificationFailures = [];
         if (verifyGame.length > 0)        verificationFailures.push('game');
         if (verifyParticipants.length > 0) verificationFailures.push('game_participants');
         if (verifyApprovals.length > 0)    verificationFailures.push('game_approvals');
+        if (verifyPraises.length > 0)      verificationFailures.push('praises');
 
         if (verificationFailures.length > 0) {
           console.error('[founderHardDeleteGame] POST-DELETE VERIFICATION FAILED', { gameId: delGameId, stillPresent: verificationFailures });
@@ -311,7 +335,7 @@ Deno.serve(async (req) => {
           failed_step: 'unexpected',
           error: err.message || 'Hard delete failed unexpectedly',
           deleted_entities: deleted,
-          remaining_entities: deleted.length > 0 ? ['unknown — check manually'] : ['notifications', 'game_approvals', 'game_participants', 'game'],
+          remaining_entities: deleted.length > 0 ? ['unknown — check manually'] : ['notifications', 'game_approvals', 'praises', 'game_participants', 'game'],
           game_id: delGameId,
           message: deleted.length > 0
             ? 'Unexpected error mid-delete. Some records may have been deleted. Manual inspection recommended.'
