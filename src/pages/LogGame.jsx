@@ -12,6 +12,7 @@ import CasualParticipantPicker from "@/components/loggame/CasualParticipantPicke
 import ParticipantPicker from "@/components/loggame/ParticipantPicker";
 import ParticipantSetupCard from "@/components/loggame/ParticipantSetupCard";
 import PodSearchPicker from "@/components/loggame/PodSearchPicker";
+import PraiseSelector from "@/components/praise/PraiseSelector";
 
 function defaultPlayedAt() {
   const now = new Date();
@@ -43,6 +44,10 @@ export default function LogGame() {
   const [notes, setNotes] = useState("");
   const [myDecks, setMyDecks] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Praise state
+  const [praiseReceiver, setPraiseReceiver] = useState(null);
+  const [praiseType, setPraiseType] = useState(null);
 
   useEffect(() => {
     if (authLoading || !currentUser) return;
@@ -205,6 +210,11 @@ export default function LogGame() {
         };
       });
 
+      // Build optional praise payload (only if both receiver and type are chosen)
+      const praise = (praiseReceiver && praiseType)
+        ? { receiverProfileId: praiseReceiver, praiseType }
+        : null;
+
       await createGameWithParticipants({
         podId: mode === "pod" ? (pod?.id || null) : null,
         contextType: mode,
@@ -213,6 +223,7 @@ export default function LogGame() {
         playedAt: new Date(playedAt).toISOString(),
         notes,
         participants: participantList,
+        praise,
       });
 
       toast.success("Game logged!");
@@ -385,6 +396,22 @@ export default function LogGame() {
               })}
             </div>
           </section>
+        )}
+
+        {/* ── Section D: Props (Praise) — optional, only when 2+ participants ── */}
+        {participants.length >= 2 && (
+          <PraiseSelector
+            participants={participants.map((id) => ({
+              profileId: id,
+              display_name: memberData[id]?.display_name || id,
+              avatar_url: memberData[id]?.avatar_url || null,
+            }))}
+            currentProfileId={currentUser?.id}
+            selectedReceiver={praiseReceiver}
+            selectedPraise={praiseType}
+            onReceiverChange={(val) => { setPraiseReceiver(val); if (!val) setPraiseType(null); }}
+            onPraiseChange={setPraiseType}
+          />
         )}
 
         {/* ── Date & Notes ─────────────────────────────────────────────────── */}

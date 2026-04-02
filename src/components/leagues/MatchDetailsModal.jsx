@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Trophy, CheckCircle, XCircle, Clock, ChevronDown, Loader2, Layers } from "lucide-react";
 import { format } from "date-fns";
-import { approveGame, rejectGame } from "@/components/services/gameService";
+import { approveGameWithPraise, rejectGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
+import PraiseSelector from "@/components/praise/PraiseSelector";
 import { getPodGameDetails, getGameDetailsForParticipant } from "@/components/services/profileService.jsx";
 import { ROUTES } from "@/components/utils/routes";
 import MatchResultsDisplay from "@/components/leagues/MatchResultsDisplay";
@@ -38,6 +39,10 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
   const [myDecks, setMyDecks] = useState([]);
   const [decksLoading, setDecksLoading] = useState(false);
   const [selectedDeckId, setSelectedDeckId] = useState(null);
+
+  // Praise state (optional)
+  const [praiseReceiver, setPraiseReceiver] = useState(null);
+  const [praiseType, setPraiseType] = useState(null);
 
   // Self-fetch mode
   const [fetchedGame, setFetchedGame] = useState(null);
@@ -113,7 +118,10 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
     setActionLoading("approve");
     setActionError(null);
     try {
-      await approveGame(game.id, currentAuthUserId, currentProfileId, selectedDeckId);
+      const praise = (praiseReceiver && praiseType)
+        ? { receiverProfileId: praiseReceiver, praiseType }
+        : null;
+      await approveGameWithPraise(game.id, currentAuthUserId, currentProfileId, selectedDeckId, praise);
       toast.success("Game approved!");
       if (onActionComplete) await onActionComplete();
       onClose();
@@ -279,6 +287,23 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
                 </div>
               )}
             </div>
+            {/* Props section — optional praise before approving */}
+            {game?.participants && (
+              <PraiseSelector
+                participants={(game.participants || []).map((p) => ({
+                  // assembled game shape uses 'userId' as the profile ID for UI joins
+                  profileId: p.userId || p.profileId || p.participant_profile_id,
+                  display_name: p.display_name,
+                  avatar_url: p.avatar_url || null,
+                }))}
+                currentProfileId={currentProfileId}
+                selectedReceiver={praiseReceiver}
+                selectedPraise={praiseType}
+                onReceiverChange={(val) => { setPraiseReceiver(val); if (!val) setPraiseType(null); }}
+                onPraiseChange={setPraiseType}
+              />
+            )}
+
             <div className="flex gap-3">
               <Button
                 className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
