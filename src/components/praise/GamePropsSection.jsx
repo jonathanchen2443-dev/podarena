@@ -68,12 +68,12 @@ export default function GamePropsSection({ game, callerAuthUserId }) {
             >
               {/* Social event: giver → receiver */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-gray-300 text-xs font-semibold truncate">{giverName}</span>
-                  <span className="text-gray-600 text-xs">→</span>
+                  <span className="text-gray-400 text-base font-bold leading-none">→</span>
                   <span className="text-white text-xs font-semibold truncate">{receiverName}</span>
                 </div>
-                <p className="text-[10px] mt-0.5" style={{ color: "var(--ds-primary-text)", opacity: 0.8 }}>
+                <p className="text-xs mt-0.5 font-medium" style={{ color: "var(--ds-primary-text)", opacity: 0.9 }}>
                   {meta.label}
                 </p>
               </div>
