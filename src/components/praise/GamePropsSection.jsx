@@ -66,13 +66,6 @@ export default function GamePropsSection({ game, callerAuthUserId }) {
                 borderColor: "rgba(255,255,255,0.06)",
               }}
             >
-              {/* Praise icon */}
-              <img
-                src={PRAISE_ICONS[praise.praise_type]}
-                alt={meta.label}
-                className="w-8 h-8 object-contain flex-shrink-0"
-              />
-
               {/* Social event: giver → receiver */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1 flex-wrap">
@@ -84,6 +77,13 @@ export default function GamePropsSection({ game, callerAuthUserId }) {
                   {meta.label}
                 </p>
               </div>
+
+              {/* Praise icon — right side, 30% bigger (w-8 → w-[42px]) */}
+              <img
+                src={PRAISE_ICONS[praise.praise_type]}
+                alt={meta.label}
+                className="w-[42px] h-[42px] object-contain flex-shrink-0"
+              />
             </div>
           );
         })}
