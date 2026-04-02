@@ -255,77 +255,81 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
             </div>
           )}
 
-          {actionError && <p className="text-red-400 text-xs">{actionError}</p>}
+          {/* Review content — part of the single shared scroll body */}
+          {canAct && (
+            <>
+              <div className="border-t border-gray-800/60 pt-4 space-y-3">
+                {/* Deck selector */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-200 mb-1.5">
+                    Your deck <span className="text-red-400 text-xs font-normal">(required to approve)</span>
+                  </label>
+                  {decksLoading ? (
+                    <div className="h-10 rounded-lg bg-gray-800/50 animate-pulse" />
+                  ) : myDecks.length === 0 ? (
+                    <p className="text-xs text-gray-500 bg-gray-800/50 rounded-lg px-3 py-2.5">
+                      No active decks found. Create one in your profile first.
+                    </p>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        value={selectedDeckId || ""}
+                        onChange={(e) => setSelectedDeckId(e.target.value || null)}
+                        disabled={actionLoading !== null}
+                        className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 pr-8 text-sm text-white focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] appearance-none disabled:opacity-50"
+                      >
+                        <option value="">— Select your deck —</option>
+                        {myDecks.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}{d.commander_name ? ` · ${d.commander_name}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Props section */}
+                {game?.participants && (
+                  <PraiseSelector
+                    participants={(game.participants || []).map((p) => ({
+                      profileId: p.userId || p.profileId || p.participant_profile_id,
+                      display_name: p.display_name,
+                      avatar_url: p.avatar_url || null,
+                    }))}
+                    currentProfileId={currentProfileId}
+                    selectedReceiver={praiseReceiver}
+                    selectedPraise={praiseType}
+                    onReceiverChange={(val) => { setPraiseReceiver(val); if (!val) setPraiseType(null); }}
+                    onPraiseChange={setPraiseType}
+                  />
+                )}
+              </div>
+
+              {actionError && <p className="text-red-400 text-xs">{actionError}</p>}
+            </>
+          )}
+
         </div>
 
-        {/* Review action footer — only shown when current user has a pending review */}
+        {/* Action buttons — fixed footer, always visible */}
         {canAct && (
-          <div className="px-5 py-4 border-t border-gray-800/60 space-y-3 flex-shrink-0">
-            {/* Deck selector — current user's own active decks only */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-200 mb-1.5">
-                Your deck <span className="text-red-400 text-xs font-normal">(required to approve)</span>
-              </label>
-              {decksLoading ? (
-                <div className="h-10 rounded-lg bg-gray-800/50 animate-pulse" />
-              ) : myDecks.length === 0 ? (
-                <p className="text-xs text-gray-500 bg-gray-800/50 rounded-lg px-3 py-2.5">
-                  No active decks found. Create one in your profile first.
-                </p>
-              ) : (
-                <div className="relative">
-                  <select
-                    value={selectedDeckId || ""}
-                    onChange={(e) => setSelectedDeckId(e.target.value || null)}
-                    disabled={actionLoading !== null}
-                    className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 pr-8 text-sm text-white focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] appearance-none disabled:opacity-50"
-                  >
-                    <option value="">— Select your deck —</option>
-                    {myDecks.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}{d.commander_name ? ` · ${d.commander_name}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                </div>
-              )}
-            </div>
-            {/* Props section — optional praise before approving */}
-            {game?.participants && (
-              <div className="overflow-y-auto max-h-[280px] -mx-1 px-1">
-              <PraiseSelector
-                participants={(game.participants || []).map((p) => ({
-                  // assembled game shape uses 'userId' as the profile ID for UI joins
-                  profileId: p.userId || p.profileId || p.participant_profile_id,
-                  display_name: p.display_name,
-                  avatar_url: p.avatar_url || null,
-                }))}
-                currentProfileId={currentProfileId}
-                selectedReceiver={praiseReceiver}
-                selectedPraise={praiseType}
-                onReceiverChange={(val) => { setPraiseReceiver(val); if (!val) setPraiseType(null); }}
-                onPraiseChange={setPraiseType}
-              />
-              </div>
-            )}
-
-            <div className="flex gap-3 flex-shrink-0">
-              <Button
-                className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
-                disabled={actionLoading !== null}
-                onClick={handleReject}
-              >
-                {actionLoading === "reject" ? "Rejecting…" : "Reject"}
-              </Button>
-              <Button
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11"
-                disabled={actionLoading !== null || !selectedDeckId || decksLoading}
-                onClick={handleApprove}
-              >
-                {actionLoading === "approve" ? "Approving…" : "Approve"}
-              </Button>
-            </div>
+          <div className="px-5 py-4 border-t border-gray-800/60 flex gap-3 flex-shrink-0">
+            <Button
+              className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
+              disabled={actionLoading !== null}
+              onClick={handleReject}
+            >
+              {actionLoading === "reject" ? "Rejecting…" : "Reject"}
+            </Button>
+            <Button
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11"
+              disabled={actionLoading !== null || !selectedDeckId || decksLoading}
+              onClick={handleApprove}
+            >
+              {actionLoading === "approve" ? "Approving…" : "Approve"}
+            </Button>
           </div>
         )}
 
