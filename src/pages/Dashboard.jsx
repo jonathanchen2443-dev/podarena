@@ -8,8 +8,8 @@ import { invalidateProfileStatsCache } from "@/components/services/profileStatsS
 import { invalidateProfileInsightsCache } from "@/components/services/profileInsightsService";
 import {
   Bell, Swords, BookOpen, ChevronRight,
-  Plus, RefreshCw, AlertCircle, Layers
-} from "lucide-react";
+  Plus, RefreshCw, AlertCircle, Layers } from
+"lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,38 +22,35 @@ import PlayerSearch from "@/components/discovery/PlayerSearch";
 // ── Status badge ──────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
   approved: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  pending:  "bg-amber-500/10  text-amber-400  border-amber-500/20",
-  rejected: "bg-red-500/10   text-red-400    border-red-500/20",
+  pending: "bg-amber-500/10  text-amber-400  border-amber-500/20",
+  rejected: "bg-red-500/10   text-red-400    border-red-500/20"
 };
 
 function StatusBadge({ status }) {
   return (
     <Badge variant="outline" className={STATUS_STYLES[status] || STATUS_STYLES.pending}>
       {status}
-    </Badge>
-  );
+    </Badge>);
+
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, iconClass, iconStyle, label, value, to, badge }) {
-  const inner = (
-    <CardContent className="px-3 py-0 h-[72px] flex items-center gap-2.5">
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconClass}`}>
-        <Icon className="w-4 h-4" style={iconStyle} />
+  const inner =
+  <CardContent className="p-4 flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconClass}`}>
+        <Icon className="w-5 h-5" style={iconStyle} />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-300 font-medium leading-tight truncate">{label}</p>
-        {value !== undefined && value !== " " && (
-          <p className="text-lg font-bold text-white leading-tight">{value}</p>
-        )}
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <p className="text-gray-300 text-sm font-medium text-left leading-tight truncate">{label}</p>
+        {badge !== undefined && badge > 0 &&
+      <span className="text-xs font-semibold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full flex-shrink-0">
+            {badge}
+          </span>
+      }
       </div>
-      {badge !== undefined && badge > 0 && (
-        <span className="text-xs font-semibold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full flex-shrink-0">
-          {badge}
-        </span>
-      )}
-    </CardContent>
-  );
+    </CardContent>;
+
 
   if (to) {
     return (
@@ -61,14 +58,14 @@ function StatCard({ icon: Icon, iconClass, iconStyle, label, value, to, badge })
         <Card className="bg-gray-900/60 border-gray-800/50 hover:border-gray-700/50 transition-colors cursor-pointer">
           {inner}
         </Card>
-      </Link>
-    );
+      </Link>);
+
   }
   return (
     <Card className="bg-gray-900/60 border-gray-800/50">
       {inner}
-    </Card>
-  );
+    </Card>);
+
 }
 
 // ── Skeleton loader ───────────────────────────────────────────────────────────
@@ -80,11 +77,11 @@ function DashboardSkeleton() {
         <Skeleton className="h-4 w-64 bg-gray-800 rounded-lg" />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {[1,2,3,4].map(i => <Skeleton key={i} className="h-20 bg-gray-800 rounded-xl" />)}
+        {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 bg-gray-800 rounded-xl" />)}
       </div>
       <Skeleton className="h-40 bg-gray-800 rounded-xl" />
-    </div>
-  );
+    </div>);
+
 }
 
 // ── Authenticated view ────────────────────────────────────────────────────────
@@ -101,8 +98,8 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
     setCasualModal({
       gameId: game.id,
       // For pending reviews, skip podId so the modal uses the participant path (not podGameDetails)
-      podId: isPendingReview ? null : (game.pod_id || null),
-      pod_name: game.pod_name || null,
+      podId: isPendingReview ? null : game.pod_id || null,
+      pod_name: game.pod_name || null
     });
   }
 
@@ -126,8 +123,8 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
           iconClass="bg-gray-800/60 border border-gray-700/40"
           label="Random Deck Picker"
           value=" "
-          to={ROUTES.RANDOM_DECK_PICKER}
-        />
+          to={ROUTES.RANDOM_DECK_PICKER} />
+        
       </div>
 
       {/* Player search */}
@@ -145,11 +142,11 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
           <Button variant="outline" className="w-full border-gray-700 text-gray-300 hover:bg-gray-800 h-10 rounded-xl text-sm relative">
             <Bell className="w-4 h-4 mr-1.5" />
             Inbox
-            {pendingApprovalsCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
+            {pendingApprovalsCount > 0 &&
+            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
                 {pendingApprovalsCount > 9 ? "9+" : pendingApprovalsCount}
               </span>
-            )}
+            }
           </Button>
         </Link>
       </div>
@@ -161,14 +158,14 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
           <button
             onClick={onRefreshActivity}
             className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800/60 border border-gray-700/50 text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
-            title="Refresh activity"
-          >
+            title="Refresh activity">
+            
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {recentGames.length === 0 ? (
-          <Card className="bg-gray-900/60 border-gray-800/50">
+        {recentGames.length === 0 ?
+        <Card className="bg-gray-900/60 border-gray-800/50">
             <CardContent className="p-8 text-center">
               <Swords className="w-8 h-8 text-gray-700 mx-auto mb-2" />
               <p className="text-gray-500 text-sm">No games yet.</p>
@@ -178,21 +175,21 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
                 </Button>
               </Link>
             </CardContent>
-          </Card>
-        ) : (
-          <Card className="bg-gray-900/60 border-gray-800/50">
+          </Card> :
+
+        <Card className="bg-gray-900/60 border-gray-800/50">
             <CardContent className="p-0">
               {recentGames.map((game) => {
-                const isCasual = !game.context_type || game.context_type === "casual";
-                const inner = (
-                  <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors border-b border-gray-800/50 last:border-0 cursor-pointer">
+              const isCasual = !game.context_type || game.context_type === "casual";
+              const inner =
+              <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors border-b border-gray-800/50 last:border-0 cursor-pointer">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-                          isCasual
-                            ? "bg-sky-500/10 text-sky-400 border-sky-500/20"
-                            : "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                        }`}>
+                    isCasual ?
+                    "bg-sky-500/10 text-sky-400 border-sky-500/20" :
+                    "bg-purple-500/10 text-purple-400 border-purple-500/20"}`
+                    }>
                           {isCasual ? "🎲 Casual" : `⚔️ POD${game.pod_name ? ` - ${game.pod_name}` : ""}`}
                         </span>
                         <StatusBadge status={game.status} />
@@ -203,31 +200,31 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                  </div>
-                );
+                  </div>;
 
-                return (
-                  <div key={game.id} onClick={() => handleGameClick(game)}>
+
+              return (
+                <div key={game.id} onClick={() => handleGameClick(game)}>
                     {inner}
-                  </div>
-                );
-              })}
+                  </div>);
+
+            })}
             </CardContent>
           </Card>
-        )}
+        }
       </div>
 
       {/* Game modal */}
-      {casualModal && (
-        <MatchDetailsModal
-          gameId={casualModal.gameId}
-          podId={casualModal.podId}
-          onClose={() => setCasualModal(null)}
-          auth={auth}
-        />
-      )}
-    </div>
-  );
+      {casualModal &&
+      <MatchDetailsModal
+        gameId={casualModal.gameId}
+        podId={casualModal.podId}
+        onClose={() => setCasualModal(null)}
+        auth={auth} />
+
+      }
+    </div>);
+
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -301,13 +298,13 @@ export default function Dashboard() {
           variant="outline"
           size="sm"
           className="border-gray-700 text-gray-300 hover:bg-gray-800"
-          onClick={() => { fetchingRef.current = false; load(); }}
-        >
+          onClick={() => {fetchingRef.current = false;load();}}>
+          
           <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
           Retry
         </Button>
-      </div>
-    );
+      </div>);
+
   }
 
   if (!data) return null;
