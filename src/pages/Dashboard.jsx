@@ -41,16 +41,14 @@ function StatCard({ icon: Icon, iconClass, iconStyle, label, value, to, badge })
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconClass}`}>
         <Icon className="w-5 h-5" style={iconStyle} />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-2xl font-bold text-white leading-none">{value}</p>
-        <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <p className="text-sm text-gray-300 font-medium leading-tight">{label}</p>
+        {badge !== undefined && badge > 0 && (
+          <span className="text-xs font-semibold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full flex-shrink-0">
+            {badge}
+          </span>
+        )}
       </div>
-      {badge !== undefined && badge > 0 && (
-        <span className="text-xs font-semibold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
-          {badge}
-        </span>
-      )}
-      {to && <ChevronRight className="w-4 h-4 text-gray-600" />}
     </CardContent>
   );
 
