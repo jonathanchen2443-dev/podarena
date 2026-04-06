@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LoadingState, ErrorState } from "@/components/shell/PageStates";
+import { LoadingState } from "@/components/shell/PageStates";
 import { useAuth } from "@/components/auth/AuthContext";
 import { getPublicProfile, getPublicProfileStats, getPublicProfileDecks } from "@/components/services/profileService.jsx";
 import { ROUTES } from "@/components/utils/routes";
@@ -27,20 +27,18 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const userId = new URLSearchParams(window.location.search).get("userId");
 
   useEffect(() => {
     if (authLoading) return;
-    if (!userId) { setError("not_found"); setLoading(false); return; }
+    if (!userId) { navigate(ROUTES.HOME, { replace: true }); return; }
     loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, userId]);
 
   async function loadProfile() {
     setLoading(true);
-    setError(null);
     try {
       const p = await getPublicProfile(userId);
       setProfile(p);
@@ -61,10 +59,8 @@ export default function UserProfile() {
         .finally(() => setDecksLoading(false));
 
     } catch (e) {
-      setError(e.message || "error");
-      setLoading(false);
-      setStatsLoading(false);
-      setDecksLoading(false);
+      // Invalid/missing profile — redirect to Home instead of showing an error page
+      navigate(ROUTES.HOME, { replace: true });
     }
   }
 
@@ -74,28 +70,7 @@ export default function UserProfile() {
   }
 
   if (authLoading || loading) return <LoadingState message="Loading profile…" />;
-
-  if (error === "not_found") {
-    return (
-      <div className="space-y-4">
-        <button onClick={goBack} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back
-        </button>
-        <ErrorState message="Player not found." />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <button onClick={goBack} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back
-        </button>
-        <ErrorState message="Could not load this profile." />
-      </div>
-    );
-  }
+  if (!profile) return null; // navigating to Home, nothing to render
 
   const isOwnProfile = currentUser && currentUser.id === profile.id;
 
