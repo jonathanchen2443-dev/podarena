@@ -10,12 +10,12 @@ import { Shuffle, Share2, BookOpen, Lock } from "lucide-react";
 
 // ── Mana color → confetti hex map ─────────────────────────────────────────────
 const MANA_CONFETTI_COLORS = {
-  W: "#f9fafb", // white
-  U: "#3b82f6", // blue
-  B: "#6b21a8", // black/purple
-  R: "#ef4444", // red
-  G: "#22c55e", // green
-  C: "#9ca3af", // colorless
+  W: "#f9fafb",
+  U: "#3b82f6",
+  B: "#a855f7",
+  R: "#ef4444",
+  G: "#22c55e",
+  C: "#9ca3af",
 };
 
 function getConfettiColors(colorIdentity) {
@@ -23,12 +23,31 @@ function getConfettiColors(colorIdentity) {
   return colorIdentity.map((c) => MANA_CONFETTI_COLORS[c] || "#9ca3af");
 }
 
-// ── Reveal animation states ───────────────────────────────────────────────────
-// idle → pulse1 → pulse2 → pulse3 → uncover → details → done
-const REVEAL_STEPS = ["idle", "pulse1", "pulse2", "pulse3", "uncover", "details", "done"];
+// ── Reveal stages ─────────────────────────────────────────────────────────────
+// stage 0 = hidden/pre-reveal
+// stage 1 = small image, 90% shadow (brightness 10%)
+// stage 2 = medium image, 70% shadow (brightness 30%)
+// stage 3 = full image, 60% shadow (brightness 40%)
+// stage 4 = full image, fully revealed (brightness 100%)
+// stage 5 = details + buttons visible
 
-// px sizes for the three pulse steps and final
-const PULSE_SIZES = { pulse1: 80, pulse2: 128, pulse3: 172, uncover: 192, done: 192 };
+const STAGE_IMAGE_SIZE = {
+  0: 0,
+  1: 100,
+  2: 148,
+  3: 192,
+  4: 192,
+  5: 192,
+};
+
+const STAGE_BRIGHTNESS = {
+  0: 0,
+  1: 0.10,
+  2: 0.30,
+  3: 0.40,
+  4: 1.0,
+  5: 1.0,
+};
 
 // ── Format selector ───────────────────────────────────────────────────────────
 function FormatSelector() {
@@ -45,46 +64,42 @@ function FormatSelector() {
 
 // ── Reveal card ───────────────────────────────────────────────────────────────
 function DeckReveal({ deck, onPickAgain }) {
-  const [step, setStep] = useState("idle");
-  const timerRef = useRef([]);
+  const [stage, setStage] = useState(0);
+  const timers = useRef([]);
 
   function clearTimers() {
-    timerRef.current.forEach(clearTimeout);
-    timerRef.current = [];
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
   }
 
-  function schedule(fn, delay) {
-    const id = setTimeout(fn, delay);
-    timerRef.current.push(id);
+  function after(fn, ms) {
+    const id = setTimeout(fn, ms);
+    timers.current.push(id);
   }
 
-  // Start the reveal sequence as soon as this component mounts
   useEffect(() => {
     clearTimers();
+    // Stage 1 starts almost immediately
+    after(() => setStage(1), 80);
+    // ~1.5s between each stage
+    after(() => setStage(2), 1580);
+    after(() => setStage(3), 3080);
+    after(() => setStage(4), 4580);
+    // Details appear shortly after full reveal
+    after(() => setStage(5), 5080);
 
-    // 3-step pulse sequence: small → medium → large, each with a brief settle
-    schedule(() => setStep("pulse1"), 50);   // almost immediately: small
-    schedule(() => setStep("pulse2"), 350);  // 300ms settle → medium
-    schedule(() => setStep("pulse3"), 700);  // 350ms settle → large
-    // At full size but still dark: hold briefly
-    schedule(() => setStep("uncover"), 1050); // 350ms settle → fade dark overlay away
-    // After overlay fades (300ms transition), show text details
-    schedule(() => setStep("details"), 1400);
-    // Final stable state
-    schedule(() => setStep("done"), 1750);
-
-    // Confetti after details appear
-    schedule(() => {
+    // Confetti fires just as details appear
+    after(() => {
       const colors = getConfettiColors(deck.color_identity);
       confetti({
-        particleCount: 60,
-        spread: 70,
-        origin: { y: 0.55 },
+        particleCount: 45,
+        spread: 65,
+        origin: { y: 0.5 },
         colors,
-        gravity: 1.2,
-        ticks: 180,
+        gravity: 1.3,
+        ticks: 150,
       });
-    }, 1500);
+    }, 5150);
 
     return clearTimers;
   }, [deck]);
@@ -98,73 +113,80 @@ function DeckReveal({ deck, onPickAgain }) {
     }
   }
 
-  const isDone = step === "done";
-  const showDetails = step === "details" || step === "done";
-  const overlayVisible = step === "pulse1" || step === "pulse2" || step === "pulse3";
-  const imgSize = PULSE_SIZES[step] || 0;
-  const showImage = step !== "idle";
+  const imgSize = STAGE_IMAGE_SIZE[stage] || 0;
+  const brightness = STAGE_BRIGHTNESS[stage] ?? 0;
+  const showImage = stage >= 1;
+  const showDetails = stage >= 5;
 
   return (
-    <div className="flex flex-col items-center gap-5">
+    // Fixed-height container so the card never shifts during the reveal
+    <div className="flex flex-col items-center" style={{ minHeight: 380 }}>
 
-      {/* Commander image with reveal animation */}
+      {/* Commander image — fixed outer container at final size, image grows inside */}
       <div
-        className="relative rounded-2xl overflow-hidden border-2 border-gray-700/60 shadow-xl bg-gray-800 flex items-center justify-center flex-shrink-0"
-        style={{
-          width: imgSize || 192,
-          height: imgSize || 192,
-          transition: "width 240ms cubic-bezier(0.34,1.56,0.64,1), height 240ms cubic-bezier(0.34,1.56,0.64,1)",
-          visibility: showImage ? "visible" : "hidden",
-        }}
+        className="relative rounded-2xl overflow-hidden border-2 border-gray-700/60 shadow-xl bg-gray-800 flex items-center justify-center flex-shrink-0 mt-2"
+        style={{ width: 192, height: 192 }}
       >
-        {deck.commander_image_url ? (
-          <img
-            src={deck.commander_image_url}
-            alt={deck.commander_name || deck.name}
-            className="w-full h-full object-cover object-top"
-          />
-        ) : (
-          <BookOpen className="w-16 h-16 text-gray-600" />
-        )}
-
-        {/* Dark overlay — fades away at "uncover" step */}
+        {/* Invisible slot keeps container at final size; image grows from center */}
         <div
-          className="absolute inset-0 bg-black rounded-2xl"
           style={{
-            opacity: overlayVisible ? 1 : 0,
-            transition: overlayVisible ? "none" : "opacity 320ms ease-out",
-            pointerEvents: "none",
+            width: imgSize,
+            height: imgSize,
+            transition: stage === 1
+              ? "width 300ms cubic-bezier(0.34,1.4,0.64,1), height 300ms cubic-bezier(0.34,1.4,0.64,1)"
+              : "width 350ms cubic-bezier(0.34,1.3,0.64,1), height 350ms cubic-bezier(0.34,1.3,0.64,1)",
+            overflow: "hidden",
+            borderRadius: "inherit",
+            visibility: showImage ? "visible" : "hidden",
+            filter: `brightness(${brightness})`,
+            // Smooth brightness transition for the reveal
+            // Stage 1→2→3 use "none" (instant snap feel per stage)
+            // Stage 3→4 is the dramatic reveal (smooth)
+            ...(stage === 4 ? { transition: "width 350ms cubic-bezier(0.34,1.3,0.64,1), height 350ms cubic-bezier(0.34,1.3,0.64,1), filter 600ms ease-out" } : {}),
           }}
-        />
+        >
+          {deck.commander_image_url ? (
+            <img
+              src={deck.commander_image_url}
+              alt={deck.commander_name || deck.name}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <BookOpen className="w-12 h-12 text-gray-600" />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Mana pips — fade in after image reveal */}
+      {/* Mana pips */}
       <div
+        className="mt-4"
         style={{
           opacity: showDetails ? 1 : 0,
           transform: showDetails ? "translateY(0)" : "translateY(6px)",
           transition: "opacity 280ms ease-out, transform 280ms ease-out",
         }}
       >
-        <ManaPipRow colors={deck.color_identity} size={24} gap={4} />
+        <ManaPipRow colors={deck.color_identity} size={22} gap={3} />
       </div>
 
-      {/* Deck name + commander name — staggered after mana */}
+      {/* Deck name + commander name */}
       <div
-        className="text-center"
+        className="text-center mt-2.5"
         style={{
           opacity: showDetails ? 1 : 0,
           transform: showDetails ? "translateY(0)" : "translateY(8px)",
-          transition: "opacity 320ms ease-out 80ms, transform 320ms ease-out 80ms",
+          transition: "opacity 320ms ease-out 60ms, transform 320ms ease-out 60ms",
         }}
       >
-        <p className="text-xl font-bold text-white leading-tight">{deck.name}</p>
+        <p className="text-lg font-bold text-white leading-tight">{deck.name}</p>
         {deck.commander_name && (
           <p
-            className="text-sm text-gray-400 mt-1"
+            className="text-sm text-gray-400 mt-0.5"
             style={{
               opacity: showDetails ? 1 : 0,
-              transition: "opacity 320ms ease-out 160ms",
+              transition: "opacity 320ms ease-out 130ms",
             }}
           >
             {deck.commander_name}
@@ -172,13 +194,13 @@ function DeckReveal({ deck, onPickAgain }) {
         )}
       </div>
 
-      {/* Share + Pick Again — only visible in final done state */}
+      {/* Share + Pick Again — only in final state */}
       <div
-        className="w-full flex flex-col gap-3"
+        className="w-full flex flex-col gap-2.5 mt-4"
         style={{
-          opacity: isDone ? 1 : 0,
-          pointerEvents: isDone ? "auto" : "none",
-          transition: "opacity 240ms ease-out",
+          opacity: showDetails ? 1 : 0,
+          pointerEvents: showDetails ? "auto" : "none",
+          transition: "opacity 280ms ease-out 200ms",
         }}
       >
         <Button
@@ -205,9 +227,9 @@ function DeckReveal({ deck, onPickAgain }) {
 // ── Empty state ───────────────────────────────────────────────────────────────
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-4 py-10 text-center px-4">
-      <div className="w-14 h-14 rounded-2xl bg-gray-800 border border-gray-700/50 flex items-center justify-center">
-        <BookOpen className="w-7 h-7 text-gray-500" />
+    <div className="flex flex-col items-center gap-3 py-8 text-center px-4">
+      <div className="w-12 h-12 rounded-2xl bg-gray-800 border border-gray-700/50 flex items-center justify-center">
+        <BookOpen className="w-6 h-6 text-gray-500" />
       </div>
       <div>
         <p className="text-white font-semibold text-base">No active decks found</p>
@@ -216,7 +238,7 @@ function EmptyState() {
         </p>
       </div>
       <Link to={ROUTES.PROFILE_DECKS}>
-        <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800 rounded-xl mt-1">
+        <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800 rounded-xl">
           Go to My Decks
         </Button>
       </Link>
@@ -230,14 +252,13 @@ export default function RandomDeckPicker() {
   const [empty, setEmpty] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  // revealKey increments on every pick — forces DeckReveal to remount and restart animation
   const [revealKey, setRevealKey] = useState(0);
 
   async function handlePick() {
     setLoading(true);
     setError(null);
     setEmpty(false);
-    setDeck(null); // hide previous result while fetching
+    setDeck(null);
     try {
       const result = await pickRandomDeck();
       if (!result) {
@@ -254,29 +275,26 @@ export default function RandomDeckPicker() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      {/* Page title */}
+    <div className="space-y-4 pb-8">
+      {/* Page title — tight */}
       <div>
         <h1 className="text-xl font-bold text-white">Random Deck Picker</h1>
         <p className="text-gray-400 text-sm mt-0.5">Can't decide? Let fate choose your deck.</p>
       </div>
 
-      {/* Format selector */}
+      {/* Format selector — compact */}
       <FormatSelector />
 
-      {/* Primary pick prompt — shown before any pick */}
+      {/* Primary pick prompt */}
       {!deck && !empty && (
         <Card className="bg-gray-900/60 border-gray-800/50">
-          <CardContent className="p-6 flex flex-col items-center gap-4 text-center">
-            <div className="w-14 h-14 rounded-2xl ds-accent-bg ds-accent-bd border flex items-center justify-center">
-              <Shuffle className="w-7 h-7" style={{ color: "var(--ds-primary-text)" }} />
+          <CardContent className="p-5 flex flex-col items-center gap-3 text-center">
+            <div className="w-12 h-12 rounded-2xl ds-accent-bg ds-accent-bd border flex items-center justify-center">
+              <Shuffle className="w-6 h-6" style={{ color: "var(--ds-primary-text)" }} />
             </div>
-            <div>
-              <p className="text-white font-semibold text-sm">Randomize your session</p>
-              <p className="text-gray-400 text-xs mt-1 max-w-xs mx-auto">
-                Pick a random deck from your active collection and get straight to the game.
-              </p>
-            </div>
+            <p className="text-gray-400 text-xs max-w-xs mx-auto">
+              Pick a random deck from your active collection and get straight to the game.
+            </p>
             <Button
               className="ds-btn-primary w-full rounded-xl h-11 text-sm font-semibold"
               onClick={handlePick}
@@ -301,7 +319,7 @@ export default function RandomDeckPicker() {
       {/* Result with reveal animation */}
       {deck && (
         <Card className="bg-gray-900/60 border-gray-800/50">
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <DeckReveal key={revealKey} deck={deck} onPickAgain={handlePick} />
           </CardContent>
         </Card>
