@@ -37,18 +37,21 @@ function StatusBadge({ status }) {
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, iconClass, iconStyle, label, value, to, badge }) {
   const inner =
-  <CardContent className="p-4 flex items-center gap-3">
+  <CardContent className="px-3 py-0 h-[90px] flex items-center gap-3">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconClass}`}>
         <Icon className="w-5 h-5" style={iconStyle} />
       </div>
-      <div className="flex-1 min-w-0 flex items-center gap-2">
-        <p className="text-gray-300 text-sm font-medium text-left leading-tight truncate">{label}</p>
-        {badge !== undefined && badge > 0 &&
-      <span className="text-xs font-semibold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full flex-shrink-0">
-            {badge}
-          </span>
-      }
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-300 text-sm font-medium leading-tight">{label}</p>
+        {value !== undefined && value !== " " && (
+          <p className="text-xl font-bold text-white leading-tight mt-0.5">{value}</p>
+        )}
       </div>
+      {badge !== undefined && badge > 0 &&
+      <span className="text-xs font-semibold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full flex-shrink-0">
+          {badge}
+        </span>
+      }
     </CardContent>;
 
 
@@ -121,7 +124,7 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
         <StatCard
           icon={() => <img src="https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/ea67a07bb_dice_8732022.png" alt="dice" className="w-5 h-5 object-contain" />}
           iconClass="bg-gray-800/60 border border-gray-700/40"
-          label="Random Deck Picker"
+          label="Deck Picker"
           value=" "
           to={ROUTES.RANDOM_DECK_PICKER} />
         
