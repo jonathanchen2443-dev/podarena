@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shuffle, Share2, BookOpen, Lock } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
+import { toast } from "sonner";
 
 // ── Mana color → confetti hex map ─────────────────────────────────────────────
 const MANA_CONFETTI_COLORS = {
@@ -120,15 +121,12 @@ function DeckReveal({ deck, onPickAgain, currentUser }) {
   }, [deck]);
 
   async function handleShare() {
-    // Build share text: deck name + commander name when both exist, commander only otherwise
     const deckName = deck.name || "";
     const commanderName = deck.commander_name || "";
     const shareText = deckName
       ? `Next game I'm playing ${deckName} - ${commanderName}! Check it on PodArena app.`
       : `Next game I'm playing ${commanderName}! Check it on PodArena app.`;
 
-    // Deep link: public profile of the current user (closest feasible destination;
-    // deck-insights deep-link does not yet exist as a standalone public route).
     const profilePath = currentUser?.id
       ? ROUTES.USER_PROFILE(currentUser.id, deck?.id)
       : ROUTES.DASHBOARD;
@@ -137,13 +135,21 @@ function DeckReveal({ deck, onPickAgain, currentUser }) {
     if (navigator.share) {
       try {
         await navigator.share({ title: "PodArena", text: shareText, url: shareUrl });
-      } catch (_) {}
+        toast.success("Deck shared!");
+      } catch (e) {
+        if (e?.name === "AbortError") {
+          toast.info("Share cancelled.");
+        } else {
+          toast.error("Failed to share deck.");
+        }
+      }
     } else {
-      // Desktop fallback: copy text + url to clipboard
       try {
         await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-        alert("Copied to clipboard!");
-      } catch (_) {}
+        toast.success("Link copied to clipboard!");
+      } catch (_) {
+        toast.error("Failed to copy link.");
+      }
     }
   }
 
