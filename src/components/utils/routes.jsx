@@ -41,4 +41,7 @@ export const ROUTES = {
   // Praises — full collection screen; own profile or public (?userId=profileId)
   PRAISES: createPageUrl("Praises"),
   PRAISES_FOR: (userId) => `${createPageUrl("Praises")}?userId=${userId}`,
+
+  // Random Deck Picker
+  RANDOM_DECK_PICKER: createPageUrl("RandomDeckPicker"),
 };
