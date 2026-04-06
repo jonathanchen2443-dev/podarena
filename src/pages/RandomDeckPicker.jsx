@@ -7,6 +7,7 @@ import ManaPipRow from "@/components/mtg/ManaPipRow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shuffle, Share2, BookOpen, Lock } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthContext";
 
 // ── Mana color → confetti hex map ─────────────────────────────────────────────
 const MANA_CONFETTI_COLORS = {
@@ -42,10 +43,10 @@ const STAGE_IMAGE_SIZE = {
 
 const STAGE_BRIGHTNESS = {
   0: 0,
-  1: 0.0,
-  2: 0.10,
-  3: 0.20,
-  4: 1.0,
+  1: 0.0,   // 100% shadowed — full silhouette
+  2: 0.05,  // ~95% shadowed — barely a hint
+  3: 0.10,  // ~90% shadowed — still very dark
+  4: 1.0,   // full reveal (center-outward animation)
   5: 1.0,
 };
 
@@ -77,7 +78,7 @@ function FormatSelector() {
 }
 
 // ── Reveal card ───────────────────────────────────────────────────────────────
-function DeckReveal({ deck, onPickAgain }) {
+function DeckReveal({ deck, onPickAgain, currentUser }) {
   const [stage, setStage] = useState(0);
   const timers = useRef([]);
 
@@ -119,11 +120,30 @@ function DeckReveal({ deck, onPickAgain }) {
   }, [deck]);
 
   async function handleShare() {
-    const text = `🎲 Random Deck Pick: ${deck.name}${deck.commander_name ? ` — ${deck.commander_name}` : ""} (Commander)`;
+    // Build share text: deck name + commander name when both exist, commander only otherwise
+    const deckName = deck.name || "";
+    const commanderName = deck.commander_name || "";
+    const shareText = deckName
+      ? `Next game I'm playing ${deckName} - ${commanderName}! Check it on PodArena app.`
+      : `Next game I'm playing ${commanderName}! Check it on PodArena app.`;
+
+    // Deep link: public profile of the current user (closest feasible destination;
+    // deck-insights deep-link does not yet exist as a standalone public route).
+    const profilePath = currentUser?.id
+      ? ROUTES.USER_PROFILE(currentUser.id)
+      : ROUTES.DASHBOARD;
+    const shareUrl = `${window.location.origin}${profilePath}`;
+
     if (navigator.share) {
-      try { await navigator.share({ title: "Random Deck Pick", text }); } catch (_) {}
+      try {
+        await navigator.share({ title: "PodArena", text: shareText, url: shareUrl });
+      } catch (_) {}
     } else {
-      try { await navigator.clipboard.writeText(text); alert("Copied to clipboard!"); } catch (_) {}
+      // Desktop fallback: copy text + url to clipboard
+      try {
+        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+        alert("Copied to clipboard!");
+      } catch (_) {}
     }
   }
 
@@ -276,6 +296,7 @@ function EmptyState() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function RandomDeckPicker() {
+  const { currentUser } = useAuth();
   const [deck, setDeck] = useState(null);
   const [empty, setEmpty] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -352,7 +373,7 @@ export default function RandomDeckPicker() {
       {deck && (
         <Card className="bg-gray-900/60 border-gray-800/50">
           <CardContent className="p-5">
-            <DeckReveal key={revealKey} deck={deck} onPickAgain={handlePick} />
+            <DeckReveal key={revealKey} deck={deck} onPickAgain={handlePick} currentUser={currentUser} />
           </CardContent>
         </Card>
       )}
