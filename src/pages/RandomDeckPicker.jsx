@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/components/auth/AuthContext";
+import { Link } from "react-router-dom";
 import { pickRandomDeck } from "@/components/services/randomDeckService";
 import { ROUTES } from "@/components/utils/routes";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shuffle, Share2, ChevronLeft, BookOpen, Lock } from "lucide-react";
+import { Shuffle, Share2, BookOpen, Lock } from "lucide-react";
 
 // ── Format selector (locked to Commander) ─────────────────────────────────────
 function FormatSelector() {
@@ -23,8 +22,6 @@ function FormatSelector() {
 
 // ── Result card ───────────────────────────────────────────────────────────────
 function DeckResult({ deck, onPickAgain }) {
-  const navigate = useNavigate();
-
   async function handleShare() {
     const text = `🎲 Random Deck Pick: ${deck.name}${deck.commander_name ? ` — ${deck.commander_name}` : ""} (Commander)`;
     if (navigator.share) {
@@ -113,9 +110,6 @@ function EmptyState() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function RandomDeckPicker() {
-  const auth = useAuth();
-  const navigate = useNavigate();
-
   const [deck, setDeck] = useState(null);
   const [empty, setEmpty] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -127,7 +121,7 @@ export default function RandomDeckPicker() {
     setError(null);
     setEmpty(false);
     try {
-      const result = await pickRandomDeck(auth);
+      const result = await pickRandomDeck();
       if (!result) {
         setEmpty(true);
         setDeck(null);
@@ -145,18 +139,10 @@ export default function RandomDeckPicker() {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-800/60 border border-gray-700/50 text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <div>
-          <h1 className="text-lg font-bold text-white leading-tight">Random Deck Picker</h1>
-          <p className="text-gray-500 text-xs mt-0.5">Can't decide? Let fate choose your deck.</p>
-        </div>
+      {/* Page title */}
+      <div>
+        <h1 className="text-xl font-bold text-white">Random Deck Picker</h1>
+        <p className="text-gray-400 text-sm mt-0.5">Can't decide? Let fate choose your deck.</p>
       </div>
 
       {/* Format selector */}

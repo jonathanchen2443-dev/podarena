@@ -1,32 +1,19 @@
 /**
- * randomDeckService — centralized logic for the Random Deck Picker feature.
+ * randomDeckService — thin client wrapper for the randomDeckPicker backend function.
  *
- * Deck eligibility:
- *   - Owned by the current user (owner_id === currentUser.id)
- *   - is_active === true
- *   - Format: Commander (all decks qualify for now — locked to Commander format)
- *
- * Random selection is done here, not in the UI.
+ * All eligibility logic (owner filter, is_active filter, random selection)
+ * is handled server-side. This wrapper just invokes the function and normalises the response.
  */
 import { base44 } from "@/api/base44Client";
 
 /**
- * pickRandomDeck — fetches the user's eligible active decks and returns one at random.
+ * pickRandomDeck — calls the backend and returns a randomly selected eligible deck,
+ * or null if the user has no active decks.
  *
- * @param {object} auth  — the auth context object (must have currentUser.id)
- * @returns {Promise<object|null>}  — a Deck entity or null if no eligible decks exist
+ * @returns {Promise<object|null>}
  */
-export async function pickRandomDeck(auth) {
-  if (!auth?.currentUser?.id) return null;
-
-  const allDecks = await base44.entities.Deck.filter(
-    { owner_id: auth.currentUser.id, is_active: true },
-    "-updated_date",
-    200
-  );
-
-  if (!allDecks || allDecks.length === 0) return null;
-
-  const idx = Math.floor(Math.random() * allDecks.length);
-  return allDecks[idx];
+export async function pickRandomDeck() {
+  const res = await base44.functions.invoke('randomDeckPicker', {});
+  if (res.data?.error) throw new Error(res.data.error);
+  return res.data?.deck ?? null;
 }

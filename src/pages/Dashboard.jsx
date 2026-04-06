@@ -8,7 +8,7 @@ import { invalidateProfileStatsCache } from "@/components/services/profileStatsS
 import { invalidateProfileInsightsCache } from "@/components/services/profileInsightsService";
 import {
   Bell, Swords, BookOpen, ChevronRight,
-  Plus, RefreshCw, AlertCircle, Layers, Shuffle
+  Plus, RefreshCw, AlertCircle, Layers
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -120,7 +120,13 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
         <StatCard icon={Layers} iconClass="ds-accent-bg ds-accent-bd border" iconStyle={{ color: "var(--ds-primary-text)" }} label="PODS" value={myPodsCount} to={ROUTES.PODS} />
         <StatCard icon={Bell} iconClass="bg-amber-500/10 text-amber-400" label="Pending Approvals" value={pendingApprovalsCount} to={ROUTES.INBOX} badge={pendingApprovalsCount} />
         <StatCard icon={BookOpen} iconClass="bg-sky-500/10 text-sky-400" label="My Decks" value={myDecksCount} to={ROUTES.PROFILE_DECKS} />
-        <StatCard icon={Shuffle} iconClass="bg-purple-500/10 text-purple-400" label="Random Deck Picker" value="🎲" to={ROUTES.RANDOM_DECK_PICKER} />
+        <StatCard
+          icon={() => <img src="https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/ea67a07bb_dice_8732022.png" alt="dice" className="w-5 h-5 object-contain" />}
+          iconClass="bg-gray-800/60 border border-gray-700/40"
+          label="Random Deck Picker"
+          value=" "
+          to={ROUTES.RANDOM_DECK_PICKER}
+        />
       </div>
 
       {/* Player search */}
