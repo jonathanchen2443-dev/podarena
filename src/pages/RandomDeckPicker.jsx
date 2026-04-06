@@ -79,7 +79,7 @@ function FormatSelector() {
 }
 
 // ── Reveal card ───────────────────────────────────────────────────────────────
-function DeckReveal({ deck, onPickAgain, currentUser }) {
+function DeckReveal({ deck, onPickAgain }) {
   const [stage, setStage] = useState(0);
   const timers = useRef([]);
 
@@ -121,26 +121,50 @@ function DeckReveal({ deck, onPickAgain, currentUser }) {
   }, [deck]);
 
   async function handleShare() {
-    const deckName = deck.name || "";
-    const commanderName = deck.commander_name || "";
-    const shareText = deckName
-      ? `Next game I'm playing ${deckName} - ${commanderName}! Check it on PodArena app.`
-      : `Next game I'm playing ${commanderName}! Check it on PodArena app.`;
+    const commanderName = deck.commander_name || deck.name || "my deck";
+    const shareText = `Next game I'm playing with ${commanderName}! Let PodArena choose for you:`;
+    const shareUrl = `${window.location.origin}${ROUTES.RANDOM_DECK_PICKER}`;
 
-    const profilePath = currentUser?.id
-      ? ROUTES.USER_PROFILE(currentUser.id, deck?.id)
-      : ROUTES.DASHBOARD;
-    const shareUrl = `${window.location.origin}${profilePath}`;
+    // Build share payload — include commander image as a file attachment if available
+    // Note: Web Share API Level 2 (files) is only supported on Android Chrome / some iOS browsers.
+    // We attempt it and silently fall back to text+url if it isn't supported.
+    const tryShareWithImage = async () => {
+      if (deck.commander_image_url && navigator.canShare) {
+        try {
+          const response = await fetch(deck.commander_image_url);
+          const blob = await response.blob();
+          const ext = blob.type.includes("png") ? "png" : "jpg";
+          const file = new File([blob], `commander.${ext}`, { type: blob.type });
+          const payload = { title: "PodArena", text: shareText, url: shareUrl, files: [file] };
+          if (navigator.canShare(payload)) {
+            await navigator.share(payload);
+            return true;
+          }
+        } catch (_) {
+          // Image fetch or canShare check failed — fall through to plain share
+        }
+      }
+      return false;
+    };
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: "PodArena", text: shareText, url: shareUrl });
-        toast.success("Deck shared!");
+        const sharedWithImage = await tryShareWithImage();
+        if (!sharedWithImage) {
+          await navigator.share({ title: "PodArena", text: shareText, url: shareUrl });
+        }
+        toast.success("Shared!");
       } catch (e) {
         if (e?.name === "AbortError") {
           toast.info("Share cancelled.");
         } else {
-          toast.error("Failed to share deck.");
+          // Native share failed — fall back to clipboard
+          try {
+            await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+            toast.success("Link copied to clipboard!");
+          } catch (_) {
+            toast.error("Failed to share. Try copying the link manually.");
+          }
         }
       }
     } else {
@@ -280,7 +304,6 @@ function DeckReveal({ deck, onPickAgain, currentUser }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function RandomDeckPicker() {
-  const { currentUser } = useAuth();
   const [deck, setDeck] = useState(null);
   const [empty, setEmpty] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -387,7 +410,7 @@ export default function RandomDeckPicker() {
       {deck && (
         <Card className="bg-gray-900/60 border-gray-800/50">
           <CardContent className="p-5">
-            <DeckReveal key={revealKey} deck={deck} onPickAgain={handlePick} currentUser={currentUser} />
+            <DeckReveal key={revealKey} deck={deck} onPickAgain={handlePick} />
           </CardContent>
         </Card>
       )}
