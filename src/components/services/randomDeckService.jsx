@@ -1,79 +1,76 @@
 /**
- * randomDeckService — client-side random deck selection with a consecutive-repeat guard.
+ * randomDeckService — service wrapper for the randomDeckPicker backend function.
  *
- * Fetches the user's eligible active decks directly (RLS ensures only their own decks
- * are returned) and performs random selection here so we can apply the guard cleanly.
+ * Architecture:
+ *  - All deck-pool logic (auth, profile resolution, eligibility filtering) lives
+ *    in the backend function. This service is a thin client wrapper.
+ *  - The "no 3 in a row" consecutive-repeat guard is intentionally client-side:
+ *    it is pure session-local UI memory with no persistence requirement.
+ *    The guard passes `excludeId` to the backend so selection is still server-side.
  *
- * Guard rule: if the same deck was picked twice in a row, exclude it from the next
- * pick. After sitting out one selection cycle it becomes eligible again.
- *
- * Edge cases:
- *  - 0 eligible decks → returns { deck: null, empty: true }
- *  - 1 eligible deck  → guard does not apply; always returns that deck
- *  - 2 eligible decks → guard works correctly (other deck always chosen when guard fires)
+ * Public API:
+ *  - checkHasEligibleDecks()   → Promise<boolean>   (call on page load)
+ *  - pickRandomDeck()          → Promise<{ deck: object|null, empty: boolean }>
+ *  - resetPickState()          → void
  */
 import { base44 } from "@/api/base44Client";
 
-// Module-level state: consecutive pick tracking
+// Session-local guard state
 let _lastPickedId = null;
 let _consecutiveCount = 0;
 
 /**
- * fetchEligibleDecks — returns all active decks owned by the current user's profile.
- * Throws on auth / profile errors.
+ * checkHasEligibleDecks — asks the backend for the deck count without performing
+ * a pick. Used on page load so the UI can show the empty state before any interaction.
+ *
+ * @returns {Promise<boolean>}
  */
-async function fetchEligibleDecks() {
-  const user = await base44.auth.me();
-  if (!user) throw new Error("Unauthorized");
-
-  const profiles = await base44.entities.Profile.filter({ user_id: user.id });
-  if (!profiles || profiles.length === 0) throw new Error("Profile not found");
-  const profileId = profiles[0].id;
-
-  const decks = await base44.entities.Deck.filter(
-    { owner_id: profileId, is_active: true },
-    "-updated_date",
-    200
-  );
-  return decks || [];
+export async function checkHasEligibleDecks() {
+  const res = await base44.functions.invoke('randomDeckPicker', { mode: 'count' });
+  if (res.data?.error) throw new Error(res.data.error);
+  return (res.data?.count ?? 0) > 0;
 }
 
 /**
- * pickRandomDeck — fetches the eligible pool and returns a randomly selected deck,
- * applying the "no 3 in a row" consecutive-repeat guard.
+ * pickRandomDeck — requests a random deck from the backend, passing the current
+ * guard exclusion id when applicable. Updates session-local streak state.
+ *
+ * Guard rule: if the same deck was returned twice in a row, exclude it from the
+ * next pick. After sitting out one round it becomes eligible again. Skipped when
+ * pool has only 1 deck (backend ignores excludeId when pool.length === 1).
  *
  * @returns {Promise<{ deck: object|null, empty: boolean }>}
  */
 export async function pickRandomDeck() {
-  const allDecks = await fetchEligibleDecks();
+  // Pass excludeId when the guard is active
+  const excludeId = (_consecutiveCount >= 2 && _lastPickedId) ? _lastPickedId : null;
 
-  if (allDecks.length === 0) {
+  const payload = excludeId
+    ? { mode: 'pick', excludeId }
+    : { mode: 'pick' };
+
+  const res = await base44.functions.invoke('randomDeckPicker', payload);
+  if (res.data?.error) throw new Error(res.data.error);
+
+  const deck = res.data?.deck ?? null;
+  if (!deck) {
     _lastPickedId = null;
     _consecutiveCount = 0;
     return { deck: null, empty: true };
   }
 
-  // Build the candidate pool — apply guard only when > 1 deck available
-  let pool = allDecks;
-  if (allDecks.length > 1 && _consecutiveCount >= 2 && _lastPickedId) {
-    const filtered = allDecks.filter((d) => d.id !== _lastPickedId);
-    if (filtered.length > 0) pool = filtered;
-  }
-
-  const picked = pool[Math.floor(Math.random() * pool.length)];
-
   // Update streak state
-  if (picked.id === _lastPickedId) {
+  if (deck.id === _lastPickedId) {
     _consecutiveCount += 1;
   } else {
-    _lastPickedId = picked.id;
+    _lastPickedId = deck.id;
     _consecutiveCount = 1;
   }
 
-  return { deck: picked, empty: false };
+  return { deck, empty: false };
 }
 
-/** Reset streak state (e.g. on explicit reset or logout). */
+/** Reset streak state (e.g. on logout or explicit reset). */
 export function resetPickState() {
   _lastPickedId = null;
   _consecutiveCount = 0;

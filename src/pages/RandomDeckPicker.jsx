@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import confetti from "canvas-confetti";
-import { pickRandomDeck } from "@/components/services/randomDeckService";
+import { pickRandomDeck, checkHasEligibleDecks } from "@/components/services/randomDeckService";
 import { ROUTES } from "@/components/utils/routes";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
 import { Button } from "@/components/ui/button";
@@ -278,36 +278,26 @@ function DeckReveal({ deck, onPickAgain, currentUser }) {
   );
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center gap-3 py-8 text-center px-4">
-      <div className="w-12 h-12 rounded-2xl bg-gray-800 border border-gray-700/50 flex items-center justify-center">
-        <BookOpen className="w-6 h-6 text-gray-500" />
-      </div>
-      <div>
-        <p className="text-white font-semibold text-base">No active decks found</p>
-        <p className="text-gray-400 text-sm mt-1">
-          You have to register decks before using this feature.
-        </p>
-      </div>
-      <Link to={ROUTES.PROFILE_DECKS}>
-        <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800 rounded-xl">
-          Go to My Decks
-        </Button>
-      </Link>
-    </div>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function RandomDeckPicker() {
   const { currentUser } = useAuth();
   const [deck, setDeck] = useState(null);
   const [empty, setEmpty] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true); // true while pre-load count check runs
   const [error, setError] = useState(null);
   const [revealKey, setRevealKey] = useState(0);
+
+  // Pre-load: detect no-decks state before the user presses the button
+  useEffect(() => {
+    let cancelled = false;
+    setChecking(true);
+    checkHasEligibleDecks()
+      .then((hasDecks) => { if (!cancelled) setEmpty(!hasDecks); })
+      .catch(() => { /* non-fatal — leave empty=false, let the pick surface any error */ })
+      .finally(() => { if (!cancelled) setChecking(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   async function handlePick() {
     setLoading(true);
@@ -341,7 +331,7 @@ export default function RandomDeckPicker() {
       <FormatSelector />
 
       {/* Primary pick prompt */}
-      {!deck && !empty && (
+      {!deck && (
         <Card className="bg-gray-900/60 border-gray-800/50">
           <CardContent className="p-5 flex flex-col items-center gap-3 text-center">
             <div className="w-12 h-12 rounded-2xl ds-accent-bg ds-accent-bd border flex items-center justify-center">
@@ -351,18 +341,29 @@ export default function RandomDeckPicker() {
                 className="w-6 h-6 object-contain"
               />
             </div>
-            <p className="text-gray-400 text-xs max-w-xs mx-auto">
-              Pick a random deck from your active collection and get straight to the game.
-            </p>
+            {empty ? (
+              <p className="text-amber-400 text-sm font-medium max-w-xs mx-auto">
+                You have to register decks before using this feature.
+              </p>
+            ) : (
+              <p className="text-gray-400 text-xs max-w-xs mx-auto">
+                Pick a random deck from your active collection and get straight to the game.
+              </p>
+            )}
             <Button
-              className="ds-btn-primary w-full rounded-xl h-11 text-sm font-semibold"
+              className="ds-btn-primary w-full rounded-xl h-11 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={handlePick}
-              disabled={loading}
+              disabled={loading || checking || empty}
             >
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
                   Picking…
+                </>
+              ) : checking ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
+                  Loading…
                 </>
               ) : (
                 <>
@@ -371,6 +372,11 @@ export default function RandomDeckPicker() {
                 </>
               )}
             </Button>
+            {empty && (
+              <Link to={ROUTES.PROFILE_DECKS} className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-300">
+                Go to My Decks
+              </Link>
+            )}
           </CardContent>
         </Card>
       )}
@@ -386,14 +392,7 @@ export default function RandomDeckPicker() {
         </Card>
       )}
 
-      {/* Empty state */}
-      {empty && (
-        <Card className="bg-gray-900/60 border-gray-800/50">
-          <CardContent className="p-0">
-            <EmptyState />
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Error */}
       {error && (
