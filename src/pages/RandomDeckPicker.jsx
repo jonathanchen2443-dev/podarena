@@ -288,7 +288,7 @@ function EmptyState() {
       <div>
         <p className="text-white font-semibold text-base">No active decks found</p>
         <p className="text-gray-400 text-sm mt-1">
-          You need at least one active deck to use the Random Deck Picker.
+          You have to register decks before using this feature.
         </p>
       </div>
       <Link to={ROUTES.PROFILE_DECKS}>
@@ -315,8 +315,8 @@ export default function RandomDeckPicker() {
     setEmpty(false);
     setDeck(null);
     try {
-      const result = await pickRandomDeck();
-      if (!result) {
+      const { deck: result, empty: isEmpty } = await pickRandomDeck();
+      if (isEmpty) {
         setEmpty(true);
       } else {
         setRevealKey((k) => k + 1);
@@ -374,6 +374,8 @@ export default function RandomDeckPicker() {
           </CardContent>
         </Card>
       )}
+
+
 
       {/* Result with reveal animation */}
       {deck && (
