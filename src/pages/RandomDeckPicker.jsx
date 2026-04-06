@@ -25,10 +25,10 @@ function getConfettiColors(colorIdentity) {
 
 // ── Reveal stages ─────────────────────────────────────────────────────────────
 // stage 0 = hidden/pre-reveal
-// stage 1 = small image, 90% shadow (brightness 10%)
-// stage 2 = medium image, 70% shadow (brightness 30%)
-// stage 3 = full image, 60% shadow (brightness 40%)
-// stage 4 = full image, fully revealed (brightness 100%)
+// stage 1 = small image, 100% shadowed (brightness 0%)
+// stage 2 = medium image, 90% shadowed (brightness 10%)
+// stage 3 = full image, 80% shadowed (brightness 20%)
+// stage 4 = full image, fully revealed center-outward
 // stage 5 = details + buttons visible
 
 const STAGE_IMAGE_SIZE = {
@@ -42,12 +42,26 @@ const STAGE_IMAGE_SIZE = {
 
 const STAGE_BRIGHTNESS = {
   0: 0,
-  1: 0.10,
-  2: 0.30,
-  3: 0.40,
+  1: 0.0,
+  2: 0.10,
+  3: 0.20,
   4: 1.0,
   5: 1.0,
 };
+
+// ── Keyframe style for center-outward reveal ──────────────────────────────────
+const REVEAL_KEYFRAME_STYLE = `
+@keyframes revealFromCenter {
+  from {
+    -webkit-mask-size: 0% 0%;
+    mask-size: 0% 0%;
+  }
+  to {
+    -webkit-mask-size: 300% 300%;
+    mask-size: 300% 300%;
+  }
+}
+`;
 
 // ── Format selector ───────────────────────────────────────────────────────────
 function FormatSelector() {
@@ -81,12 +95,12 @@ function DeckReveal({ deck, onPickAgain }) {
     clearTimers();
     // Stage 1 starts almost immediately
     after(() => setStage(1), 80);
-    // ~1.5s between each stage
-    after(() => setStage(2), 1580);
-    after(() => setStage(3), 3080);
-    after(() => setStage(4), 4580);
+    // ~1.2s between each stage
+    after(() => setStage(2), 1280);
+    after(() => setStage(3), 2480);
+    after(() => setStage(4), 3680);
     // Details appear shortly after full reveal
-    after(() => setStage(5), 5080);
+    after(() => setStage(5), 4280);
 
     // Confetti fires just as details appear
     after(() => {
@@ -99,7 +113,7 @@ function DeckReveal({ deck, onPickAgain }) {
         gravity: 1.3,
         ticks: 150,
       });
-    }, 5150);
+    }, 4350);
 
     return clearTimers;
   }, [deck]);
@@ -121,6 +135,7 @@ function DeckReveal({ deck, onPickAgain }) {
   return (
     // Fixed-height container so the card never shifts during the reveal
     <div className="flex flex-col items-center" style={{ minHeight: 380 }}>
+      <style>{REVEAL_KEYFRAME_STYLE}</style>
 
       {/* Commander image — fixed outer container at final size, image grows inside */}
       <div
@@ -132,17 +147,30 @@ function DeckReveal({ deck, onPickAgain }) {
           style={{
             width: imgSize,
             height: imgSize,
-            transition: stage === 1
-              ? "width 300ms cubic-bezier(0.34,1.4,0.64,1), height 300ms cubic-bezier(0.34,1.4,0.64,1)"
-              : "width 350ms cubic-bezier(0.34,1.3,0.64,1), height 350ms cubic-bezier(0.34,1.3,0.64,1)",
+            transition: stage === 4
+              ? "width 350ms cubic-bezier(0.34,1.3,0.64,1), height 350ms cubic-bezier(0.34,1.3,0.64,1), filter 700ms ease-out"
+              : "width 320ms cubic-bezier(0.34,1.4,0.64,1), height 320ms cubic-bezier(0.34,1.4,0.64,1)",
             overflow: "hidden",
             borderRadius: "inherit",
             visibility: showImage ? "visible" : "hidden",
-            filter: `brightness(${brightness})`,
-            // Smooth brightness transition for the reveal
-            // Stage 1→2→3 use "none" (instant snap feel per stage)
-            // Stage 3→4 is the dramatic reveal (smooth)
-            ...(stage === 4 ? { transition: "width 350ms cubic-bezier(0.34,1.3,0.64,1), height 350ms cubic-bezier(0.34,1.3,0.64,1), filter 600ms ease-out" } : {}),
+            // Stages 1-3: brightness filter for silhouette effect
+            // Stage 4: switch to a radial mask expanding from center to reveal image
+            filter: stage < 4 ? `brightness(${brightness})` : "brightness(1)",
+            WebkitMaskImage: stage >= 4
+              ? "radial-gradient(circle, white 0%, white 100%)"
+              : undefined,
+            maskImage: stage >= 4
+              ? "radial-gradient(circle, white 0%, white 100%)"
+              : undefined,
+            WebkitMaskSize: stage === 4 ? "400% 400%" : "100% 100%",
+            maskSize: stage === 4 ? "400% 400%" : "100% 100%",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            ...(stage === 4 ? {
+              animation: "revealFromCenter 600ms ease-out forwards",
+            } : {}),
           }}
         >
           {deck.commander_image_url ? (
@@ -290,7 +318,11 @@ export default function RandomDeckPicker() {
         <Card className="bg-gray-900/60 border-gray-800/50">
           <CardContent className="p-5 flex flex-col items-center gap-3 text-center">
             <div className="w-12 h-12 rounded-2xl ds-accent-bg ds-accent-bd border flex items-center justify-center">
-              <Shuffle className="w-6 h-6" style={{ color: "var(--ds-primary-text)" }} />
+              <img
+                src="https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/ea67a07bb_dice_8732022.png"
+                alt="dice"
+                className="w-6 h-6 object-contain"
+              />
             </div>
             <p className="text-gray-400 text-xs max-w-xs mx-auto">
               Pick a random deck from your active collection and get straight to the game.
