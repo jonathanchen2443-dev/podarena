@@ -130,7 +130,7 @@ function DeckReveal({ deck, onPickAgain, currentUser }) {
     // Deep link: public profile of the current user (closest feasible destination;
     // deck-insights deep-link does not yet exist as a standalone public route).
     const profilePath = currentUser?.id
-      ? ROUTES.USER_PROFILE(currentUser.id)
+      ? ROUTES.USER_PROFILE(currentUser.id, deck?.id)
       : ROUTES.DASHBOARD;
     const shareUrl = `${window.location.origin}${profilePath}`;
 

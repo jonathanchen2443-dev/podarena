@@ -36,7 +36,12 @@ export const ROUTES = {
 
 
   // Public user profile — read-only, id via ?userId= query param
-  USER_PROFILE: (userId) => `${createPageUrl("UserProfile")}?userId=${userId}`,
+  // Optional deckId opens the deck modal directly on arrival
+  USER_PROFILE: (userId, deckId) => {
+    let url = `${createPageUrl("UserProfile")}?userId=${userId}`;
+    if (deckId) url += `&deckId=${deckId}`;
+    return url;
+  },
 
   // Praises — full collection screen; own profile or public (?userId=profileId)
   PRAISES: createPageUrl("Praises"),

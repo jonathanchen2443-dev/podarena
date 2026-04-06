@@ -16,6 +16,7 @@ import PublicStatRings from "@/components/profile/PublicStatRings";
 import PublicBadges from "@/components/profile/PublicBadges";
 import PublicDeckGrid from "@/components/profile/PublicDeckGrid";
 import ProfilePraisePreview from "@/components/praise/ProfilePraisePreview";
+import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -27,8 +28,11 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [decksLoading, setDecksLoading] = useState(true);
+  const [deepLinkDeck, setDeepLinkDeck] = useState(null);
 
-  const userId = new URLSearchParams(window.location.search).get("userId");
+  const params = new URLSearchParams(window.location.search);
+  const userId = params.get("userId");
+  const targetDeckId = params.get("deckId");
 
   useEffect(() => {
     if (authLoading) return;
@@ -54,7 +58,14 @@ export default function UserProfile() {
         .finally(() => setStatsLoading(false));
 
       getPublicProfileDecks(p.id)
-        .then((d) => setDecks(d))
+        .then((d) => {
+          setDecks(d);
+          // Deep-link: auto-open deck modal if deckId param is present and belongs to this profile
+          if (targetDeckId) {
+            const match = d.find((deck) => deck.id === targetDeckId && deck.owner_id === p.id);
+            if (match) setDeepLinkDeck(match);
+          }
+        })
         .catch(() => setDecks([]))
         .finally(() => setDecksLoading(false));
 
@@ -164,6 +175,9 @@ export default function UserProfile() {
         <h2 className="text-white font-semibold text-base px-1">Decks</h2>
         <PublicDeckGrid decks={decks} loading={decksLoading} />
       </div>
+
+      {/* Deep-link deck modal */}
+      <DeckInsightsModal deck={deepLinkDeck} onClose={() => setDeepLinkDeck(null)} />
     </div>
   );
 }
