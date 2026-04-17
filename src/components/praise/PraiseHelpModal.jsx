@@ -4,12 +4,16 @@ import { X } from "lucide-react";
 import { PRAISE_TYPES, PRAISE_META } from "@/components/services/praiseService";
 
 const PRAISE_ICONS = {
-  on_fire:           "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/bcfb284bb_On_fire.png",
-  no_mercy:          "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/26b105ccb_No_mercy.png",
-  puppet_master:     "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/a0ffdf0db_Puppet_master.png",
-  fortress:          "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/60c8665c1_Fortress.png",
-  clutch:            "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/5fb248b84_Clutch.png",
-  crowned_commander: "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/42bb0d9b4_Crowned_commander.png",
+  on_fire:              "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/bcfb284bb_On_fire.png",
+  no_mercy:             "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/26b105ccb_No_mercy.png",
+  puppet_master:        "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/a0ffdf0db_Puppet_master.png",
+  fortress:             "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/60c8665c1_Fortress.png",
+  clutch:               "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/5fb248b84_Clutch.png",
+  crowned_commander:    "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/42bb0d9b4_Crowned_commander.png",
+  should_have_been_you: "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/6238d049b_Shouldhavebeenyou.png",
+  troublemaker:         "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/71445cbb8_Troublemaker.png",
+  knockout:             "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/18bddc492_Knockout.png",
+  phoenix:              "https://media.base44.com/images/public/6995f1fed0849cf726dfe04d/2aa4fb9b2_Phoenix.png",
 };
 
 export { PRAISE_ICONS };

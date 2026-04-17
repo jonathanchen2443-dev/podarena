@@ -16,16 +16,16 @@
  * 1. One praise per giver per game (upsert by giver_user_id + game_id)
  * 2. No self-praise (giver_profile_id !== receiver_profile_id)
  * 3. Both giver and receiver must be participants in the same game
- * 4. praise_type must be one of 6 fixed values
+ * 4. praise_type must be one of 10 fixed values
  * 5. is_visible=false until parent game is fully approved and not hidden
  * 6. Aggregations only count is_visible=true rows
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
-const VALID_PRAISE_TYPES = ['on_fire', 'no_mercy', 'puppet_master', 'fortress', 'clutch', 'crowned_commander'];
+const VALID_PRAISE_TYPES = ['on_fire', 'no_mercy', 'puppet_master', 'fortress', 'clutch', 'crowned_commander', 'should_have_been_you', 'troublemaker', 'phoenix', 'knockout'];
 
 function _emptyPraiseSummary() {
-  return { on_fire: 0, no_mercy: 0, puppet_master: 0, fortress: 0, clutch: 0, crowned_commander: 0, total: 0 };
+  return { on_fire: 0, no_mercy: 0, puppet_master: 0, fortress: 0, clutch: 0, crowned_commander: 0, should_have_been_you: 0, troublemaker: 0, phoenix: 0, knockout: 0, total: 0 };
 }
 
 Deno.serve(async (req) => {

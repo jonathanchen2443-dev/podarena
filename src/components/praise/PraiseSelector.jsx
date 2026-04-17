@@ -98,7 +98,7 @@ function ReceiverDropdown({ options, value, onChange }) {
 // ── Praise type grid ──────────────────────────────────────────────────────────
 function PraiseTypeGrid({ value, onChange, disabled }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-0.5">
       {PRAISE_TYPES.map((key) => {
         const meta = PRAISE_META[key];
         const isSelected = value === key;

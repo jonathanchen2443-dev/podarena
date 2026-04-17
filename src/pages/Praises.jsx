@@ -1,7 +1,7 @@
 /**
  * Praises — full praise collection screen.
- * Tile-based 2×3 grid layout. Per-tile ? help popover.
- * Shows all 6 praise types; zero-count tiles rendered muted.
+ * Tile-based 2-column grid layout. Per-tile ? help popover.
+ * Shows all praise types; zero-count tiles rendered muted.
  *
  * Accessible for:
  *   - own profile: no ?userId param (uses currentUser.id)
@@ -205,7 +205,7 @@ export default function Praises() {
         )}
       </div>
 
-      {/* 2×3 tile grid */}
+      {/* Praise tile grid — 2 columns, scales to any number of praise types */}
       <div className="grid grid-cols-2 gap-3">
         {PRAISE_TYPES.map((key) => (
           <PraiseTile

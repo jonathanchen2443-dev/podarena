@@ -25,6 +25,10 @@ export const PRAISE_TYPES = [
   "fortress",
   "clutch",
   "crowned_commander",
+  "should_have_been_you",
+  "troublemaker",
+  "phoenix",
+  "knockout",
 ];
 
 export const PRAISE_META = {
@@ -63,6 +67,30 @@ export const PRAISE_META = {
     label: "Crowned Commander",
     description: "Made their commander the star of the game and got maximum value out of it.",
     emoji: "👑",
+  },
+  should_have_been_you: {
+    key: "should_have_been_you",
+    label: "Should Have Been You",
+    description: "Someone who controlled the game or looked like the clear winner, but did not win in the end.",
+    emoji: "😮",
+  },
+  troublemaker: {
+    key: "troublemaker",
+    label: "Troublemaker",
+    description: "Someone who brought chaos to the game and kept everyone on their toes.",
+    emoji: "🌪️",
+  },
+  phoenix: {
+    key: "phoenix",
+    label: "Phoenix",
+    description: "Someone who looked finished, but turned the game around and changed their fate.",
+    emoji: "🔴",
+  },
+  knockout: {
+    key: "knockout",
+    label: "Knockout",
+    description: "Someone who delivered one explosive attack with huge impact.",
+    emoji: "👊",
   },
 };
 
@@ -226,6 +254,10 @@ function _emptyPraiseSummary() {
     fortress: 0,
     clutch: 0,
     crowned_commander: 0,
+    should_have_been_you: 0,
+    troublemaker: 0,
+    phoenix: 0,
+    knockout: 0,
     total: 0,
   };
 }
