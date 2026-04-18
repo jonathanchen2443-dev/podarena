@@ -7,9 +7,6 @@ import { getPODLeaderboard } from "@/components/services/podService";
 import { base44 } from "@/api/base44Client";
 
 // ── Name formatter ────────────────────────────────────────────────────────────
-// "Jonathan Collins" → "Jonathan C."
-// "Omer" → "Omer"
-// Cap first name at 10 chars
 function formatLeaderboardName(displayName) {
   if (!displayName || displayName === "Unknown") return displayName || "Unknown";
   const parts = displayName.trim().split(/\s+/);
@@ -19,30 +16,95 @@ function formatLeaderboardName(displayName) {
   return lastInitial ? `${first} ${lastInitial}.` : first;
 }
 
-// ── Rank sort (same order as backend) ────────────────────────────────────────
-function sortEntries(entries) {
-  return [...entries].sort((a, b) => {
+// ── Ranking sort — single source of truth, used for both current and prev ─────
+// Points desc → Wins desc → Win Rate desc → Games desc
+function rankEntries(statsArray) {
+  return [...statsArray].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     if (b.wins !== a.wins) return b.wins - a.wins;
-    const wrA = parseFloat(a.winRate || 0);
-    const wrB = parseFloat(b.winRate || 0);
+    const wrA = parseFloat(a.winRate ?? (a.games > 0 ? (a.wins / a.games) * 100 : 0));
+    const wrB = parseFloat(b.winRate ?? (b.games > 0 ? (b.wins / b.games) * 100 : 0));
     if (wrB !== wrA) return wrB - wrA;
     return b.games - a.games;
   });
 }
 
+// ── Client-side prev-leaderboard derivation ───────────────────────────────────
+// Given the current leaderboard (from backend) and the full approved POD game
+// history (from podHistory), reconstructs what the leaderboard looked like BEFORE
+// the most recently approved game.
+//
+// CONTRACT: this function is the ONLY place that computes prevLeaderboard client-side.
+// When the backend starts returning prevLeaderboard directly, replace the call to
+// this function with the backend value — computeMovement() itself does not change.
+//
+// @param leaderboard  Array<{ profileId, games, wins, points, winRate }>
+// @param podGames     Array<{ id, status, played_at }> — all pod games
+// @param participantMap  { [gameId]: Array<{ participant_profile_id, placement, result }> }
+// @returns Array<{ profileId, games, wins, points, winRate }> | null
+function derivePrevLeaderboard(leaderboard, podGames, participantMap) {
+  // Only use approved games, sorted newest-first
+  const approvedGames = [...podGames]
+    .filter((g) => g.status === "approved")
+    .sort((a, b) => new Date(b.played_at || 0) - new Date(a.played_at || 0));
+
+  // Need at least 2 approved games to show meaningful movement
+  if (approvedGames.length < 2) return null;
+
+  const latestGameId = approvedGames[0].id;
+  const latestParticipants = participantMap[latestGameId] || [];
+
+  // Subtract the latest game's contributions from current stats
+  // Build a map of profileId → stats contribution from the latest game
+  const latestContrib = {};
+  for (const p of latestParticipants) {
+    const pid = p.participant_profile_id || p.userId;
+    if (!pid) continue;
+    const isWin = p.placement === 1 || p.result === "win";
+    latestContrib[pid] = { games: 1, wins: isWin ? 1 : 0, points: isWin ? 1 : 0 };
+  }
+
+  // Reconstruct prev stats for every player in the current leaderboard
+  const prevStats = leaderboard.map((entry) => {
+    const contrib = latestContrib[entry.profileId] || { games: 0, wins: 0, points: 0 };
+    const prevGames = entry.games - contrib.games;
+    const prevWins = entry.wins - contrib.wins;
+    const prevPoints = entry.points - contrib.points;
+    return {
+      profileId: entry.profileId,
+      games: Math.max(0, prevGames),
+      wins: Math.max(0, prevWins),
+      points: Math.max(0, prevPoints),
+      winRate: prevGames > 0 ? ((Math.max(0, prevWins) / Math.max(1, prevGames)) * 100).toFixed(1) : "0.0",
+    };
+  });
+
+  return rankEntries(prevStats);
+}
+
 // ── Movement computation ──────────────────────────────────────────────────────
-// Returns a map of profileId → "up" | "down" | "same" | null
-// Uses prevLeaderboard from backend if available, otherwise null (no arrows).
+// Pure function: compares current ranked list against previous ranked list.
+// Works identically whether prevLeaderboard came from the backend or was
+// derived client-side — this is the stable UI contract.
+//
+// @returns { [profileId]: "up" | "down" | "same" | null }
 function computeMovement(leaderboard, prevLeaderboard) {
   if (!prevLeaderboard || prevLeaderboard.length === 0) return {};
+
   const prevRankMap = {};
-  prevLeaderboard.forEach((entry, idx) => { prevRankMap[entry.profileId] = idx + 1; });
+  prevLeaderboard.forEach((entry, idx) => {
+    prevRankMap[entry.profileId] = idx + 1;
+  });
+
   const result = {};
   leaderboard.forEach((entry, idx) => {
     const currRank = idx + 1;
     const prevRank = prevRankMap[entry.profileId];
-    if (prevRank == null) { result[entry.profileId] = null; return; }
+    if (prevRank == null) {
+      // Player newly appeared — no meaningful comparison
+      result[entry.profileId] = null;
+      return;
+    }
     if (currRank < prevRank) result[entry.profileId] = "up";
     else if (currRank > prevRank) result[entry.profileId] = "down";
     else result[entry.profileId] = "same";
@@ -71,10 +133,10 @@ const RANK_ACCENT = {
 
 // ── Movement Arrow ────────────────────────────────────────────────────────────
 function MovementArrow({ direction }) {
-  if (!direction || direction === "same") return <div className="h-3" />;
-  if (direction === "up") return <ArrowUp className="w-3 h-3 text-green-400" />;
-  if (direction === "down") return <ArrowDown className="w-3 h-3 text-red-400" />;
-  return <div className="h-3" />;
+  if (!direction || direction === "same") return null;
+  if (direction === "up") return <ArrowUp className="w-2.5 h-2.5 text-green-400" />;
+  if (direction === "down") return <ArrowDown className="w-2.5 h-2.5 text-red-400" />;
+  return null;
 }
 
 // ── Leaderboard Card ──────────────────────────────────────────────────────────
@@ -90,7 +152,7 @@ function LeaderboardCard({ entry, rank, profile, movement, isMe }) {
     <button
       type="button"
       onClick={() => entry.profileId && navigate(ROUTES.USER_PROFILE(entry.profileId))}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors text-left relative overflow-hidden hover:bg-white/5 ${
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors text-left relative overflow-hidden hover:bg-white/5 ${
         isTop3
           ? "bg-gray-900/80 border-gray-700/60"
           : "bg-gray-900/40 border-gray-800/40"
@@ -101,42 +163,40 @@ function LeaderboardCard({ entry, rank, profile, movement, isMe }) {
         <div className={`absolute left-0 top-0 bottom-0 w-0.5 rounded-l-xl ${accent.bar}`} />
       )}
 
-      {/* LEFT: Rank + movement */}
-      <div className="flex flex-col items-center w-7 flex-shrink-0 pl-1">
-        <span className={`text-base font-black leading-none ${isTop3 ? accent.num : "text-gray-500"}`}>
+      {/* LEFT: Rank + movement arrow */}
+      <div className="flex flex-col items-center justify-center w-9 flex-shrink-0 pl-1 gap-0.5">
+        <span className={`text-lg font-black leading-none ${isTop3 ? accent.num : "text-gray-500"}`}>
           {rank}
         </span>
-        <div className="mt-0.5">
-          <MovementArrow direction={movement} />
-        </div>
+        <MovementArrow direction={movement} />
       </div>
 
       {/* CENTER: Avatar + name + secondary stats */}
-      <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="flex items-center gap-2.5 flex-1 min-w-0">
         {profile?.avatar_url ? (
           <img
             src={profile.avatar_url}
-            className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-1 ring-gray-700"
+            className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-1 ring-gray-700"
             alt=""
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-semibold text-gray-300 flex-shrink-0 ring-1 ring-gray-600">
+          <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-sm font-semibold text-gray-300 flex-shrink-0 ring-1 ring-gray-600">
             {(profile?.display_name || "?")[0]?.toUpperCase()}
           </div>
         )}
         <div className="min-w-0">
           <p className={`text-sm font-semibold leading-tight truncate ${isMe ? "text-blue-300" : "text-white"}`}>
             {formattedName}
-            {isMe && <span className="ml-1 text-xs text-blue-400/70 font-normal">(you)</span>}
+            {isMe && <span className="ml-1.5 text-xs text-blue-400/60 font-normal">(you)</span>}
           </p>
-          <p className="text-[11px] text-gray-500 mt-0.5 leading-none">
-            {entry.games}G &bull; {entry.wins}W &bull; {winRate}%
+          <p className="text-[11px] text-gray-500 mt-1 leading-none">
+            Games {entry.games} &bull; Wins {entry.wins} &bull; Win Rate {winRate}%
           </p>
         </div>
       </div>
 
       {/* RIGHT: Points pill */}
-      <div className={`flex-shrink-0 px-2.5 py-1 rounded-lg border text-xs font-bold tracking-wide ${
+      <div className={`flex-shrink-0 px-3 py-1.5 rounded-lg border text-xs font-bold tracking-wide ${
         isTop3 ? accent.pts : "text-gray-300 bg-gray-800/60 border-gray-700/50"
       }`}>
         {entry.points} PTS
@@ -160,18 +220,47 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
     if (!currentUser?.id) return;
     if (!isActiveMember) { setLoading(false); return; }
     let cancelled = false;
+
     async function load() {
       setLoading(true);
       try {
-        const { leaderboard: lb, prevLeaderboard: prev, profiles: profileMap } = await getPODLeaderboard(podId, currentUser.id);
+        // Fetch leaderboard + pod game history in parallel.
+        // podHistory gives us approved games + participants needed to compute prevLeaderboard.
+        const [lbResult, historyResult] = await Promise.all([
+          getPODLeaderboard(podId, currentUser.id),
+          base44.functions.invoke("publicProfiles", {
+            action: "podHistory",
+            podId,
+            callerProfileId: currentUser.id,
+          }),
+        ]);
+
         if (cancelled) return;
-        setProfiles(profileMap);
+
+        const lb = lbResult.leaderboard || [];
+        const profileMap = lbResult.profiles || {};
+
         setLeaderboard(lb);
-        setPrevLeaderboard(prev || null);
+        setProfiles(profileMap);
+
+        // Movement computation:
+        // Priority 1: use backend-provided prevLeaderboard if available (future-ready path).
+        // Priority 2: derive client-side from pod game history (current practical path).
+        const backendPrev = lbResult.prevLeaderboard || null;
+        if (backendPrev) {
+          setPrevLeaderboard(backendPrev);
+        } else if (historyResult?.data) {
+          const { games: podGames = [], participants: participantMap = {} } = historyResult.data;
+          const clientPrev = derivePrevLeaderboard(lb, podGames, participantMap);
+          setPrevLeaderboard(clientPrev);
+        } else {
+          setPrevLeaderboard(null);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     load();
     return () => { cancelled = true; };
   }, [podId, currentUser?.id, isActiveMember]);
@@ -210,18 +299,11 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
   }
 
   const movementMap = computeMovement(leaderboard, prevLeaderboard);
+  const hasMovement = Object.values(movementMap).some((v) => v === "up" || v === "down");
 
   return (
     <div className="space-y-4">
       {pendingBanner}
-
-      {/* Header row */}
-      <div className="flex items-center justify-between px-1">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Rankings</p>
-        {prevLeaderboard && (
-          <p className="text-[10px] text-gray-600">Arrows show change since last game</p>
-        )}
-      </div>
 
       {/* Cards */}
       <div className="space-y-2">
@@ -237,12 +319,15 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
         ))}
       </div>
 
-      {/* Legend */}
-      {leaderboard.length > 0 && (
-        <p className="text-center text-[10px] text-gray-700 pt-1">
+      {/* Footer legend */}
+      <div className="flex items-center justify-between px-1 pt-0.5">
+        <p className="text-[10px] text-gray-700">
           Ranked by Points · Wins · Win% · Games
         </p>
-      )}
+        {hasMovement && (
+          <p className="text-[10px] text-gray-600">↑↓ since last game</p>
+        )}
+      </div>
     </div>
   );
 }
