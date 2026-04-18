@@ -281,8 +281,16 @@ export default function Pod() {
         <MatchDetailsModal
           gameId={selectedGame.gameId}
           podId={selectedGame.podId}
-          auth={{ currentUser, authUserId, isGuest }}
+          auth={{
+            currentUser,
+            authUserId,
+            isGuest,
+            // isPodAdmin: true enables the delete icon in Match Details for POD games.
+            // Derived from myMembership loaded via podPageData (role=admin + status=active).
+            isPodAdmin: !!(myMembership?.role === "admin" && myMembership?.membership_status === "active"),
+          }}
           onClose={() => setSelectedGame(null)}
+          onActionComplete={() => load()}
         />
       )}
     </div>

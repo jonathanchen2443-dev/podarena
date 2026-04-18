@@ -14,7 +14,7 @@ function formatShortName(name) {
   return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
-export default function GamePropsSection({ game, callerAuthUserId }) {
+export default function GamePropsSection({ game, callerAuthUserId, callerProfileId }) {
   const [praises, setPraises] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,11 +26,11 @@ export default function GamePropsSection({ game, callerAuthUserId }) {
       return;
     }
     setLoading(true);
-    getGamePraises(game.id, callerAuthUserId)
+    getGamePraises(game.id, callerAuthUserId, callerProfileId)
       .then((rows) => setPraises(rows || []))
       .catch(() => setPraises([]))
       .finally(() => setLoading(false));
-  }, [game?.id, isApproved, callerAuthUserId]);
+  }, [game?.id, isApproved, callerAuthUserId, callerProfileId]);
 
   // Only render for approved games with praises
   if (!isApproved || loading || praises.length === 0) return null;

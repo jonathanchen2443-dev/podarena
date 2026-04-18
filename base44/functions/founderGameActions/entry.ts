@@ -344,6 +344,90 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── podAdminDeleteGame ────────────────────────────────────────────────────
+    // POD-admin-only: permanently delete a POD game and all its derived records.
+    // Gate: caller must be authenticated, identity-verified, and an active admin
+    //       of the specific POD that owns the game.
+    // Delete order: Notifications → GameApproval → Praises → GameParticipant → Game
+    if (action === 'podAdminDeleteGame') {
+      const { gameId: delGameId, callerAuthUserId, callerProfileId } = body;
+      let step = 'validate_input';
+      try {
+        if (!delGameId || !callerAuthUserId || !callerProfileId) {
+          return Response.json({ error: 'gameId, callerAuthUserId, callerProfileId required' }, { status: 400 });
+        }
+
+        step = 'verify_identity';
+        const callerRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerRows.length || callerRows[0].user_id !== callerAuthUserId) {
+          return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+        }
+
+        step = 'load_game';
+        const gameArr = await base44.asServiceRole.entities.Game.filter({ id: delGameId });
+        if (!gameArr.length) return Response.json({ error: 'Game not found' }, { status: 404 });
+        const podGame = gameArr[0];
+
+        // Only POD games can be deleted this way
+        if (podGame.context_type !== 'pod' || !podGame.pod_id) {
+          return Response.json({ error: 'Forbidden: only POD games can be deleted via this action' }, { status: 403 });
+        }
+
+        step = 'verify_pod_admin';
+        const adminMembership = await base44.asServiceRole.entities.PODMembership.filter({
+          pod_id: podGame.pod_id, user_id: callerAuthUserId, role: 'admin', membership_status: 'active',
+        });
+        if (adminMembership.length === 0) {
+          return Response.json({ error: 'Forbidden: POD admin access required' }, { status: 403 });
+        }
+
+        step = 'preload_records';
+        const [delParticipants, delApprovals, allDelNotifs, delPraises] = await Promise.all([
+          base44.asServiceRole.entities.GameParticipant.filter({ game_id: delGameId }).catch(() => []),
+          base44.asServiceRole.entities.GameApproval.filter({ game_id: delGameId }).catch(() => []),
+          base44.asServiceRole.entities.Notification.filter({ type: 'game_review_request' }, '-created_date', 500).catch(() => []),
+          base44.asServiceRole.entities.Praise.filter({ game_id: delGameId }).catch(() => []),
+        ]);
+        const delGameNotifs = allDelNotifs.filter((n) => n.metadata?.game_id === delGameId);
+
+        console.log('[podAdminDeleteGame] scope', {
+          gameId: delGameId, podId: podGame.pod_id, callerProfileId,
+          participants: delParticipants.length, approvals: delApprovals.length,
+          notifications: delGameNotifs.length, praises: delPraises.length,
+        });
+
+        // Step 1: Notifications — stop inbox from showing this game
+        step = 'delete_notifications';
+        await Promise.all(delGameNotifs.map((n) => base44.asServiceRole.entities.Notification.delete(n.id).catch(() => {})));
+        console.log('[podAdminDeleteGame] step=delete_notifications count=', delGameNotifs.length);
+
+        // Step 2: GameApproval rows
+        step = 'delete_approvals';
+        await Promise.all(delApprovals.map((a) => base44.asServiceRole.entities.GameApproval.delete(a.id).catch(() => {})));
+        console.log('[podAdminDeleteGame] step=delete_approvals count=', delApprovals.length);
+
+        // Step 3: Praises — permanently removes all praise rows (and derived stat effects)
+        step = 'delete_praises';
+        await Promise.all(delPraises.map((p) => base44.asServiceRole.entities.Praise.delete(p.id).catch(() => {})));
+        console.log('[podAdminDeleteGame] step=delete_praises count=', delPraises.length);
+
+        // Step 4: GameParticipant — drives stats/leaderboard/history; game becomes invisible after this
+        step = 'delete_participants';
+        await Promise.all(delParticipants.map((p) => base44.asServiceRole.entities.GameParticipant.delete(p.id).catch(() => {})));
+        console.log('[podAdminDeleteGame] step=delete_participants count=', delParticipants.length);
+
+        // Step 5: Game record — last step
+        step = 'delete_game';
+        await base44.asServiceRole.entities.Game.delete(delGameId);
+        console.log('[podAdminDeleteGame] SUCCESS gameId=', delGameId, 'by pod admin=', callerProfileId);
+
+        return Response.json({ success: true });
+      } catch (err) {
+        console.error('[podAdminDeleteGame] FAILED', { step, delGameId, callerAuthUserId, error: err?.message });
+        return Response.json({ error: err.message || 'podAdminDeleteGame failed' }, { status: 500 });
+      }
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {

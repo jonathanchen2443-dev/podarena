@@ -165,16 +165,21 @@ export async function savePraise(gameId, receiverProfileId, praiseType, auth) {
 /**
  * getGamePraises — get all praises for a fully-approved game.
  * Returns empty array for pending/rejected/hidden games.
- * Callers that are participants in the game may retrieve this.
+ *
+ * Access paths (enforced backend-side):
+ *   1. Direct participant: callerAuthUserId has a GameParticipant row for this game.
+ *   2. POD member viewer: game is an approved POD game and callerProfileId is an
+ *      active member of that POD. Pass callerProfileId for this path.
  *
  * Shape per item: { giver_profile_id, receiver_profile_id, praise_type,
  *   receiver_deck_name_at_time, receiver_commander_name_at_time, receiver_deck_id_at_time }
  *
  * @param {string} gameId
  * @param {string} callerAuthUserId
+ * @param {string} [callerProfileId]  — optional; enables POD-member visibility path
  * @returns {Promise<Array>}
  */
-export async function getGamePraises(gameId, callerAuthUserId) {
+export async function getGamePraises(gameId, callerAuthUserId, callerProfileId) {
   if (!gameId || !callerAuthUserId) return [];
   const cKey = `gamePraises::${gameId}`;
   const cached = cacheGet(cKey);
@@ -182,7 +187,7 @@ export async function getGamePraises(gameId, callerAuthUserId) {
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
   const promise = (async () => {
-    const data = await callPraise({ action: "getGamePraises", gameId, callerAuthUserId });
+    const data = await callPraise({ action: "getGamePraises", gameId, callerAuthUserId, callerProfileId: callerProfileId || null });
     return cacheSet(cKey, data.praises || []);
   })();
 

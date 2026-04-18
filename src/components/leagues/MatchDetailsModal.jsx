@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Trophy, CheckCircle, XCircle, Clock, ChevronDown, Loader2, Layers } from "lucide-react";
+import { X, Trophy, CheckCircle, XCircle, Clock, ChevronDown, Loader2, Layers, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { approveGameWithPraise, rejectGame } from "@/components/services/gameService";
 import { listMyDecks } from "@/components/services/deckService";
@@ -45,6 +45,10 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
   const [praiseReceiver, setPraiseReceiver] = useState(null);
   const [praiseType, setPraiseType] = useState(null);
 
+  // Delete state (POD admin only)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Self-fetch mode
   const [fetchedGame, setFetchedGame] = useState(null);
   const [fetchLoading, setFetchLoading] = useState(!gameProp && !!gameId);
@@ -83,6 +87,36 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
   const currentProfileId = auth.currentUser?.id;
   // auth.authUserId is the canonical Auth User ID from context — always prefer over currentUser.user_id
   const currentAuthUserId = auth.authUserId || auth.currentUser?.user_id || null;
+
+  // POD admin delete: only show for POD games where caller is the admin of that POD.
+  // isPodAdmin is passed from the Pod page via auth prop — it reflects the caller's
+  // verified role (role=admin + membership_status=active) from the podPageData response.
+  const isPodGame = game?.context_type === "pod" && !!game?.pod_id;
+  const isPodAdmin = isPodGame && auth?.isPodAdmin === true;
+
+  async function handleDeleteGame() {
+    if (!currentAuthUserId || !currentProfileId || !game?.id) return;
+    setDeleteLoading(true);
+    try {
+      const res = await import("@/api/base44Client").then(({ base44 }) =>
+        base44.functions.invoke("founderGameActions", {
+          action: "podAdminDeleteGame",
+          gameId: game.id,
+          callerAuthUserId: currentAuthUserId,
+          callerProfileId: currentProfileId,
+        })
+      );
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success("Game deleted.");
+      setShowDeleteConfirm(false);
+      if (onActionComplete) await onActionComplete();
+      onClose();
+    } catch (e) {
+      toast.error(e.message || "Failed to delete game.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
 
   // canAct: I have a pending review row — derived from GameParticipant, not GameApproval
   const myParticipant = game?.participants?.find((p) => p.authUserId === currentAuthUserId);
@@ -179,6 +213,15 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
           </div>
           <div className="flex items-center gap-2">
             {statusBadge(game.status)}
+            {auth?.isPodAdmin && isPodGame && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-7 h-7 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 transition-colors"
+                title="Delete this game (POD admin only)"
+              >
+                <Trash2 className="w-3 h-3 text-red-400" />
+              </button>
+            )}
             <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors ml-1">
               <X className="w-3.5 h-3.5 text-gray-400" />
             </button>
@@ -212,7 +255,7 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
           </p>
 
           {/* Props from this game — only for approved games with praises */}
-          <GamePropsSection game={game} callerAuthUserId={currentAuthUserId} />
+          <GamePropsSection game={game} callerAuthUserId={currentAuthUserId} callerProfileId={currentProfileId} />
 
           {/* Approval confirmation — heading removed, content only */}
           {total > 0 && (
@@ -252,6 +295,35 @@ export default function MatchDetailsModal({ game: gameProp, gameId, podId, auth,
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Notes</p>
               <p className="text-sm text-gray-300">{game.notes}</p>
+            </div>
+          )}
+
+          {/* POD admin delete confirmation */}
+          {showDeleteConfirm && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 space-y-3">
+              <p className="text-red-400 text-sm font-semibold text-center">Delete this game permanently?</p>
+              <p className="text-gray-400 text-xs text-center leading-relaxed">
+                This will permanently remove the game, approvals, awarded props, and all score/stat effects derived from it. This action cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800"
+                  disabled={deleteLoading}
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  disabled={deleteLoading}
+                  onClick={handleDeleteGame}
+                >
+                  {deleteLoading ? "Deleting…" : "Delete Game"}
+                </Button>
+              </div>
             </div>
           )}
 

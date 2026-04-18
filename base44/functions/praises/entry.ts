@@ -211,16 +211,41 @@ Deno.serve(async (req) => {
 
     // ── getGamePraises ────────────────────────────────────────────────────────
     // Returns visible praises for one approved game.
-    // Gate: callerAuthUserId must be a participant in the game.
-    // Returns [] for pending/rejected/hidden games.
+    // Gate (two paths):
+    //   1. Direct participant: callerAuthUserId has a GameParticipant row for this game.
+    //   2. POD member viewer: game is a POD game, is approved, not hidden, and
+    //      callerProfileId is an active member of that POD.
+    // Returns [] for pending/rejected/hidden games or unauthorized callers.
     if (action === 'getGamePraises') {
-      const { gameId: gpGameId, callerAuthUserId } = body;
+      const { gameId: gpGameId, callerAuthUserId, callerProfileId } = body;
       if (!gpGameId || !callerAuthUserId) return Response.json({ praises: [] });
       try {
+        // Load game to check status, hidden state, context, and pod_id
+        const gameArr = await base44.asServiceRole.entities.Game.filter({ id: gpGameId }).catch(() => []);
+        if (!gameArr.length) return Response.json({ praises: [] });
+        const game = gameArr[0];
+
+        // Gate: never expose praises for hidden or non-approved games
+        if (game.is_hidden || game.status !== 'approved') return Response.json({ praises: [] });
+
+        // Path 1: caller is a direct participant
         const participantRows = await base44.asServiceRole.entities.GameParticipant.filter({
           game_id: gpGameId, participant_user_id: callerAuthUserId,
         }).catch(() => []);
-        if (participantRows.length === 0) return Response.json({ praises: [] });
+
+        let authorized = participantRows.length > 0;
+
+        // Path 2: POD game — caller is an active member of the game's POD
+        if (!authorized && game.context_type === 'pod' && game.pod_id && callerProfileId) {
+          const podMembership = await base44.asServiceRole.entities.PODMembership.filter({
+            pod_id: game.pod_id,
+            profile_id: callerProfileId,
+            membership_status: 'active',
+          }).catch(() => []);
+          authorized = podMembership.length > 0;
+        }
+
+        if (!authorized) return Response.json({ praises: [] });
 
         const praises = await base44.asServiceRole.entities.Praise.filter({
           game_id: gpGameId,
