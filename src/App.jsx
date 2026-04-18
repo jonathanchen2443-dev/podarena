@@ -8,6 +8,7 @@ import LogGame from '@/pages/LogGame';
 import Inbox from '@/pages/Inbox';
 import Praises from '@/pages/Praises';
 import RandomDeckPicker from '@/pages/RandomDeckPicker';
+import DeckInsights from '@/pages/DeckInsights';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -66,6 +67,7 @@ const AuthenticatedApp = () => {
       <Route path="/Inbox" element={<LayoutWrapper currentPageName="Inbox"><Inbox /></LayoutWrapper>} />
       <Route path="/Praises" element={<LayoutWrapper currentPageName="Praises"><Praises /></LayoutWrapper>} />
       <Route path="/RandomDeckPicker" element={<LayoutWrapper currentPageName="RandomDeckPicker"><RandomDeckPicker /></LayoutWrapper>} />
+      <Route path="/DeckInsights" element={<LayoutWrapper currentPageName="DeckInsights"><DeckInsights /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

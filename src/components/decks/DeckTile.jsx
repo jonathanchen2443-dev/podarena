@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
 import { Pencil, Swords, Star, Info } from "lucide-react";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
@@ -17,7 +17,8 @@ import { invalidateDeckInsightsCache } from "@/components/services/deckInsightsS
  *   onInsights   – (deck) => void
  *   isGuest      – boolean
  */
-export default function DeckTile({ deck, onDelete, editHref, onFavoriteToggle, onInsights, isGuest }) {
+export default function DeckTile({ deck, onDelete, editHref, onFavoriteToggle, isGuest }) {
+  const navigate = useNavigate();
   const [localFav, setLocalFav] = useState(deck.is_favorite ?? false);
   const [favSaving, setFavSaving] = useState(false);
 
@@ -48,7 +49,7 @@ export default function DeckTile({ deck, onDelete, editHref, onFavoriteToggle, o
 
   function handleImageClick(e) {
     e.stopPropagation();
-    onInsights?.(deck);
+    navigate(ROUTES.DECK_INSIGHTS(deck.id));
   }
 
   return (

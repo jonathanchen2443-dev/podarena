@@ -10,7 +10,6 @@ import DeckTile from "@/components/decks/DeckTile";
 import DeckForm from "@/components/decks/DeckForm";
 import DeleteDeckModal from "@/components/decks/DeleteDeckModal";
 import DeckFilters from "@/components/decks/DeckFilters";
-import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
 import { getMyDeckById, createDeck, updateDeck, deleteDeck } from "@/components/services/deckService";
 import { getMyDecksWithStats, invalidateDeckStatsCache } from "@/components/services/deckStatsService";
 import { toast } from "sonner";
@@ -70,7 +69,6 @@ export default function ProfileDecks() {
   const [editDeck, setEditDeck] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [insightsDeck, setInsightsDeck] = useState(null);
   const PAGE_SIZE = 20;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const fetchingRef = useRef(false);
@@ -291,7 +289,6 @@ export default function ProfileDecks() {
                 onDelete={setDeletingDeck}
                 isGuest={isGuest}
                 onFavoriteToggle={handleFavoriteToggle}
-                onInsights={setInsightsDeck}
               />
             ))}
           </div>
@@ -313,11 +310,6 @@ export default function ProfileDecks() {
         loading={deleteLoading}
       />
 
-      <DeckInsightsModal
-        deck={insightsDeck}
-        auth={auth}
-        onClose={() => setInsightsDeck(null)}
-      />
     </div>
   );
 }

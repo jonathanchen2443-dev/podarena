@@ -49,4 +49,7 @@ export const ROUTES = {
 
   // Random Deck Picker
   RANDOM_DECK_PICKER: createPageUrl("RandomDeckPicker"),
+
+  // Deck Insights
+  DECK_INSIGHTS: (deckId) => `${createPageUrl("DeckInsights")}?deckId=${deckId}`,
 };
