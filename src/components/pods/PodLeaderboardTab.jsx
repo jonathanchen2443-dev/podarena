@@ -309,8 +309,8 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
       {pendingBanner}
 
       {/* Legend — above cards */}
-      <div className="flex items-center justify-between px-1">
-        <p className="text-[10px] text-gray-600">G = Games &bull; W = Wins &bull; WR = Win Rate</p>
+      <div className="flex flex-col items-center gap-1 px-1">
+        <p className="text-xs text-gray-500 text-center">G = Games &bull; W = Wins &bull; WR = Win Rate</p>
         {hasMovement && (
           <p className="text-[10px] text-gray-600">↑↓ since last game</p>
         )}
