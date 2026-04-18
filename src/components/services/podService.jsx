@@ -234,6 +234,7 @@ export async function getPODLeaderboard(podId, callerProfileId) {
   const data = res.data || {};
   return {
     leaderboard: data.leaderboard || [],
+    prevLeaderboard: data.prevLeaderboard || null,
     profiles: data.profiles || {},
   };
 }
