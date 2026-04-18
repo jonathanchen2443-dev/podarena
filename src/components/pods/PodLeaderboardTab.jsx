@@ -199,10 +199,11 @@ function LeaderboardCard({ entry, rank, profile, movement, isMe }) {
       </div>
 
       {/* RIGHT: Points pill */}
-      <div className={`flex-shrink-0 px-3 py-1.5 rounded-lg border text-xs font-bold tracking-wide ${
+      <div className={`flex-shrink-0 w-12 flex flex-col items-center justify-center py-1.5 rounded-lg border ${
         isTop3 ? accent.pts : "text-gray-300 bg-gray-800/60 border-gray-700/50"
       }`}>
-        {entry.points} PTS
+        <span className="text-base font-black leading-none">{entry.points}</span>
+        <span className="text-[9px] font-semibold tracking-widest opacity-70 mt-0.5">PTS</span>
       </div>
     </button>
   );
