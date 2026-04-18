@@ -54,18 +54,29 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'deckId, callerAuthUserId, callerProfileId required' }, { status: 400 });
     }
 
-    // Verify caller identity
+    // Verify caller identity — catch SDK "Object not found" for invalid IDs → 403, not 500
     step = 'verify_identity';
-    const callerProfileRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
-    if (!callerProfileRows.length || callerProfileRows[0].user_id !== callerAuthUserId) {
+    let callerProfileRow;
+    try {
+      const rows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+      callerProfileRow = rows[0] || null;
+    } catch (_) {
+      callerProfileRow = null;
+    }
+    if (!callerProfileRow || callerProfileRow.user_id !== callerAuthUserId) {
       return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
     }
 
-    // Load the deck + verify ownership
+    // Load the deck — catch SDK "Object not found" for invalid IDs → 404, not 500
     step = 'load_deck';
-    const deckRows = await base44.asServiceRole.entities.Deck.filter({ id: deckId });
-    if (!deckRows.length) return Response.json({ error: 'Deck not found' }, { status: 404 });
-    const deck = deckRows[0];
+    let deck;
+    try {
+      const deckRows = await base44.asServiceRole.entities.Deck.filter({ id: deckId });
+      deck = deckRows[0] || null;
+    } catch (_) {
+      deck = null;
+    }
+    if (!deck) return Response.json({ error: 'Deck not found' }, { status: 404 });
     if (deck.owner_id !== callerProfileId) {
       return Response.json({ error: 'Forbidden: not your deck' }, { status: 403 });
     }
@@ -241,12 +252,15 @@ Deno.serve(async (req) => {
       const t = pr.praise_type;
       if (t) byType[t] = (byType[t] || 0) + 1;
     }
+    // icon_key = type key — consistent with PRAISE_META in praiseService.jsx.
+    // emoji kept as optional metadata; icon_key is the primary rendering contract.
     const sorted = Object.entries(byType)
       .sort((a, b) => b[1] - a[1])
       .map(([type, count]) => ({
         type,
+        icon_key: type,
         label: PRAISE_META[type]?.label || type,
-        emoji: PRAISE_META[type]?.emoji || '',
+        emoji: PRAISE_META[type]?.emoji || null,
         count,
       }));
 
