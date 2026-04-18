@@ -34,6 +34,10 @@ const PRAISE_META = {
   knockout:             { label: 'Knockout',             emoji: '👊' },
 };
 
+// ── Threshold — single source of truth ────────────────────────────────────────
+// Change this number to adjust when insights unlock. Frontend reads eligibility object.
+const MIN_GAMES = 2;
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -48,13 +52,13 @@ Deno.serve(async (req) => {
     const isAuth = await base44.auth.isAuthenticated().catch(() => false);
     if (!isAuth) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Input validation
+    // Input validation — callerProfileId is the viewer (may be owner or public viewer)
     step = 'validate_input';
     if (!deckId || !callerAuthUserId || !callerProfileId) {
       return Response.json({ error: 'deckId, callerAuthUserId, callerProfileId required' }, { status: 400 });
     }
 
-    // Verify caller identity — catch SDK "Object not found" for invalid IDs → 403, not 500
+    // Verify caller identity — catch SDK errors for invalid IDs → 403, not 500
     step = 'verify_identity';
     let callerProfileRow;
     try {
@@ -67,7 +71,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
     }
 
-    // Load the deck — catch SDK "Object not found" for invalid IDs → 404, not 500
+    // Load the deck — public-safe: any authenticated user can view insights for any deck.
+    // Data returned is derived only from approved, non-hidden games — no private raw data exposed.
     step = 'load_deck';
     let deck;
     try {
@@ -77,9 +82,16 @@ Deno.serve(async (req) => {
       deck = null;
     }
     if (!deck) return Response.json({ error: 'Deck not found' }, { status: 404 });
-    if (deck.owner_id !== callerProfileId) {
-      return Response.json({ error: 'Forbidden: not your deck' }, { status: 403 });
-    }
+
+    // Fetch deck owner profile for display (safe public fields only)
+    step = 'load_owner_profile';
+    let ownerProfile = null;
+    try {
+      const ownerRows = await base44.asServiceRole.entities.Profile.filter({ id: deck.owner_id });
+      if (ownerRows[0]) {
+        ownerProfile = { id: ownerRows[0].id, display_name: ownerRows[0].display_name || 'Unknown' };
+      }
+    } catch (_) {}
 
     // ── Step 1: All participations for this profile, filter to this deck ──
     step = 'load_participations';
@@ -130,7 +142,6 @@ Deno.serve(async (req) => {
     const lastPlayedAt = sortedDates[sortedDates.length - 1] || null;
 
     // ── Step 4: Eligibility ──
-    const MIN_GAMES = 4;
     const insightsUnlocked = gamesPlayed >= MIN_GAMES;
     const gamesNeeded = insightsUnlocked ? 0 : MIN_GAMES - gamesPlayed;
 
@@ -268,6 +279,7 @@ Deno.serve(async (req) => {
     step = 'finalize_response';
     console.log('[deckInsights] success deckId=', deckId, 'callerProfileId=', callerProfileId, 'gamesPlayed=', gamesPlayed, 'insightsUnlocked=', insightsUnlocked);
     return Response.json({
+      owner: ownerProfile,
       deck: {
         id: deck.id,
         name: deck.name || 'Unnamed',

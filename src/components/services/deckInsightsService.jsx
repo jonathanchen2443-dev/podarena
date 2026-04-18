@@ -43,7 +43,8 @@ export function invalidateDeckInsightsCache(key) {
  * getDeckInsights(auth, deckId)
  *
  * Returns the full deck insights payload from the backend.
- * Returns null if the caller is a guest or required IDs are missing.
+ * Any authenticated user can view insights — data is public-safe (approved/non-hidden games only).
+ * Returns null if the caller is not authenticated or required IDs are missing.
  *
  * @param {{ isGuest, authUserId, currentUser: { id } }} auth
  * @param {string} deckId

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Swords, Lock, RefreshCw, AlertCircle, Trophy, Skull, Sword, Users, Calendar, Star } from "lucide-react";
+import { Swords, Lock, RefreshCw, AlertCircle, Trophy, Skull, Sword, Users, Calendar, Star } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
 import { getDeckInsights } from "@/components/services/deckInsightsService";
 import { PRAISE_ICONS } from "@/components/praise/PraiseHelpModal";
 import { PRAISE_META } from "@/components/services/praiseService";
+import { ROUTES } from "@/components/utils/routes";
 import { format, parseISO } from "date-fns";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -13,6 +14,13 @@ import { format, parseISO } from "date-fns";
 function formatDate(iso) {
   if (!iso) return null;
   try { return format(parseISO(iso), "MMM yyyy"); } catch { return null; }
+}
+
+function formatOwnerName(displayName) {
+  if (!displayName || displayName === "Unknown") return null;
+  const parts = displayName.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
 }
 
 function formatName(displayName) {
@@ -82,13 +90,13 @@ function BreakdownRow({ label, games, wins, winRatePct }) {
 function LoadingSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-48 bg-gray-800/60 rounded-2xl" />
+      <div className="h-52 bg-gray-800/60 rounded-2xl" />
       <div className="flex gap-2">
         {[1, 2, 3, 4].map((i) => <div key={i} className="h-14 flex-1 bg-gray-800/60 rounded-xl" />)}
       </div>
       <div className="h-6 bg-gray-800/40 rounded w-32" />
       <div className="grid grid-cols-2 gap-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-16 bg-gray-800/40 rounded-xl" />)}
+        {[1, 2, 3, 4].map((i) => <div key={i} className="h-16 bg-gray-800/40 rounded-xl" />)}
       </div>
     </div>
   );
@@ -128,55 +136,36 @@ export default function DeckInsights() {
     loadInsights();
   }, [auth.authLoading, auth.isGuest, deckId]);
 
-  // ── Back button ──────────────────────────────────────────────────────────────
-  const backBtn = (
-    <button
-      onClick={() => navigate(-1)}
-      className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors mb-4"
-    >
-      <ArrowLeft className="w-4 h-4" /> Back
-    </button>
-  );
-
   // ── Loading ──────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div>
-        {backBtn}
-        <LoadingSkeleton />
-      </div>
-    );
-  }
+  if (loading) return <LoadingSkeleton />;
 
   // ── Error / access denied ─────────────────────────────────────────────────
   if (error || !data) {
     const isAccess = error?.toLowerCase().includes("forbidden") || error?.toLowerCase().includes("not found");
     return (
-      <div>
-        {backBtn}
-        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center px-6">
-          <AlertCircle className={`w-10 h-10 ${isAccess ? "text-amber-400/70" : "text-red-400/70"}`} />
-          <p className={`text-sm font-medium ${isAccess ? "text-amber-400" : "text-red-400"}`}>
-            {isAccess ? "Deck not found or access denied." : (error || "Something went wrong.")}
-          </p>
-          {!isAccess && (
-            <button
-              onClick={loadInsights}
-              className="flex items-center gap-2 text-gray-400 hover:text-white text-sm border border-gray-700 px-4 py-2 rounded-xl transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Retry
-            </button>
-          )}
-        </div>
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center px-6">
+        <AlertCircle className={`w-10 h-10 ${isAccess ? "text-amber-400/70" : "text-red-400/70"}`} />
+        <p className={`text-sm font-medium ${isAccess ? "text-amber-400" : "text-red-400"}`}>
+          {isAccess ? "Deck not found or access denied." : (error || "Something went wrong.")}
+        </p>
+        {!isAccess && (
+          <button
+            onClick={loadInsights}
+            className="flex items-center gap-2 text-gray-400 hover:text-white text-sm border border-gray-700 px-4 py-2 rounded-xl transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        )}
       </div>
     );
   }
 
-  const { deck, summary, eligibility, insights, props } = data;
+  const { deck, owner, summary, eligibility, insights, props } = data;
   const commanderName = deck.commander_name || deck.name;
   const deckLabel = deck.commander_name && deck.name && deck.commander_name !== deck.name ? deck.name : null;
   const lastPlayed = formatDate(deck.last_played_at);
   const firstLogged = formatDate(deck.first_logged_at);
+  const ownerLabel = formatOwnerName(owner?.display_name);
 
   const mostPlayedPod = insights?.most_played_pod;
   const bestAgainstPlayer = insights?.best_against_player;
@@ -185,7 +174,6 @@ export default function DeckInsights() {
 
   return (
     <div className="space-y-5 pb-4">
-      {backBtn}
 
       {/* ── HERO HEADER ─────────────────────────────────────────────────────── */}
       <div className="relative rounded-2xl overflow-hidden bg-gray-900/80 border border-gray-800/50">
@@ -214,24 +202,34 @@ export default function DeckInsights() {
           </div>
 
           {/* Identity */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+            {/* Owner label */}
+            {ownerLabel && (
+              <div className="inline-flex self-start">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-700/70 border border-gray-600/40 text-gray-300">
+                  Deck by {ownerLabel}
+                </span>
+              </div>
+            )}
             {deckLabel && (
               <p className="text-gray-500 text-[10px] uppercase tracking-wide truncate">{deckLabel}</p>
             )}
             <p className="text-white font-bold text-base leading-tight">{commanderName}</p>
             <ManaPipRow colors={deck.color_identity || []} size={14} gap={2} />
-            {lastPlayed && (
-              <p className="text-gray-600 text-xs">Last played {lastPlayed}</p>
-            )}
+            {/* Last played + First logged as calm meta lines */}
+            <div className="space-y-0.5">
+              {lastPlayed && <p className="text-gray-600 text-xs">Last played {lastPlayed}</p>}
+              {firstLogged && <p className="text-gray-600 text-xs">First logged {firstLogged}</p>}
+            </div>
           </div>
         </div>
 
-        {/* Stat chips */}
+        {/* Stat chips — Games / Wins / Win Rate / Format */}
         <div className="relative z-10 px-4 pb-4 flex gap-2 overflow-x-auto scrollbar-none">
           <StatChip label="Games" value={summary.games_played} />
           <StatChip label="Wins" value={summary.wins} />
           <StatChip label="Win Rate" value={`${summary.win_rate_percent}%`} />
-          {lastPlayed && <StatChip label="Last Played" value={lastPlayed} />}
+          <StatChip label="Format" value="Commander" />
         </div>
       </div>
 
@@ -282,38 +280,33 @@ export default function DeckInsights() {
                 secondary={bestAgainstDeck?.wins ? `${bestAgainstDeck.wins} wins` : null}
               />
               <InsightCard
-                icon={Calendar}
-                title="First logged"
-                primary={firstLogged || null}
-              />
-              <InsightCard
                 icon={Star}
                 title="Props received"
                 primary={props.total_received > 0 ? `${props.total_received} total` : null}
+              />
+              <InsightCard
+                icon={Calendar}
+                title="First logged"
+                primary={firstLogged || null}
               />
             </div>
           </div>
 
           {/* ── PROPS SECTION ──────────────────────────────────────────────── */}
-          {props.total_received > 0 && (
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3 px-1">Props received</p>
+          <div>
+            <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3 px-1">Props received</p>
+            {props.total_received > 0 ? (
               <div className="bg-gray-900/70 border border-gray-800/50 rounded-2xl px-4 py-1">
                 {props.sorted.map((item) => (
                   <PropRow key={item.type} item={item} />
                 ))}
               </div>
-            </div>
-          )}
-
-          {props.total_received === 0 && (
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3 px-1">Props received</p>
+            ) : (
               <div className="bg-gray-900/70 border border-gray-800/50 rounded-2xl px-4 py-4 text-center">
                 <p className="text-gray-600 text-sm">No props received yet</p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </>
       )}
 
@@ -344,6 +337,17 @@ export default function DeckInsights() {
           </div>
         </div>
       )}
+
+      {/* ── BOTTOM CTA ──────────────────────────────────────────────────────── */}
+      <div className="flex justify-center pt-2">
+        <button
+          onClick={() => navigate(ROUTES.PROFILE_DECKS)}
+          className="px-6 py-2.5 rounded-xl border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-800/60 text-sm font-medium transition-colors"
+        >
+          Back to Decks
+        </button>
+      </div>
+
     </div>
   );
 }

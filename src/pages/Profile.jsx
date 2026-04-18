@@ -14,7 +14,6 @@ import AvatarUpload from "@/components/profile/AvatarUpload";
 import StatRingCards from "@/components/profile/StatRingCards";
 import BadgesSection from "@/components/profile/BadgesSection";
 import ProfilePraisePreview from "@/components/praise/ProfilePraisePreview";
-import DeckInsightsModal from "@/components/decks/DeckInsightsModal";
 import { getProfileStats, invalidateProfileStatsCache } from "@/components/services/profileStatsService";
 import { listMyDecks, deleteDeck } from "@/components/services/deckService";
 import { base44 } from "@/api/base44Client";
@@ -32,7 +31,6 @@ export default function Profile() {
   const [statsError, setStatsError] = useState(null);
   const [deletingDeck, setDeletingDeck] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [insightsDeck, setInsightsDeck] = useState(null);
   const [profile, setProfile] = useState(null);
   const [copied, setCopied] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -332,7 +330,7 @@ export default function Profile() {
                 onFavoriteToggle={(d, newFav) => {
                   setDecks((prev) => prev.map((x) => x.id === d.id ? { ...x, is_favorite: newFav } : x));
                 }}
-                onInsights={setInsightsDeck}
+
               />
             ))}
             {/* Add Deck tiles to fill up to 4 slots; bottom-right always Add */}
@@ -366,11 +364,6 @@ export default function Profile() {
         loading={deleteLoading}
       />
 
-      <DeckInsightsModal
-        deck={insightsDeck}
-        auth={auth}
-        onClose={() => setInsightsDeck(null)}
-      />
     </div>
   );
 }
