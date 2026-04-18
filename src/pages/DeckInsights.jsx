@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Swords, Lock, RefreshCw, AlertCircle, Trophy, Skull, Sword, Users } from "lucide-react";
+import { Swords, Lock, RefreshCw, AlertCircle, Trophy, Skull, Sword, Users, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
 import { getDeckInsights } from "@/components/services/deckInsightsService";
@@ -32,64 +32,79 @@ function formatName(displayName) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatChip({ label, value }) {
+/** KPI card — prominent number, quiet label, borderless depth */
+function KpiCard({ label, value }) {
   return (
-    <div className="flex flex-col items-center px-3 py-2 rounded-xl bg-gray-800/60 border border-gray-700/40 min-w-[60px] flex-1">
-      <span className="text-white font-bold text-sm leading-none">{value ?? "—"}</span>
-      <span className="text-gray-500 text-[10px] mt-1 font-medium tracking-wide uppercase">{label}</span>
+    <div className="flex flex-col items-center justify-center py-3 px-2 rounded-2xl bg-white/[0.04] flex-1 min-w-0 gap-0.5">
+      <span className="text-white font-extrabold text-lg leading-none tracking-tight">{value ?? "—"}</span>
+      <span className="text-gray-500 text-[10px] font-semibold tracking-widest uppercase mt-1">{label}</span>
     </div>
   );
 }
 
-// Accent config per insight category
-const INSIGHT_ACCENTS = {
-  pod:    { border: "border-blue-500/40",   icon: "text-blue-400/80",   title: "text-blue-400/60"   },
-  best:   { border: "border-green-500/40",  icon: "text-green-400/80",  title: "text-green-400/60"  },
-  tough:  { border: "border-red-500/40",    icon: "text-red-400/80",    title: "text-red-400/60"    },
-  deck:   { border: "border-orange-500/40", icon: "text-orange-400/80", title: "text-orange-400/60" },
+// Category accent palette — badge bg, icon color, title color
+const ACCENTS = {
+  pod:   { bg: "bg-blue-500/15",   icon: "text-blue-400",   title: "text-blue-400/70"   },
+  best:  { bg: "bg-green-500/15",  icon: "text-green-400",  title: "text-green-400/70"  },
+  tough: { bg: "bg-red-500/15",    icon: "text-red-400",    title: "text-red-400/70"    },
+  deck:  { bg: "bg-orange-500/15", icon: "text-orange-400", title: "text-orange-400/70" },
 };
 
-// Lightweight stacked row with subtle per-category accent
+/** Stacked insight row with colored icon badge, no colored border */
 function InsightRow({ icon: Icon, title, primary, secondary, accent }) {
   const hasData = !!primary;
-  const a = INSIGHT_ACCENTS[accent] || {};
+  const a = ACCENTS[accent] || {};
   return (
-    <div className={`flex items-center gap-3 py-3 border-b border-gray-800/30 last:border-0 pl-3 border-l-2 ${hasData ? (a.border || "border-gray-700/40") : "border-gray-800/20"}`}>
-      <Icon className={`w-4 h-4 flex-shrink-0 ${hasData ? (a.icon || "text-gray-500") : "text-gray-700"}`} />
+    <div className="flex items-center gap-3.5 py-3.5 border-b border-white/[0.04] last:border-0">
+      {/* Colored icon badge */}
+      <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center ${hasData ? (a.bg || "bg-white/[0.06]") : "bg-white/[0.03]"}`}>
+        <Icon className={`w-4 h-4 ${hasData ? (a.icon || "text-gray-500") : "text-gray-700"}`} />
+      </div>
+
+      {/* Text area */}
       <div className="min-w-0 flex-1">
-        <p className={`text-[10px] uppercase tracking-widest font-semibold leading-none mb-1 ${hasData ? (a.title || "text-gray-500") : "text-gray-700"}`}>{title}</p>
+        <p className={`text-[10px] uppercase tracking-widest font-semibold leading-none mb-1.5 ${hasData ? (a.title || "text-gray-500") : "text-gray-700"}`}>
+          {title}
+        </p>
         {hasData ? (
           <p className="text-white text-sm font-semibold leading-snug truncate">{primary}</p>
         ) : (
-          <p className="text-gray-700 text-xs">Not enough data yet</p>
+          <p className="text-gray-700 text-xs italic">Not enough data yet</p>
         )}
       </div>
+
+      {/* Secondary badge */}
       {hasData && secondary && (
-        <span className="text-gray-600 text-xs flex-shrink-0 ml-1">{secondary}</span>
+        <span className="text-gray-500 text-[11px] flex-shrink-0 font-medium bg-white/[0.04] rounded-lg px-2 py-1 leading-none ml-1">
+          {secondary}
+        </span>
       )}
     </div>
   );
 }
 
+/** Props row — PNG icon + label + count badge */
 function PropRow({ item }) {
   const iconUrl = PRAISE_ICONS[item.icon_key || item.type];
   const label = item.label || PRAISE_META[item.type]?.label || item.type;
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-gray-800/40 last:border-0">
+    <div className="flex items-center gap-3 py-3 border-b border-white/[0.04] last:border-0">
       {iconUrl ? (
-        <img src={iconUrl} alt={label} className="w-7 h-7 object-contain flex-shrink-0" />
+        <img src={iconUrl} alt={label} className="w-8 h-8 object-contain flex-shrink-0 opacity-90" />
       ) : (
-        <div className="w-7 h-7 rounded-lg bg-gray-800 flex-shrink-0" />
+        <div className="w-8 h-8 rounded-xl bg-white/[0.05] flex-shrink-0" />
       )}
-      <span className="text-white text-sm flex-1 truncate">{label}</span>
-      <span className="text-white font-bold text-sm">{item.count}</span>
+      <span className="text-gray-300 text-sm flex-1 truncate font-medium">{label}</span>
+      <span className="text-white font-bold text-sm bg-white/[0.07] rounded-lg px-2.5 py-1 leading-none min-w-[28px] text-center">
+        {item.count}
+      </span>
     </div>
   );
 }
 
 function SectionLabel({ children }) {
   return (
-    <p className="text-gray-600 text-[10px] uppercase tracking-widest font-semibold mb-2 px-1">{children}</p>
+    <p className="text-gray-600 text-[10px] uppercase tracking-widest font-semibold mb-2 px-0.5">{children}</p>
   );
 }
 
@@ -98,14 +113,14 @@ function SectionLabel({ children }) {
 function LoadingSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-52 bg-gray-800/60 rounded-2xl" />
+      <div className="h-52 bg-white/[0.04] rounded-2xl" />
       <div className="flex gap-2">
-        {[1, 2, 3, 4].map((i) => <div key={i} className="h-14 flex-1 bg-gray-800/60 rounded-xl" />)}
+        {[1, 2, 3].map((i) => <div key={i} className="h-16 flex-1 bg-white/[0.04] rounded-2xl" />)}
       </div>
-      <div className="h-4 bg-gray-800/40 rounded w-20 mt-2" />
-      <div className="bg-gray-800/30 rounded-2xl h-40" />
-      <div className="h-4 bg-gray-800/40 rounded w-24" />
-      <div className="bg-gray-800/30 rounded-2xl h-28" />
+      <div className="h-3 bg-white/[0.04] rounded w-16 mt-2" />
+      <div className="bg-white/[0.03] rounded-2xl h-44" />
+      <div className="h-3 bg-white/[0.04] rounded w-20" />
+      <div className="bg-white/[0.03] rounded-2xl h-28" />
     </div>
   );
 }
@@ -158,7 +173,7 @@ export default function DeckInsights() {
         {!isAccess && (
           <button
             onClick={loadInsights}
-            className="flex items-center gap-2 text-gray-400 hover:text-white text-sm border border-gray-700 px-4 py-2 rounded-xl transition-colors"
+            className="flex items-center gap-2 text-gray-400 hover:text-white text-sm border border-white/10 px-4 py-2 rounded-xl transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Retry
           </button>
@@ -172,7 +187,6 @@ export default function DeckInsights() {
   const deckLabel = deck.commander_name && deck.name && deck.commander_name !== deck.name ? deck.name : null;
   const firstLogged = formatDate(deck.first_logged_at);
   const ownerLabel = formatOwnerName(owner?.display_name);
-  // Is the viewer the deck owner? Used to pick the right Back to Profile route.
   const isOwnDeck = !!(owner?.id && auth.currentUser?.id && owner.id === auth.currentUser.id);
 
   const mostPlayedPod = insights?.most_played_pod;
@@ -182,10 +196,8 @@ export default function DeckInsights() {
 
   function handleBackToProfile() {
     if (isOwnDeck) {
-      // Own deck → go to personal profile screen
       navigate(ROUTES.PROFILE);
     } else if (owner?.id) {
-      // Another user's deck → go to their public profile
       navigate(ROUTES.USER_PROFILE(owner.id));
     } else {
       navigate(-1);
@@ -193,76 +205,94 @@ export default function DeckInsights() {
   }
 
   return (
-    <div className="space-y-5 pb-4">
+    <div className="space-y-4 pb-4">
 
       {/* ── HERO HEADER ─────────────────────────────────────────────────────── */}
-      <div className="relative rounded-2xl overflow-hidden bg-gray-900/80 border border-gray-800/50">
+      <div className="relative rounded-2xl overflow-hidden"
+        style={{ background: "linear-gradient(145deg, #161b24 0%, #111418 100%)" }}
+      >
+        {/* Blurred commander background */}
         {deck.commander_image_url && (
           <div className="absolute inset-0">
             <img
               src={deck.commander_image_url}
               alt={commanderName}
-              className="w-full h-full object-cover object-top opacity-20 blur-sm scale-110"
+              className="w-full h-full object-cover object-top opacity-15 blur-md scale-110"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-900/60 via-gray-900/80 to-gray-900" />
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(17,20,24,0.55) 0%, rgba(17,20,24,0.85) 60%, #111418 100%)" }} />
           </div>
         )}
 
-        <div className="relative z-10 p-4 flex gap-4">
-          {/* Commander portrait */}
-          <div className="w-20 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-gray-800/60 border border-gray-700/40">
+        <div className="relative z-10 p-4 pb-0 flex gap-4">
+          {/* Commander portrait — slightly lifted with subtle inner shadow */}
+          <div className="w-[72px] h-[92px] flex-shrink-0 rounded-xl overflow-hidden"
+            style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.07)" }}
+          >
             {deck.commander_image_url ? (
               <img src={deck.commander_image_url} alt={commanderName} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center bg-white/[0.04]">
                 <Swords className="w-7 h-7 text-gray-600" />
               </div>
             )}
           </div>
 
           {/* Identity */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
-            {ownerLabel && (
-              <div className="inline-flex self-start">
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-700/60 border border-gray-600/30 text-gray-400">
-                  Deck by {ownerLabel}
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 pt-1">
+            {/* Pills row — owner + format in the same visual family */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {ownerLabel && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md text-gray-400"
+                  style={{ background: "rgba(255,255,255,0.07)" }}>
+                  {ownerLabel}
                 </span>
-              </div>
-            )}
-            {deckLabel && (
-              <p className="text-gray-500 text-[10px] uppercase tracking-wide truncate">{deckLabel}</p>
-            )}
-            <p className="text-white font-bold text-base leading-tight truncate">{commanderName}</p>
-            <ManaPipRow colors={deck.color_identity || []} size={13} gap={2} />
-            {/* Format pill + First logged meta */}
-            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-700/40 border border-gray-600/20 text-gray-500">
+              )}
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md text-gray-500"
+                style={{ background: "rgba(255,255,255,0.05)" }}>
                 Commander
               </span>
-              {firstLogged && (
-                <span className="text-gray-600 text-[11px]">· First logged {firstLogged}</span>
-              )}
             </div>
+
+            {/* Deck archetype label if present */}
+            {deckLabel && (
+              <p className="text-gray-500 text-[10px] uppercase tracking-wide truncate -mb-0.5">{deckLabel}</p>
+            )}
+
+            {/* Commander name — visual focal point */}
+            <p className="text-white font-extrabold text-[17px] leading-tight truncate tracking-tight">
+              {commanderName}
+            </p>
+
+            {/* Mana pips */}
+            <ManaPipRow colors={deck.color_identity || []} size={14} gap={3} />
+
+            {/* First logged — quiet supporting meta */}
+            {firstLogged && (
+              <p className="text-gray-600 text-[10px] mt-0.5">First logged {firstLogged}</p>
+            )}
           </div>
         </div>
 
-        {/* KPI chips — 3 only */}
-        <div className="relative z-10 px-4 pb-4 flex gap-2">
-          <StatChip label="Games" value={summary.games_played} />
-          <StatChip label="Wins" value={summary.wins} />
-          <StatChip label="Win Rate" value={`${summary.win_rate_percent}%`} />
+        {/* KPI row — flush inside the hero card, separated by subtle rule */}
+        <div className="relative z-10 px-4 pb-4 pt-4 flex gap-2 mt-2">
+          <div className="absolute top-0 left-4 right-4 h-px bg-white/[0.05]" />
+          <KpiCard label="Games" value={summary.games_played} />
+          <KpiCard label="Wins" value={summary.wins} />
+          <KpiCard label="Win Rate" value={`${summary.win_rate_percent}%`} />
         </div>
       </div>
 
       {/* ── LOCKED STATE ────────────────────────────────────────────────────── */}
       {!eligibility.insights_unlocked ? (
-        <div className="bg-gray-900/60 border border-gray-800/40 rounded-2xl p-5 flex flex-col items-center text-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gray-800/80 border border-gray-700/40 flex items-center justify-center">
+        <div className="rounded-2xl p-5 flex flex-col items-center text-center gap-3"
+          style={{ background: "rgba(255,255,255,0.03)" }}>
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.05)" }}>
             <Lock className="w-5 h-5 text-gray-500" />
           </div>
           <div>
             <p className="text-white font-semibold text-sm">Insights locked</p>
-            <p className="text-gray-400 text-xs mt-1 leading-relaxed max-w-[220px]">
+            <p className="text-gray-500 text-xs mt-1 leading-relaxed max-w-[220px]">
               Play {eligibility.games_needed_to_unlock} more approved game{eligibility.games_needed_to_unlock !== 1 ? "s" : ""} with this deck to unlock insights.
             </p>
             <p className="text-gray-600 text-xs mt-2">
@@ -272,10 +302,10 @@ export default function DeckInsights() {
         </div>
       ) : (
         <>
-          {/* ── INSIGHTS — stacked list rows, NOT a grid ─────────────────────── */}
+          {/* ── INSIGHTS ────────────────────────────────────────────────────── */}
           <div>
             <SectionLabel>Insights</SectionLabel>
-            <div className="bg-gray-900/50 border border-gray-800/40 rounded-2xl px-4 py-0">
+            <div className="rounded-2xl px-4 py-1" style={{ background: "rgba(255,255,255,0.03)" }}>
               <InsightRow
                 icon={Users}
                 title="Most played in"
@@ -311,13 +341,13 @@ export default function DeckInsights() {
           <div>
             <SectionLabel>Props received</SectionLabel>
             {props.sorted && props.sorted.length > 0 ? (
-              <div className="bg-gray-900/50 border border-gray-800/40 rounded-2xl px-4 py-0">
+              <div className="rounded-2xl px-4 py-1" style={{ background: "rgba(255,255,255,0.03)" }}>
                 {props.sorted.map((item) => (
                   <PropRow key={item.type} item={item} />
                 ))}
               </div>
             ) : (
-              <div className="bg-gray-900/50 border border-gray-800/40 rounded-2xl px-4 py-4 text-center">
+              <div className="rounded-2xl px-4 py-5 text-center" style={{ background: "rgba(255,255,255,0.03)" }}>
                 <p className="text-gray-700 text-sm">No props received yet</p>
               </div>
             )}
@@ -329,20 +359,20 @@ export default function DeckInsights() {
       {summary.games_played > 0 && (summary.pod_games > 0 || summary.casual_games > 0) && (
         <div>
           <SectionLabel>Record breakdown</SectionLabel>
-          <div className="bg-gray-900/50 border border-gray-800/40 rounded-2xl px-4 py-0">
+          <div className="rounded-2xl px-4 py-1" style={{ background: "rgba(255,255,255,0.02)" }}>
             {summary.pod_games > 0 && (
-              <div className="flex items-center justify-between py-3 border-b border-gray-800/40 last:border-0">
-                <span className="text-gray-400 text-xs font-medium">POD</span>
-                <span className="text-gray-600 text-xs">
-                  {summary.pod_games}G &bull; {summary.pod_wins}W &bull; {summary.pod_win_rate_percent}%
+              <div className="flex items-center justify-between py-3 border-b border-white/[0.04] last:border-0">
+                <span className="text-gray-500 text-xs font-semibold tracking-wide">POD</span>
+                <span className="text-gray-600 text-xs tabular-nums">
+                  {summary.pod_games}G · {summary.pod_wins}W · {summary.pod_win_rate_percent}%
                 </span>
               </div>
             )}
             {summary.casual_games > 0 && (
-              <div className="flex items-center justify-between py-3 border-b border-gray-800/40 last:border-0">
-                <span className="text-gray-400 text-xs font-medium">Casual</span>
-                <span className="text-gray-600 text-xs">
-                  {summary.casual_games}G &bull; {summary.casual_wins}W &bull; {summary.casual_win_rate_percent}%
+              <div className="flex items-center justify-between py-3 border-b border-white/[0.04] last:border-0">
+                <span className="text-gray-500 text-xs font-semibold tracking-wide">Casual</span>
+                <span className="text-gray-600 text-xs tabular-nums">
+                  {summary.casual_games}G · {summary.casual_wins}W · {summary.casual_win_rate_percent}%
                 </span>
               </div>
             )}
@@ -354,8 +384,10 @@ export default function DeckInsights() {
       <div className="flex justify-center pt-2">
         <button
           onClick={handleBackToProfile}
-          className="px-6 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800/60 text-sm font-medium transition-colors"
+          className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
+          style={{ background: "rgba(255,255,255,0.04)" }}
         >
+          <ChevronLeft className="w-4 h-4" />
           Back to Profile
         </button>
       </div>
