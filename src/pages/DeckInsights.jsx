@@ -41,14 +41,23 @@ function StatChip({ label, value }) {
   );
 }
 
-// Lightweight stacked row — replaces the old 2-col InsightCard grid
-function InsightRow({ icon: Icon, title, primary, secondary }) {
+// Accent config per insight category
+const INSIGHT_ACCENTS = {
+  pod:    { border: "border-blue-500/40",   icon: "text-blue-400/80",   title: "text-blue-400/60"   },
+  best:   { border: "border-green-500/40",  icon: "text-green-400/80",  title: "text-green-400/60"  },
+  tough:  { border: "border-red-500/40",    icon: "text-red-400/80",    title: "text-red-400/60"    },
+  deck:   { border: "border-orange-500/40", icon: "text-orange-400/80", title: "text-orange-400/60" },
+};
+
+// Lightweight stacked row with subtle per-category accent
+function InsightRow({ icon: Icon, title, primary, secondary, accent }) {
   const hasData = !!primary;
+  const a = INSIGHT_ACCENTS[accent] || {};
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-gray-800/40 last:border-0">
-      <Icon className={`w-4 h-4 flex-shrink-0 ${hasData ? "text-gray-500" : "text-gray-700"}`} />
+    <div className={`flex items-center gap-3 py-3 border-b border-gray-800/30 last:border-0 pl-3 border-l-2 ${hasData ? (a.border || "border-gray-700/40") : "border-gray-800/20"}`}>
+      <Icon className={`w-4 h-4 flex-shrink-0 ${hasData ? (a.icon || "text-gray-500") : "text-gray-700"}`} />
       <div className="min-w-0 flex-1">
-        <p className="text-gray-600 text-[10px] uppercase tracking-widest font-semibold leading-none mb-1">{title}</p>
+        <p className={`text-[10px] uppercase tracking-widest font-semibold leading-none mb-1 ${hasData ? (a.title || "text-gray-500") : "text-gray-700"}`}>{title}</p>
         {hasData ? (
           <p className="text-white text-sm font-semibold leading-snug truncate">{primary}</p>
         ) : (
@@ -56,7 +65,7 @@ function InsightRow({ icon: Icon, title, primary, secondary }) {
         )}
       </div>
       {hasData && secondary && (
-        <span className="text-gray-500 text-xs flex-shrink-0 ml-1">{secondary}</span>
+        <span className="text-gray-600 text-xs flex-shrink-0 ml-1">{secondary}</span>
       )}
     </div>
   );
@@ -161,9 +170,10 @@ export default function DeckInsights() {
   const { deck, owner, summary, eligibility, insights, props } = data;
   const commanderName = deck.commander_name || deck.name;
   const deckLabel = deck.commander_name && deck.name && deck.commander_name !== deck.name ? deck.name : null;
-  const lastPlayed = formatDate(deck.last_played_at);
   const firstLogged = formatDate(deck.first_logged_at);
   const ownerLabel = formatOwnerName(owner?.display_name);
+  // Is the viewer the deck owner? Used to pick the right Back to Profile route.
+  const isOwnDeck = !!(owner?.id && auth.currentUser?.id && owner.id === auth.currentUser.id);
 
   const mostPlayedPod = insights?.most_played_pod;
   const bestAgainstPlayer = insights?.best_against_player;
@@ -171,7 +181,11 @@ export default function DeckInsights() {
   const bestAgainstDeck = insights?.best_against_deck;
 
   function handleBackToProfile() {
-    if (owner?.id) {
+    if (isOwnDeck) {
+      // Own deck → go to personal profile screen
+      navigate(ROUTES.PROFILE);
+    } else if (owner?.id) {
+      // Another user's deck → go to their public profile
       navigate(ROUTES.USER_PROFILE(owner.id));
     } else {
       navigate(-1);
@@ -220,20 +234,23 @@ export default function DeckInsights() {
             )}
             <p className="text-white font-bold text-base leading-tight truncate">{commanderName}</p>
             <ManaPipRow colors={deck.color_identity || []} size={13} gap={2} />
-            {/* Last played + First logged — header meta only, not in insights */}
-            <div className="space-y-0.5 mt-0.5">
-              {lastPlayed && <p className="text-gray-600 text-[11px]">Last played {lastPlayed}</p>}
-              {firstLogged && <p className="text-gray-600 text-[11px]">First logged {firstLogged}</p>}
+            {/* Format pill + First logged meta */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-700/40 border border-gray-600/20 text-gray-500">
+                Commander
+              </span>
+              {firstLogged && (
+                <span className="text-gray-600 text-[11px]">· First logged {firstLogged}</span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* KPI chips */}
+        {/* KPI chips — 3 only */}
         <div className="relative z-10 px-4 pb-4 flex gap-2">
           <StatChip label="Games" value={summary.games_played} />
           <StatChip label="Wins" value={summary.wins} />
           <StatChip label="Win Rate" value={`${summary.win_rate_percent}%`} />
-          <StatChip label="Format" value="Cmdr" />
         </div>
       </div>
 
@@ -264,24 +281,28 @@ export default function DeckInsights() {
                 title="Most played in"
                 primary={mostPlayedPod?.pod_name || null}
                 secondary={mostPlayedPod?.games ? `${mostPlayedPod.games} games` : null}
+                accent="pod"
               />
               <InsightRow
                 icon={Trophy}
                 title="Best against"
                 primary={formatName(bestAgainstPlayer?.display_name) || null}
                 secondary={bestAgainstPlayer?.wins ? `${bestAgainstPlayer.wins} wins` : null}
+                accent="best"
               />
               <InsightRow
                 icon={Skull}
                 title="Toughest opponent"
                 primary={formatName(toughestOpponent?.display_name) || null}
                 secondary={toughestOpponent?.losses ? `${toughestOpponent.losses} losses` : null}
+                accent="tough"
               />
               <InsightRow
                 icon={Sword}
                 title="Best against deck"
                 primary={bestAgainstDeck?.deck_label || null}
                 secondary={bestAgainstDeck?.wins ? `${bestAgainstDeck.wins} wins` : null}
+                accent="deck"
               />
             </div>
           </div>
