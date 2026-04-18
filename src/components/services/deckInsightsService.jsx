@@ -1,6 +1,18 @@
 /**
- * deckInsightsService — per-deck insights for the popup modal.
- * Uses approved games only. 60s TTL cache + in-flight guard.
+ * deckInsightsService — thin client wrapper around the deckInsights backend function.
+ *
+ * All aggregation is done server-side via asServiceRole.
+ * This service only handles caching, in-flight dedup, and cache invalidation.
+ *
+ * Payload shape (from backend):
+ * {
+ *   deck: { id, name, commander_name, commander_image_url, color_identity, first_logged_at, last_played_at },
+ *   summary: { games_played, wins, win_rate_percent, pod_games, pod_wins, pod_win_rate_percent,
+ *              casual_games, casual_wins, casual_win_rate_percent },
+ *   eligibility: { insights_unlocked, games_needed_to_unlock, minimum_games_required },
+ *   insights: { most_played_pod, best_against_player, toughest_opponent, best_against_deck },
+ *   props: { total_received, by_type, sorted[] }
+ * }
  */
 import { base44 } from "@/api/base44Client";
 
@@ -16,79 +28,45 @@ function cacheGet(key) {
 }
 function cacheSet(key, value) { _cache.set(key, { ts: Date.now(), value }); return value; }
 
-export function invalidateDeckInsightsCache(userId) {
-  for (const key of _cache.keys()) {
-    if (key.includes(userId)) _cache.delete(key);
+/**
+ * Invalidate cache entries for a given user or deck.
+ * Pass a userId or deckId string — all keys containing it will be cleared.
+ */
+export function invalidateDeckInsightsCache(key) {
+  if (!key) { _cache.clear(); return; }
+  for (const k of _cache.keys()) {
+    if (k.includes(key)) _cache.delete(k);
   }
 }
 
 /**
- * getDeckInsights(auth, deck)
- * Returns: { gamesWithDeck, winsWithDeck, winRatePercent, mostDefeatedOpponent }
- * mostDefeatedOpponent: { display_name, count } or null
+ * getDeckInsights(auth, deckId)
+ *
+ * Returns the full deck insights payload from the backend.
+ * Returns null if the caller is a guest or required IDs are missing.
+ *
+ * @param {{ isGuest, authUserId, currentUser: { id } }} auth
+ * @param {string} deckId
+ * @returns {Promise<object|null>}
  */
-export async function getDeckInsights(auth, deck) {
-  if (auth.isGuest || !auth.currentUser) return null;
-  const userId = auth.currentUser.id;
-  const deckId = deck.id;
-  const cKey = `deckInsights::${userId}::${deckId}`;
+export async function getDeckInsights(auth, deckId) {
+  if (auth.isGuest || !auth.authUserId || !auth.currentUser?.id) return null;
+  if (!deckId) return null;
+
+  const cKey = `deckInsights::${auth.currentUser.id}::${deckId}`;
 
   const cached = cacheGet(cKey);
   if (cached !== null) return cached;
   if (_inflight.has(cKey)) return _inflight.get(cKey);
 
   const promise = (async () => {
-    // 1. Fetch all my participations + all games in parallel
-    // Multi-field filter causes Invalid query — fetch by one field, filter client-side
-    const [allMyParticipations, allGames] = await Promise.all([
-      base44.entities.GameParticipant.filter({ user_id: userId }, "-created_date", 500),
-      base44.entities.Game.list("-created_date", 500),
-    ]);
-    const myParticipations = allMyParticipations.filter((p) => p.deck_id === deckId);
-
-    const approvedGameIds = new Set(
-      allGames.filter((g) => g.status === "approved").map((g) => g.id)
-    );
-
-    const approvedMyParticipations = myParticipations.filter((p) => approvedGameIds.has(p.game_id));
-
-    const gamesWithDeck = approvedMyParticipations.length;
-    const winsWithDeck = approvedMyParticipations.filter((p) => p.placement === 1).length;
-    const winRatePercent = gamesWithDeck > 0 ? Math.round((winsWithDeck / gamesWithDeck) * 100) : 0;
-
-    // 2. Find most defeated opponent: games where I won with this deck
-    const winGameIds = approvedMyParticipations
-      .filter((p) => p.placement === 1)
-      .map((p) => p.game_id);
-
-    let mostDefeatedOpponent = null;
-
-    if (winGameIds.length > 0) {
-      // Fetch all participants from those games in one batch (only way is filter by game_id array)
-      // We do a single list call and filter client-side to avoid N+1
-      const allParticipants = await base44.entities.GameParticipant.list("-created_date", 1000);
-      const opponentCounts = {};
-      for (const p of allParticipants) {
-        if (winGameIds.includes(p.game_id) && p.user_id !== userId) {
-          opponentCounts[p.user_id] = (opponentCounts[p.user_id] || 0) + 1;
-        }
-      }
-
-      const topOpponentId = Object.keys(opponentCounts).sort(
-        (a, b) => opponentCounts[b] - opponentCounts[a]
-      )[0];
-
-      if (topOpponentId) {
-        const allProfiles = await base44.entities.Profile.list("-created_date", 200);
-        const oppProfile = allProfiles.find((pr) => pr.id === topOpponentId);
-        mostDefeatedOpponent = {
-          display_name: oppProfile?.display_name || "Unknown",
-          count: opponentCounts[topOpponentId],
-        };
-      }
-    }
-
-    return cacheSet(cKey, { gamesWithDeck, winsWithDeck, winRatePercent, mostDefeatedOpponent });
+    const res = await base44.functions.invoke('deckInsights', {
+      deckId,
+      callerAuthUserId: auth.authUserId,
+      callerProfileId: auth.currentUser.id,
+    });
+    if (res.data?.error) throw new Error(res.data.error);
+    return cacheSet(cKey, res.data);
   })();
 
   _inflight.set(cKey, promise);
