@@ -158,9 +158,12 @@ function LeaderboardCard({ entry, rank, profile, movement, isMe }) {
           : "bg-gray-900/40 border-gray-800/40"
       } ${isMe ? "ring-1 ring-inset ring-blue-500/30" : ""}`}
     >
-      {/* Top-3 side accent bar */}
+      {/* Top-3 side accent bars — left and right */}
       {isTop3 && (
-        <div className={`absolute left-0 top-0 bottom-0 w-0.5 rounded-l-xl ${accent.bar}`} />
+        <>
+          <div className={`absolute left-0 top-0 bottom-0 w-0.5 rounded-l-xl ${accent.bar}`} />
+          <div className={`absolute right-0 top-0 bottom-0 w-0.5 rounded-r-xl ${accent.bar}`} />
+        </>
       )}
 
       {/* LEFT: Rank + movement arrow */}
@@ -190,7 +193,7 @@ function LeaderboardCard({ entry, rank, profile, movement, isMe }) {
             {isMe && <span className="ml-1.5 text-xs text-blue-400/60 font-normal">(you)</span>}
           </p>
           <p className="text-[11px] text-gray-500 mt-1 leading-none">
-            Games {entry.games} &bull; Wins {entry.wins} &bull; Win Rate {winRate}%
+            G {entry.games} &bull; W {entry.wins} &bull; WR {winRate}%
           </p>
         </div>
       </div>
@@ -302,8 +305,16 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
   const hasMovement = Object.values(movementMap).some((v) => v === "up" || v === "down");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {pendingBanner}
+
+      {/* Legend — above cards */}
+      <div className="flex items-center justify-between px-1">
+        <p className="text-[10px] text-gray-600">G = Games &bull; W = Wins &bull; WR = Win Rate</p>
+        {hasMovement && (
+          <p className="text-[10px] text-gray-600">↑↓ since last game</p>
+        )}
+      </div>
 
       {/* Cards */}
       <div className="space-y-2">
@@ -317,16 +328,6 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
             isMe={entry.profileId === currentUser?.id}
           />
         ))}
-      </div>
-
-      {/* Footer legend */}
-      <div className="flex items-center justify-between px-1 pt-0.5">
-        <p className="text-[10px] text-gray-700">
-          Ranked by Points · Wins · Win% · Games
-        </p>
-        {hasMovement && (
-          <p className="text-[10px] text-gray-600">↑↓ since last game</p>
-        )}
       </div>
     </div>
   );
