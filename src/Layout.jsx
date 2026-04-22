@@ -13,6 +13,8 @@ import { Toaster } from "@/components/ui/sonner";
 const SHELL_PAGES = ["home", "dashboard", "loggame", "inbox", "profile", "pods", "mypods", "allpods", "explorepods", "pod", "createpod"];
 // Sub-pages that belong to a shell tab and should also show the nav
 const SHELL_SUB_PAGES = ["dashboard", "approvals", "decks", "profiledecks", "userprofile", "founder", "editpod", "praises", "randomdeckpicker", "deckinsights"];
+// Focused wizard pages — show top bar but NOT bottom nav
+const WIZARD_PAGES = ["loggame"];
 // Pages that render without the shell (standalone / public)
 const NO_SHELL_PAGES = ["register"];
 
@@ -21,6 +23,11 @@ function usesShell(pageName) {
   const lower = pageName.toLowerCase();
   if (NO_SHELL_PAGES.includes(lower)) return false;
   return SHELL_PAGES.includes(lower) || SHELL_SUB_PAGES.includes(lower);
+}
+
+function isWizardPage(pageName) {
+  if (!pageName) return false;
+  return WIZARD_PAGES.includes(pageName.toLowerCase());
 }
 
 // ── THEME SWITCH ─────────────────────────────────────────────────────────────
@@ -162,15 +169,15 @@ function AuthActionSlot() {
   );
 }
 
-function AppShell({ children, currentPageName }) {
+function AppShell({ children, currentPageName, hideBottomNav = false }) {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <style>{CSS_VARS}</style>
       <TopBar currentPageName={currentPageName} actionSlot={<AuthActionSlot />} />
-      <main className="pt-14 pb-20 px-4 max-w-lg mx-auto min-h-screen">
+      <main className={`pt-14 px-4 max-w-lg mx-auto min-h-screen ${hideBottomNav ? "pb-4" : "pb-20"}`}>
         {children}
       </main>
-      <BottomNav />
+      {!hideBottomNav && <BottomNav />}
       <div id="modal-root" />
       <Toaster position="bottom-center" richColors />
     </div>
@@ -205,7 +212,11 @@ function InnerLayout({ children, currentPageName }) {
     );
   }
 
-  if (shell) return <AppShell currentPageName={currentPageName}>{children}</AppShell>;
+  if (shell || isWizardPage(currentPageName)) return (
+    <AppShell currentPageName={currentPageName} hideBottomNav={isWizardPage(currentPageName)}>
+      {children}
+    </AppShell>
+  );
   if (standalone) return <StandaloneShell>{children}</StandaloneShell>;
   return (
     <div className="min-h-screen bg-gray-950">

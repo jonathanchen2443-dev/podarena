@@ -1,0 +1,83 @@
+{
+  "name": "Profile",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Auth UID from the identity provider (Supabase user.id). Set once at registration, never changed. Used as primary identity key."
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Display name shown in the app"
+    },
+    "display_name_lc": {
+      "type": "string",
+      "description": "Lowercase trimmed display_name for uniqueness checks"
+    },
+    "email": {
+      "type": "string",
+      "description": "User email, mirrors auth email"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "URL to user avatar image"
+    },
+    "username": {
+      "type": "string",
+      "description": "Unique display username chosen by the user"
+    },
+    "username_lc": {
+      "type": "string",
+      "description": "Lowercase trimmed username for uniqueness checks"
+    },
+    "public_user_id": {
+      "type": "string",
+      "description": "Immutable unique 6-digit zero-padded public identifier (e.g. '004218'). Set once at registration, never changed."
+    },
+    "hide_log_game_intro": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the Log Game wizard intro/explainer modal is suppressed for this user."
+    }
+  },
+  "required": [
+    "display_name"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "data.email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,3 +1,14 @@
+/**
+ * LogGame — 4-step wizard.
+ *
+ * Step 1: Game Setup   (mode, POD, format, participant count, date, notes)
+ * Step 2: Players & Results (deck, participants, placements)
+ * Step 3: Props        (optional praise)
+ * Step 4: Review & Submit
+ *
+ * All existing game creation, participant, snapshot, and praise logic is REUSED unchanged.
+ * Only the UI orchestration is new.
+ */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -5,14 +16,16 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { createGameWithParticipants } from "@/components/services/gameService";
 import { ROUTES } from "@/components/utils/routes";
 import { createPageUrl } from "@/utils";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Layers, Swords, Hash } from "lucide-react";
-import { toast } from "sonner";
-import CasualParticipantPicker from "@/components/loggame/CasualParticipantPicker";
-import ParticipantPicker from "@/components/loggame/ParticipantPicker";
-import ParticipantSetupCard from "@/components/loggame/ParticipantSetupCard";
-import PodSearchPicker from "@/components/loggame/PodSearchPicker";
-import PraiseSelector from "@/components/praise/PraiseSelector";
+import { X, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+
+import WizardStep1Setup from "@/components/loggame/wizard/WizardStep1Setup";
+import WizardStep2Players from "@/components/loggame/wizard/WizardStep2Players";
+import WizardStep3Props from "@/components/loggame/wizard/WizardStep3Props";
+import WizardStep4Review from "@/components/loggame/wizard/WizardStep4Review";
+import WizardIntroModal from "@/components/loggame/wizard/WizardIntroModal";
+import WizardExitConfirm from "@/components/loggame/wizard/WizardExitConfirm";
+
+// ── helpers ────────────────────────────────────────────────────────────────────
 
 function defaultPlayedAt() {
   const now = new Date();
@@ -22,6 +35,11 @@ function defaultPlayedAt() {
   return local.toISOString().slice(0, 16);
 }
 
+const STEP_TITLES = ["Game Setup", "Players & Results", "Props", "Review & Submit"];
+const TOTAL_STEPS = 4;
+
+// ── main component ─────────────────────────────────────────────────────────────
+
 export default function LogGame() {
   const { currentUser, authUserId, isGuest, authLoading } = useAuth();
   const navigate = useNavigate();
@@ -30,30 +48,51 @@ export default function LogGame() {
   const podIdFromUrl = urlParams.get("podId");
   const lockedPodMode = !!podIdFromUrl;
 
+  // ── wizard nav state ─────────────────────────────────────────────────────────
+  const [step, setStep] = useState(1);
+  const [showIntro, setShowIntro] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submittedGameId, setSubmittedGameId] = useState(null); // success state
+
+  // ── step 1 state ─────────────────────────────────────────────────────────────
   const [mode, setMode] = useState(lockedPodMode ? "pod" : "casual");
   const [pod, setPod] = useState(null);
   const [podLoading, setPodLoading] = useState(lockedPodMode);
   const [podMembers, setPodMembers] = useState([]);
   const [podMembersLoading, setPodMembersLoading] = useState(false);
+  const [participantCount, setParticipantCount] = useState(4);
+  const [playedAt, setPlayedAt] = useState(defaultPlayedAt);
+  const [notes, setNotes] = useState("");
 
+  // ── step 2 state ─────────────────────────────────────────────────────────────
   const [participants, setParticipants] = useState([]);
   const [memberData, setMemberData] = useState({});
   const [placements, setPlacements] = useState({});
-  const [deckSelections, setDeckSelections] = useState({});
-  const [playedAt, setPlayedAt] = useState(defaultPlayedAt);
-  const [notes, setNotes] = useState("");
+  const [myDeckId, setMyDeckId] = useState(null);
   const [myDecks, setMyDecks] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
 
-  // Praise state
+  // ── step 3 state ─────────────────────────────────────────────────────────────
   const [praiseReceiver, setPraiseReceiver] = useState(null);
   const [praiseType, setPraiseType] = useState(null);
 
+  // ── intro check ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (authLoading || !currentUser) return;
-    base44.entities.Deck.filter({ owner_id: currentUser.id }).then(setMyDecks).catch(() => {});
-  }, [authLoading, currentUser]);
+    if (!currentUser.hide_log_game_intro) {
+      setShowIntro(true);
+    }
+  }, [authLoading, currentUser?.id]);
 
+  // ── load my decks ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (authLoading || !currentUser) return;
+    base44.entities.Deck.filter({ owner_id: currentUser.id, is_active: true })
+      .then(setMyDecks)
+      .catch(() => {});
+  }, [authLoading, currentUser?.id]);
+
+  // ── seed self as first participant (casual mode) ─────────────────────────────
   useEffect(() => {
     if (authLoading || !currentUser || mode !== "casual") return;
     const selfData = {
@@ -65,9 +104,9 @@ export default function LogGame() {
     setParticipants([currentUser.id]);
     setMemberData({ [currentUser.id]: selfData });
     setPlacements({});
-    setDeckSelections({});
   }, [authLoading, currentUser?.id, mode]);
 
+  // ── load locked POD context ──────────────────────────────────────────────────
   useEffect(() => {
     if (!podIdFromUrl || authLoading || !currentUser || !authUserId) return;
     setPodLoading(true);
@@ -83,6 +122,8 @@ export default function LogGame() {
       applyPodMembers(data.members || []);
     }).catch(() => {}).finally(() => setPodLoading(false));
   }, [podIdFromUrl, authLoading, currentUser?.id, authUserId]);
+
+  // ── helpers ──────────────────────────────────────────────────────────────────
 
   function applyPodMembers(rawMembers) {
     const members = rawMembers.map((m) => ({
@@ -105,12 +146,10 @@ export default function LogGame() {
           },
         });
         setPlacements({});
-        setDeckSelections({});
       } else {
         setParticipants([]);
         setMemberData({});
         setPlacements({});
-        setDeckSelections({});
       }
     }
   }
@@ -139,7 +178,6 @@ export default function LogGame() {
     setParticipants([]);
     setMemberData({});
     setPlacements({});
-    setDeckSelections({});
   }
 
   function handlePodSelected(selectedPod) {
@@ -147,10 +185,10 @@ export default function LogGame() {
     setParticipants([]);
     setMemberData({});
     setPlacements({});
-    setDeckSelections({});
     loadPodMembers(selectedPod.id);
   }
 
+  // Participant management (reused from original LogGame)
   function handleAddPodParticipant(profileId) {
     if (participants.includes(profileId)) return;
     const member = podMembers.find((m) => m.userId === profileId);
@@ -183,22 +221,40 @@ export default function LogGame() {
     setParticipants((prev) => prev.filter((id) => id !== profileId));
     setMemberData((prev) => { const n = { ...prev }; delete n[profileId]; return n; });
     setPlacements((prev) => { const n = { ...prev }; delete n[profileId]; return n; });
-    setDeckSelections((prev) => { const n = { ...prev }; delete n[profileId]; return n; });
+    // Clear praise if receiver is removed
+    if (praiseReceiver === profileId) {
+      setPraiseReceiver(null);
+      setPraiseType(null);
+    }
   }
 
-  async function handleSubmit(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (isGuest || !currentUser) { base44.auth.redirectToLogin(); return; }
-    if (participants.length < 2) { toast.error("Add at least 2 participants."); return; }
-    if (participants.some((id) => !placements[id])) { toast.error("Set a placement for all participants."); return; }
-    if (mode === "pod" && !pod) { toast.error("Select a POD first."); return; }
+  // ── step validation ──────────────────────────────────────────────────────────
 
+  function step1Valid() {
+    if (mode === "pod" && !pod) return false;
+    if (!playedAt) return false;
+    if (participantCount < 2 || participantCount > 10) return false;
+    return true;
+  }
+
+  function step2Valid() {
+    if (!myDeckId && myDecks.length > 0) return false; // deck required if they have decks
+    if (participants.length < 2) return false;
+    if (!participants.includes(currentUser?.id)) return false;
+    if (participants.some((id) => !placements[id])) return false;
+    return true;
+  }
+
+  // ── submit ───────────────────────────────────────────────────────────────────
+
+  async function handleSubmit() {
+    if (isGuest || !currentUser) { base44.auth.redirectToLogin(); return; }
     setSubmitting(true);
     try {
       const participantList = participants.map((profileId) => {
         const data = memberData[profileId] || {};
         const isCreator = profileId === currentUser.id;
-        const deckId = isCreator ? (deckSelections[profileId] || null) : null;
+        const deckId = isCreator ? (myDeckId || null) : null;
         const deckObj = isCreator && deckId ? myDecks.find((d) => d.id === deckId) : null;
         return {
           profileId,
@@ -210,12 +266,11 @@ export default function LogGame() {
         };
       });
 
-      // Build optional praise payload (only if both receiver and type are chosen)
       const praise = (praiseReceiver && praiseType)
         ? { receiverProfileId: praiseReceiver, praiseType }
         : null;
 
-      await createGameWithParticipants({
+      const game = await createGameWithParticipants({
         podId: mode === "pod" ? (pod?.id || null) : null,
         contextType: mode,
         creatorProfileId: currentUser.id,
@@ -226,17 +281,36 @@ export default function LogGame() {
         praise,
       });
 
-      toast.success("Game logged!");
-      if (lockedPodMode && podIdFromUrl) {
-        navigate(`${createPageUrl("Pod")}?podId=${podIdFromUrl}`);
-      } else {
-        navigate(ROUTES.DASHBOARD);
-      }
+      setSubmittedGameId(game?.id || null);
     } catch (err) {
-      toast.error(err.message || "Failed to log game.");
+      // Show error inline instead of toast — user is on step 4
+      alert(err.message || "Failed to log game.");
       setSubmitting(false);
     }
   }
+
+  // ── exit destination ─────────────────────────────────────────────────────────
+
+  function goToSource() {
+    if (lockedPodMode && podIdFromUrl) {
+      navigate(`${createPageUrl("Pod")}?podId=${podIdFromUrl}`);
+    } else {
+      navigate(-1);
+    }
+  }
+
+  // ── dismiss intro ─────────────────────────────────────────────────────────────
+
+  async function handleDismissIntro(dontShowAgain) {
+    setShowIntro(false);
+    if (dontShowAgain && currentUser?.id) {
+      try {
+        await base44.entities.Profile.update(currentUser.id, { hide_log_game_intro: true });
+      } catch (_) {}
+    }
+  }
+
+  // ── loading / guest guards ───────────────────────────────────────────────────
 
   if (authLoading) {
     return (
@@ -250,329 +324,296 @@ export default function LogGame() {
     return (
       <div className="text-center py-20 space-y-4">
         <p className="text-gray-400">Sign in to log games.</p>
-        <Button onClick={() => base44.auth.redirectToLogin()} className="ds-btn-primary">
+        <button onClick={() => base44.auth.redirectToLogin()} className="ds-btn-primary px-6 py-2.5 rounded-xl text-sm font-semibold text-white">
           Sign In
-        </Button>
+        </button>
       </div>
     );
   }
 
-  const membersForPlacement = participants.map((id) => ({
-    userId: id,
-    display_name: memberData[id]?.display_name || id,
-    avatar_url: memberData[id]?.avatar_url || null,
-  }));
+  // ── success state ────────────────────────────────────────────────────────────
 
-  const usedPlacements = new Set(Object.values(placements).filter(Boolean).map(Number));
-  const canSubmit = participants.length >= 2 && participants.every((id) => placements[id]);
-
-  function goBack() {
-    if (lockedPodMode && podIdFromUrl) {
-      navigate(`${createPageUrl("Pod")}?podId=${podIdFromUrl}`);
-    } else {
-      navigate(-1);
-    }
+  if (submittedGameId !== null) {
+    return (
+      <SuccessScreen
+        gameId={submittedGameId}
+        onBack={goToSource}
+        podIdFromUrl={podIdFromUrl}
+      />
+    );
   }
 
-  return (
-    // Extra bottom padding: sticky submit bar (~72px) + bottom nav (~64px) + some breathing room
-    <div className="space-y-5 pb-40">
+  // ── wizard shell ─────────────────────────────────────────────────────────────
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 pt-2 pb-1">
-        <button
-          onClick={goBack}
-          className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-800 transition-colors flex-shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div>
-          <h1 className="text-white font-bold text-lg leading-none">Log Game</h1>
-          <p className="text-gray-500 text-xs mt-0.5">Record a match result</p>
+  const progressPct = (step / TOTAL_STEPS) * 100;
+
+  return (
+    <div className="flex flex-col min-h-[calc(100vh-56px)]">
+
+      {/* ── Intro modal ──────────────────────────────────────────────────────── */}
+      {showIntro && (
+        <WizardIntroModal onDismiss={handleDismissIntro} />
+      )}
+
+      {/* ── Exit confirm ─────────────────────────────────────────────────────── */}
+      {showExitConfirm && (
+        <WizardExitConfirm
+          onConfirm={goToSource}
+          onCancel={() => setShowExitConfirm(false)}
+        />
+      )}
+
+      {/* ── Wizard header ────────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 pt-1 pb-3">
+        <div className="flex items-center justify-between mb-3">
+          {/* Back or empty */}
+          <div className="w-8">
+            {step > 1 ? (
+              <button
+                onClick={() => setStep((s) => s - 1)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:text-white hover:bg-white/[0.06] transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
+
+          {/* Step title */}
+          <div className="text-center">
+            <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">
+              Step {step} of {TOTAL_STEPS}
+            </p>
+            <p className="text-white font-bold text-base leading-snug mt-0.5">
+              {STEP_TITLES[step - 1]}
+            </p>
+          </div>
+
+          {/* X close */}
+          <button
+            onClick={() => setShowExitConfirm(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:text-white hover:bg-white/[0.06] transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${progressPct}%`,
+              background: "rgb(var(--ds-primary-rgb))",
+            }}
+          />
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-
-        {/* ── Section A: Game Context ──────────────────────────────────────── */}
-        <section className="space-y-3">
-          <SectionLabel icon={<Swords className="w-3.5 h-3.5" />} label="Game Type" />
-
-          {/* Mode segmented control — hidden in locked POD mode */}
-          {!lockedPodMode && (
-            <div className="grid grid-cols-2 gap-2">
-              <ModeCard
-                active={mode === "casual"}
-                onClick={() => handleModeSwitch("casual")}
-                label="Casual"
-                description="Open game, any players"
-              />
-              <ModeCard
-                active={mode === "pod"}
-                onClick={() => handleModeSwitch("pod")}
-                label="POD"
-                description="Competitive, tracked game"
-                isPod
-              />
-            </div>
-          )}
-
-          {/* POD identity area */}
-          {mode === "pod" && (
-            <div>
-              {lockedPodMode ? (
-                podLoading ? (
-                  <div className="flex items-center gap-2 text-gray-400 text-sm bg-gray-900/60 border border-gray-800/50 rounded-2xl px-4 py-3">
-                    <div className="w-4 h-4 border-2 border-gray-600 border-t-white rounded-full animate-spin" />
-                    Loading POD…
-                  </div>
-                ) : pod ? (
-                  <LockedPodChip pod={pod} />
-                ) : null
-              ) : pod ? (
-                <SelectedPodChip
-                  pod={pod}
-                  onClear={() => { setPod(null); setPodMembers([]); setParticipants([]); setMemberData({}); }}
-                />
-              ) : (
-                <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4">
-                  <PodSearchPicker authUserId={authUserId} profileId={currentUser?.id} onSelect={handlePodSelected} />
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* ── Section B: Participants ──────────────────────────────────────── */}
-        {(mode === "casual" || (mode === "pod" && pod)) && (
-          <section className="space-y-3">
-            <SectionLabel icon={<Hash className="w-3.5 h-3.5" />} label="Participants" />
-            <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4">
-              {mode === "casual" ? (
-                <CasualParticipantPicker
-                  selectedIds={participants}
-                  onAdd={handleAddCasualParticipant}
-                  onRemove={handleRemoveCasualParticipant}
-                  currentUserProfileId={currentUser?.id}
-                  currentUserProfile={currentUser ? { display_name: currentUser.display_name, avatar_url: currentUser.avatar_url || null } : null}
-                />
-              ) : (
-                <ParticipantPicker
-                  members={podMembers}
-                  selectedIds={participants}
-                  onAdd={handleAddPodParticipant}
-                  onRemove={handleRemovePodParticipant}
-                  currentUserId={currentUser?.id}
-                  membersLoading={podMembersLoading}
-                />
-              )}
-            </div>
-          </section>
+      {/* ── Step content ─────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto pb-28">
+        {step === 1 && (
+          <WizardStep1Setup
+            mode={mode}
+            lockedPodMode={lockedPodMode}
+            pod={pod}
+            podLoading={podLoading}
+            authUserId={authUserId}
+            profileId={currentUser?.id}
+            participantCount={participantCount}
+            playedAt={playedAt}
+            notes={notes}
+            onModeSwitch={handleModeSwitch}
+            onPodSelected={handlePodSelected}
+            onClearPod={() => { setPod(null); setPodMembers([]); setParticipants([]); setMemberData({}); }}
+            onParticipantCountChange={setParticipantCount}
+            onPlayedAtChange={setPlayedAt}
+            onNotesChange={setNotes}
+          />
         )}
 
-        {/* ── Section C: Match Setup — per-participant cards ───────────────── */}
-        {participants.length >= 2 && (
-          <section className="space-y-3">
-            <SectionLabel icon={<Layers className="w-3.5 h-3.5" />} label="Match Setup" />
-            <div className="space-y-2">
-              {participants.map((uid) => {
-                const member = membersForPlacement.find((m) => m.userId === uid);
-                const isCurrentUser = uid === currentUser?.id;
-                return (
-                  <ParticipantSetupCard
-                    key={uid}
-                    uid={uid}
-                    member={member}
-                    isCurrentUser={isCurrentUser}
-                    placement={placements[uid] || ""}
-                    participantCount={participants.length}
-                    usedPlacements={usedPlacements}
-                    onPlacementChange={(val) => setPlacements((prev) => ({ ...prev, [uid]: val }))}
-                    myDecks={isCurrentUser ? myDecks : []}
-                    selectedDeckId={isCurrentUser ? (deckSelections[uid] || "") : ""}
-                    onDeckChange={isCurrentUser ? (val) => setDeckSelections((prev) => ({ ...prev, [uid]: val })) : null}
-                  />
-                );
-              })}
-            </div>
-          </section>
+        {step === 2 && (
+          <WizardStep2Players
+            mode={mode}
+            pod={pod}
+            podMembers={podMembers}
+            podMembersLoading={podMembersLoading}
+            participants={participants}
+            memberData={memberData}
+            placements={placements}
+            participantCount={participantCount}
+            currentUser={currentUser}
+            myDecks={myDecks}
+            myDeckId={myDeckId}
+            onMyDeckChange={setMyDeckId}
+            onAddPodParticipant={handleAddPodParticipant}
+            onRemovePodParticipant={handleRemovePodParticipant}
+            onAddCasualParticipant={handleAddCasualParticipant}
+            onRemoveCasualParticipant={handleRemoveCasualParticipant}
+            onPlacementChange={(uid, val) => setPlacements((prev) => ({ ...prev, [uid]: val }))}
+          />
         )}
 
-        {/* ── Section D: Props (Praise) — optional, only when 2+ participants ── */}
-        {participants.length >= 2 && (
-          <PraiseSelector
+        {step === 3 && (
+          <WizardStep3Props
             participants={participants.map((id) => ({
               profileId: id,
               display_name: memberData[id]?.display_name || id,
               avatar_url: memberData[id]?.avatar_url || null,
             }))}
             currentProfileId={currentUser?.id}
-            selectedReceiver={praiseReceiver}
-            selectedPraise={praiseType}
+            praiseReceiver={praiseReceiver}
+            praiseType={praiseType}
             onReceiverChange={(val) => { setPraiseReceiver(val); if (!val) setPraiseType(null); }}
             onPraiseChange={setPraiseType}
           />
         )}
 
-        {/* ── Date & Notes ─────────────────────────────────────────────────── */}
-        <div className="bg-gray-900/60 border border-gray-800/50 rounded-2xl p-4 space-y-3">
-          <div>
-            <label className="block text-xs text-gray-500 font-medium mb-1.5 uppercase tracking-wider">
-              Date &amp; Time
-            </label>
-            <input
-              type="datetime-local"
-              value={playedAt}
-              onChange={(e) => setPlayedAt(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))]"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 font-medium mb-1.5 uppercase tracking-wider">
-              Notes <span className="text-gray-700 normal-case font-normal">(optional)</span>
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="Any notes about the game…"
-              className="w-full bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ds-primary-rgb))] resize-none"
-            />
-          </div>
-        </div>
-
-      </form>
-
-      {/* ── Sticky Submit Bar ─────────────────────────────────────────────── */}
-      {/* Positioned above bottom nav (z-40 < nav z-50). Bottom offset accounts for BottomNav h-16 */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-3 pt-4" style={{ background: "linear-gradient(to top, #030712 60%, transparent)" }}>
-        <div className="max-w-lg mx-auto space-y-1.5">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || !canSubmit}
-            className="w-full rounded-2xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2"
-            style={{
-              height: "50px",
-              backgroundColor: canSubmit && !submitting
-                ? "rgb(var(--ds-primary-rgb))"
-                : "#1c2333",
-              border: canSubmit && !submitting
-                ? "1px solid rgba(var(--ds-primary-rgb),0.5)"
-                : "1px solid rgba(255,255,255,0.07)",
-              boxShadow: canSubmit && !submitting
-                ? "0 0 20px rgba(var(--ds-primary-rgb),0.35), 0 4px 12px rgba(0,0,0,0.5)"
-                : "none",
-              opacity: submitting ? 0.7 : 1,
-              cursor: !canSubmit || submitting ? "not-allowed" : "pointer",
-            }}
-          >
-            {submitting ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Logging…</span>
-              </>
-            ) : (
-              "Submit Game"
-            )}
-          </button>
-          {!canSubmit && participants.length >= 2 && (
-            <p className="text-center text-xs text-gray-600">Set a placement for every participant</p>
-          )}
-          {participants.length < 2 && (
-            <p className="text-center text-xs text-gray-600">Add at least 2 participants to continue</p>
-          )}
-        </div>
+        {step === 4 && (
+          <WizardStep4Review
+            mode={mode}
+            pod={pod}
+            participants={participants}
+            memberData={memberData}
+            placements={placements}
+            myDeckId={myDeckId}
+            myDecks={myDecks}
+            playedAt={playedAt}
+            notes={notes}
+            praiseReceiver={praiseReceiver}
+            praiseType={praiseType}
+            currentUser={currentUser}
+            onEditStep={setStep}
+          />
+        )}
       </div>
 
-    </div>
-  );
-}
-
-// ── Sub-components ──────────────────────────────────────────────────────────
-
-function SectionLabel({ icon, label }) {
-  return (
-    <div className="flex items-center gap-2 px-1">
-      <span className="text-gray-500">{icon}</span>
-      <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{label}</span>
-    </div>
-  );
-}
-
-function ModeCard({ active, onClick, label, description, isPod }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex flex-col items-start gap-1 rounded-2xl px-4 py-3.5 border text-left transition-all"
-      style={
-        active
-          ? {
-              backgroundColor: isPod ? "rgba(124,58,237,0.12)" : "rgba(var(--ds-primary-rgb),0.12)",
-              borderColor: isPod ? "rgba(124,58,237,0.40)" : "rgb(var(--ds-primary-rgb))",
-            }
-          : { backgroundColor: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }
-      }
-    >
-      <span
-        className="text-sm font-bold"
-        style={
-          active
-            ? { color: isPod ? "#a78bfa" : "var(--ds-primary-text)" }
-            : { color: "#6b7280" }
-        }
+      {/* ── Bottom nav bar ───────────────────────────────────────────────────── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-6 pt-4"
+        style={{ background: "linear-gradient(to top, #0F1115 65%, transparent)" }}
       >
-        {label}
-      </span>
-      <span className="text-xs" style={{ color: active ? "#9ca3af" : "#4b5563" }}>
-        {description}
-      </span>
-    </button>
-  );
-}
+        <div className="max-w-lg mx-auto">
+          {step < 4 ? (
+            <button
+              onClick={() => {
+                if (step === 1 && !step1Valid()) return;
+                if (step === 2 && !step2Valid()) return;
+                setStep((s) => s + 1);
+              }}
+              disabled={
+                (step === 1 && !step1Valid()) ||
+                (step === 2 && !step2Valid())
+              }
+              className="w-full rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
+              style={{
+                height: "50px",
+                backgroundColor:
+                  (step === 1 && step1Valid()) || (step === 2 && step2Valid()) || step === 3
+                    ? "rgb(var(--ds-primary-rgb))"
+                    : "#1c2333",
+                border:
+                  (step === 1 && step1Valid()) || (step === 2 && step2Valid()) || step === 3
+                    ? "1px solid rgba(var(--ds-primary-rgb),0.5)"
+                    : "1px solid rgba(255,255,255,0.07)",
+                boxShadow:
+                  (step === 1 && step1Valid()) || (step === 2 && step2Valid()) || step === 3
+                    ? "0 0 20px rgba(var(--ds-primary-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)"
+                    : "none",
+                cursor:
+                  (step === 1 && !step1Valid()) || (step === 2 && !step2Valid())
+                    ? "not-allowed"
+                    : "pointer",
+              }}
+            >
+              {step === 3 ? "Review" : "Continue"}
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all"
+              style={{
+                height: "50px",
+                backgroundColor: submitting ? "#1c2333" : "rgb(var(--ds-primary-rgb))",
+                border: submitting ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(var(--ds-primary-rgb),0.5)",
+                boxShadow: submitting ? "none" : "0 0 20px rgba(var(--ds-primary-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
+                opacity: submitting ? 0.7 : 1,
+                cursor: submitting ? "not-allowed" : "pointer",
+              }}
+            >
+              {submitting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Submitting…
+                </>
+              ) : "Submit Game"}
+            </button>
+          )}
 
-function PodChipBase({ pod, right }) {
-  return (
-    <div className="flex items-center gap-3 bg-[rgba(124,58,237,0.08)] border border-[rgba(124,58,237,0.25)] rounded-2xl px-4 py-3">
-      <div className="w-8 h-8 rounded-xl bg-[rgba(124,58,237,0.15)] border border-[rgba(124,58,237,0.25)] flex items-center justify-center flex-shrink-0">
-        <Layers className="w-4 h-4 text-violet-400" />
+          {/* Step-level hint */}
+          {step === 1 && mode === "pod" && !pod && (
+            <p className="text-center text-xs text-gray-600 mt-2">Select a POD to continue</p>
+          )}
+          {step === 2 && participants.length < 2 && (
+            <p className="text-center text-xs text-gray-600 mt-2">Add at least 2 participants</p>
+          )}
+          {step === 2 && participants.length >= 2 && participants.some((id) => !placements[id]) && (
+            <p className="text-center text-xs text-gray-600 mt-2">Assign all placements to continue</p>
+          )}
+          {step === 3 && (
+            <button
+              onClick={() => { setPraiseReceiver(null); setPraiseType(null); setStep(4); }}
+              className="w-full text-center text-xs text-gray-500 hover:text-gray-300 mt-3 transition-colors"
+            >
+              Skip Props →
+            </button>
+          )}
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white truncate">{pod.pod_name}</p>
-        <p className="text-xs font-mono text-violet-400/60">{pod.pod_code}</p>
-      </div>
-      {right}
+
     </div>
   );
 }
 
-function LockedPodChip({ pod }) {
-  return (
-    <PodChipBase
-      pod={pod}
-      right={
-        <span className="text-[10px] text-gray-600 bg-gray-800/80 px-2 py-0.5 rounded-md uppercase tracking-wider flex-shrink-0">
-          Locked
-        </span>
-      }
-    />
-  );
-}
+// ── Success screen ────────────────────────────────────────────────────────────
 
-function SelectedPodChip({ pod, onClear }) {
+function SuccessScreen({ gameId, onBack, podIdFromUrl }) {
+  const navigate = useNavigate();
+
+  function handleView() {
+    navigate(ROUTES.INBOX);
+  }
+
   return (
-    <PodChipBase
-      pod={pod}
-      right={
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center gap-6 min-h-[60vh]">
+      <div
+        className="w-20 h-20 rounded-3xl flex items-center justify-center"
+        style={{ background: "rgba(var(--ds-primary-rgb),0.15)", border: "1px solid rgba(var(--ds-primary-rgb),0.30)" }}
+      >
+        <CheckCircle2 className="w-10 h-10" style={{ color: "rgb(var(--ds-primary-rgb))" }} />
+      </div>
+      <div className="space-y-2">
+        <p className="text-white font-extrabold text-xl">Game submitted!</p>
+        <p className="text-gray-400 text-sm leading-relaxed max-w-[260px]">
+          The other players will receive a review request. The game will count once everyone approves.
+        </p>
+      </div>
+      <div className="flex gap-3 w-full max-w-[260px]">
         <button
-          type="button"
-          onClick={onClear}
-          className="text-xs text-gray-500 hover:text-red-400 transition-colors flex-shrink-0 px-1"
+          onClick={onBack}
+          className="flex-1 rounded-2xl border border-white/10 text-gray-400 hover:text-white text-sm font-semibold py-3 transition-colors"
+          style={{ background: "rgba(255,255,255,0.04)" }}
         >
-          Change
+          Back
         </button>
-      }
-    />
+        <button
+          onClick={handleView}
+          className="flex-1 rounded-2xl text-white text-sm font-semibold py-3 transition-all ds-btn-primary"
+        >
+          View
+        </button>
+      </div>
+    </div>
   );
 }
