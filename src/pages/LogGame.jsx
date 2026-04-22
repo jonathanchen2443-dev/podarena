@@ -348,7 +348,7 @@ export default function LogGame() {
   const progressPct = (step / TOTAL_STEPS) * 100;
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-56px)]">
+    <div className="flex flex-col min-h-screen">
 
       {/* ── Intro modal ──────────────────────────────────────────────────────── */}
       {showIntro && (
@@ -364,7 +364,7 @@ export default function LogGame() {
       )}
 
       {/* ── Wizard header ────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 pt-1 pb-3">
+      <div className="flex-shrink-0 pt-4 pb-3">
         <div className="flex items-center justify-between mb-3">
           {/* Back or empty */}
           <div className="w-8">
@@ -410,7 +410,7 @@ export default function LogGame() {
       </div>
 
       {/* ── Step content ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto pb-36">
         {step === 1 && (
           <WizardStep1Setup
             mode={mode}
@@ -465,6 +465,7 @@ export default function LogGame() {
             praiseType={praiseType}
             onReceiverChange={(val) => { setPraiseReceiver(val); if (!val) setPraiseType(null); }}
             onPraiseChange={setPraiseType}
+            onSkip={() => { setPraiseReceiver(null); setPraiseType(null); setStep(4); }}
           />
         )}
 
@@ -561,13 +562,8 @@ export default function LogGame() {
           {step === 2 && participants.length >= 2 && participants.some((id) => !placements[id]) && (
             <p className="text-center text-xs text-gray-600 mt-2">Assign all placements to continue</p>
           )}
-          {step === 3 && (
-            <button
-              onClick={() => { setPraiseReceiver(null); setPraiseType(null); setStep(4); }}
-              className="w-full text-center text-xs text-gray-500 hover:text-gray-300 mt-3 transition-colors"
-            >
-              Skip Props →
-            </button>
+          {step === 3 && praiseReceiver && praiseType && (
+            <p className="text-center text-xs text-gray-600 mt-2">Prop selected — click Review to continue</p>
           )}
         </div>
       </div>

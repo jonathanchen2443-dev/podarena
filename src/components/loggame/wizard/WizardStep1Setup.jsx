@@ -1,47 +1,14 @@
 /**
  * Step 1 — Game Setup
- * Collects: mode (POD/Casual), POD selection, format (Commander), participant count, date/time, notes.
+ * Corrected: no mode description text, compact count selector, clean layout.
  */
 import React from "react";
-import { Layers, Calendar, Users, FileText } from "lucide-react";
+import { Layers } from "lucide-react";
 import PodSearchPicker from "@/components/loggame/PodSearchPicker";
 
 function FieldLabel({ children }) {
   return (
     <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-500 mb-2">{children}</p>
-  );
-}
-
-function Card({ children, className = "" }) {
-  return (
-    <div className={`rounded-2xl p-4 ${className}`} style={{ background: "rgba(255,255,255,0.03)" }}>
-      {children}
-    </div>
-  );
-}
-
-function ModeButton({ active, onClick, label, description }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex flex-col items-start gap-1 rounded-xl px-4 py-3.5 text-left transition-all"
-      style={
-        active
-          ? {
-              backgroundColor: "rgba(var(--ds-primary-rgb),0.12)",
-              border: "1px solid rgb(var(--ds-primary-rgb))",
-            }
-          : { backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }
-      }
-    >
-      <span className="text-sm font-bold" style={{ color: active ? "var(--ds-primary-text)" : "#6b7280" }}>
-        {label}
-      </span>
-      <span className="text-xs" style={{ color: active ? "#9ca3af" : "#4b5563" }}>
-        {description}
-      </span>
-    </button>
   );
 }
 
@@ -95,25 +62,40 @@ export default function WizardStep1Setup({
   onNotesChange,
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 pt-2">
 
-      {/* Mode selection */}
+      {/* Game Type — labels only, no description text */}
       {!lockedPodMode && (
         <div>
           <FieldLabel>Game Type</FieldLabel>
           <div className="grid grid-cols-2 gap-2">
-            <ModeButton
-              active={mode === "casual"}
-              onClick={() => onModeSwitch("casual")}
-              label="Casual"
-              description="Open game, any players"
-            />
-            <ModeButton
-              active={mode === "pod"}
-              onClick={() => onModeSwitch("pod")}
-              label="POD"
-              description="Competitive, tracked game"
-            />
+            {["Casual", "POD"].map((label) => {
+              const val = label.toLowerCase();
+              const active = mode === val;
+              return (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => onModeSwitch(val)}
+                  className="rounded-xl py-3.5 text-sm font-bold transition-all"
+                  style={
+                    active
+                      ? {
+                          backgroundColor: "rgba(var(--ds-primary-rgb),0.12)",
+                          border: "1px solid rgb(var(--ds-primary-rgb))",
+                          color: "var(--ds-primary-text)",
+                        }
+                      : {
+                          backgroundColor: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          color: "#6b7280",
+                        }
+                  }
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -130,13 +112,13 @@ export default function WizardStep1Setup({
           ) : pod ? (
             <PodChip pod={pod} locked={lockedPodMode} onClear={onClearPod} />
           ) : (
-            <Card>
+            <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.03)" }}>
               <PodSearchPicker
                 authUserId={authUserId}
                 profileId={profileId}
                 onSelect={onPodSelected}
               />
-            </Card>
+            </div>
           )}
         </div>
       )}
@@ -145,10 +127,10 @@ export default function WizardStep1Setup({
       <div>
         <FieldLabel>Format</FieldLabel>
         <div
-          className="rounded-xl px-4 py-3 flex items-center gap-3"
+          className="rounded-xl px-4 py-3 flex items-center justify-between"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
-          <span className="text-sm font-semibold text-white flex-1">Commander</span>
+          <span className="text-sm font-semibold text-white">Commander</span>
           <span
             className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
             style={{ background: "rgba(255,255,255,0.06)", color: "#6b7280" }}
@@ -158,16 +140,16 @@ export default function WizardStep1Setup({
         </div>
       </div>
 
-      {/* Participant count */}
+      {/* Participant count — compact horizontal scroll */}
       <div>
         <FieldLabel>Number of Players</FieldLabel>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-0.5 no-scrollbar">
           {[2, 3, 4, 5, 6, 7, 8].map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => onParticipantCountChange(n)}
-              className="rounded-xl py-2.5 text-sm font-bold transition-all"
+              className="flex-shrink-0 w-11 h-11 rounded-xl text-sm font-bold transition-all"
               style={
                 participantCount === n
                   ? {

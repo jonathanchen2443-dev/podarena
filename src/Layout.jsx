@@ -10,10 +10,10 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 
 // Pages that use the app shell (bottom nav + top bar) — authenticated only
-const SHELL_PAGES = ["home", "dashboard", "loggame", "inbox", "profile", "pods", "mypods", "allpods", "explorepods", "pod", "createpod"];
+const SHELL_PAGES = ["home", "dashboard", "inbox", "profile", "pods", "mypods", "allpods", "explorepods", "pod", "createpod"];
 // Sub-pages that belong to a shell tab and should also show the nav
 const SHELL_SUB_PAGES = ["dashboard", "approvals", "decks", "profiledecks", "userprofile", "founder", "editpod", "praises", "randomdeckpicker", "deckinsights"];
-// Focused wizard pages — show top bar but NOT bottom nav
+// Focused wizard pages — full-screen overlay, no top bar, no bottom nav
 const WIZARD_PAGES = ["loggame"];
 // Pages that render without the shell (standalone / public)
 const NO_SHELL_PAGES = ["register"];
@@ -169,6 +169,19 @@ function AuthActionSlot() {
   );
 }
 
+function WizardShell({ children }) {
+  return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      <style>{CSS_VARS}</style>
+      <main className="px-4 max-w-lg mx-auto min-h-screen">
+        {children}
+      </main>
+      <div id="modal-root" />
+      <Toaster position="bottom-center" richColors />
+    </div>
+  );
+}
+
 function AppShell({ children, currentPageName, hideBottomNav = false }) {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -212,11 +225,8 @@ function InnerLayout({ children, currentPageName }) {
     );
   }
 
-  if (shell || isWizardPage(currentPageName)) return (
-    <AppShell currentPageName={currentPageName} hideBottomNav={isWizardPage(currentPageName)}>
-      {children}
-    </AppShell>
-  );
+  if (isWizardPage(currentPageName)) return <WizardShell>{children}</WizardShell>;
+  if (shell) return <AppShell currentPageName={currentPageName}>{children}</AppShell>;
   if (standalone) return <StandaloneShell>{children}</StandaloneShell>;
   return (
     <div className="min-h-screen bg-gray-950">
