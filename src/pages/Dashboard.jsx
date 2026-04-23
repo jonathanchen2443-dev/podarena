@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
 import { ROUTES } from "@/components/utils/routes";
 import { useAuth } from "@/components/auth/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -15,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
-import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
 import PlayerSearch from "@/components/discovery/PlayerSearch";
 
 
@@ -90,20 +90,15 @@ function DashboardSkeleton() {
 // ── Authenticated view ────────────────────────────────────────────────────────
 function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
   const { pendingApprovalsCount, myPodsCount, myDecksCount, recentGames } = data;
-  const [casualModal, setCasualModal] = useState(null);
+  const navigate = useNavigate();
 
   function handleGameClick(game) {
-    // Always open via participant path — works for both casual and pod pending games.
-    // Passing podId only when the game is NOT pending for current user (view-only pod context).
-    // For pending games, participant path is correct and avoids "not a participant" error.
-    const myAuthUserId = auth.authUserId || auth.currentUser?.user_id;
+    // Navigate to dedicated game summary page
+    // For pending reviews, skip podId so the page uses the participant path (not podGameDetails)
     const isPendingReview = game.status === "pending";
-    setCasualModal({
-      gameId: game.id,
-      // For pending reviews, skip podId so the modal uses the participant path (not podGameDetails)
-      podId: isPendingReview ? null : game.pod_id || null,
-      pod_name: game.pod_name || null
-    });
+    navigate(ROUTES.GAME_SUMMARY(game.id, {
+      podId: isPendingReview ? null : (game.pod_id || null),
+    }));
   }
 
   return (
@@ -217,15 +212,6 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
         }
       </div>
 
-      {/* Game modal */}
-      {casualModal &&
-      <MatchDetailsModal
-        gameId={casualModal.gameId}
-        podId={casualModal.podId}
-        onClose={() => setCasualModal(null)}
-        auth={auth} />
-
-      }
     </div>);
 
 }

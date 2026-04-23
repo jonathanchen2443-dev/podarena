@@ -9,12 +9,14 @@ import { toast } from "sonner";
 import GameApprovalCard from "@/components/inbox/GameApprovalCard";
 import PodInviteCard from "@/components/inbox/PodInviteCard";
 import SystemNotifCard from "@/components/inbox/SystemNotifCard";
-import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/components/utils/routes";
 
 const FILTERS = ["All", "Unread", "Game Approvals", "POD Invites", "System"];
 
 export default function Inbox() {
   const { currentUser, authUserId, isGuest, authLoading } = useAuth();
+  const navigate = useNavigate();
 
   // data
   const [approvals, setApprovals] = useState([]);
@@ -23,7 +25,6 @@ export default function Inbox() {
   const [filter, setFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState({});
-  const [reviewModal, setReviewModal] = useState(null); // { gameId }
 
   // ── Load ─────────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -60,11 +61,10 @@ export default function Inbox() {
   }
 
   // ── Game Review actions ───────────────────────────────────────────────────
-  // "Review & Approve" opens the full modal where the user must pick their deck first.
-  // "Reject" is a quick action directly from the card (no deck needed).
+  // "Review & Approve" navigates to the dedicated game summary page.
+  // "Reject" is still a quick action directly from the card (no deck needed).
   function handleApprove(item) {
-    // Pass full pre-loaded game + podId so modal skips self-fetch entirely
-    setReviewModal({ gameId: item.game.id, game: item.game, podId: item.podId || null });
+    navigate(ROUTES.GAME_SUMMARY(item.game.id, { podId: item.podId || null }));
   }
 
   async function handleReject(item) {
@@ -327,21 +327,6 @@ export default function Inbox() {
         </section>
       )}
 
-      {/* Game review modal — opened when user clicks "Review & Approve" */}
-      {reviewModal && (
-        <MatchDetailsModal
-          gameId={reviewModal.gameId}
-          game={reviewModal.game}
-          podId={reviewModal.podId}
-          auth={{ currentUser, authUserId, isGuest }}
-          onClose={() => setReviewModal(null)}
-          onActionComplete={async () => {
-            setReviewModal(null);
-            await load();
-            notifyInboxUpdated();
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -15,6 +15,14 @@
       "default": "casual",
       "description": "Whether this is a casual game or POD competitive game"
     },
+    "game_format": {
+      "type": "string",
+      "enum": [
+        "commander"
+      ],
+      "default": "commander",
+      "description": "The game format played. Currently only commander. Extensible for future formats."
+    },
     "played_at": {
       "type": "string",
       "format": "date-time",

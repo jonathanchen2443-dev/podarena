@@ -52,4 +52,13 @@ export const ROUTES = {
 
   // Deck Insights
   DECK_INSIGHTS: (deckId) => `${createPageUrl("DeckInsights")}?deckId=${deckId}`,
+
+  // Game Summary — dedicated full-screen game details page
+  // podId is optional; isPodAdmin=1 enables delete button for POD admins
+  GAME_SUMMARY: (gameId, opts = {}) => {
+    let url = `${createPageUrl("GameSummary")}?gameId=${gameId}`;
+    if (opts.podId) url += `&podId=${opts.podId}`;
+    if (opts.isPodAdmin) url += `&isPodAdmin=1`;
+    return url;
+  },
 };

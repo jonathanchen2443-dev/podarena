@@ -10,7 +10,8 @@ import PodActivityTab from "@/components/pods/PodActivityTab";
 import PodInfoTab from "@/components/pods/PodInfoTab";
 import { requestJoinPOD } from "@/components/services/podService";
 import { ROUTES } from "@/components/utils/routes";
-import MatchDetailsModal from "@/components/leagues/MatchDetailsModal";
+
+
 import { toast } from "sonner";
 
 const TABS = [
@@ -61,7 +62,6 @@ export default function Pod() {
   const tabParam = params.get("tab");
   const [activeTab, setActiveTab] = useState(tabParam || "leaderboard");
   const [requesting, setRequesting] = useState(false);
-  const [selectedGame, setSelectedGame] = useState(null);
 
   const load = useCallback(async () => {
     if (!podId) { setLoadError("not_found"); setLoading(false); return; }
@@ -159,9 +159,13 @@ export default function Pod() {
     navigate(createPageUrl("MyPods"));
   }
 
-  // Open pod-scoped match details — passes podId so the modal uses the secure backend path
+  // Open pod-scoped match details — navigates to the dedicated game summary page
   function handleOpenGame(gameId, gamePodId) {
-    setSelectedGame({ gameId, podId: gamePodId || podId });
+    const isPodAdminFlag = !!(myMembership?.role === "admin" && myMembership?.membership_status === "active");
+    navigate(ROUTES.GAME_SUMMARY(gameId, {
+      podId: gamePodId || podId,
+      isPodAdmin: isPodAdminFlag,
+    }));
   }
 
   function goBack() { navigate(-1); }
@@ -277,22 +281,6 @@ export default function Pod() {
         />
       )}
 
-      {selectedGame && (
-        <MatchDetailsModal
-          gameId={selectedGame.gameId}
-          podId={selectedGame.podId}
-          auth={{
-            currentUser,
-            authUserId,
-            isGuest,
-            // isPodAdmin: true enables the delete icon in Match Details for POD games.
-            // Derived from myMembership loaded via podPageData (role=admin + status=active).
-            isPodAdmin: !!(myMembership?.role === "admin" && myMembership?.membership_status === "active"),
-          }}
-          onClose={() => setSelectedGame(null)}
-          onActionComplete={() => load()}
-        />
-      )}
     </div>
   );
 }

@@ -171,6 +171,7 @@ export async function createGameWithParticipants({
     action: 'createGame',
     podId: podId || null,
     contextType,
+    gameFormat: 'commander',
     creatorProfileId,
     creatorAuthUserId,
     playedAt: playedAt || new Date().toISOString(),

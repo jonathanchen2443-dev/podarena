@@ -12,7 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 // Pages that use the app shell (bottom nav + top bar) — authenticated only
 const SHELL_PAGES = ["home", "dashboard", "inbox", "profile", "pods", "mypods", "allpods", "explorepods", "pod", "createpod"];
 // Sub-pages that belong to a shell tab and should also show the nav
-const SHELL_SUB_PAGES = ["dashboard", "approvals", "decks", "profiledecks", "userprofile", "founder", "editpod", "praises", "randomdeckpicker", "deckinsights"];
+const SHELL_SUB_PAGES = ["dashboard", "approvals", "decks", "profiledecks", "userprofile", "founder", "editpod", "praises", "randomdeckpicker", "deckinsights", "gamesummary"];
 // Focused wizard pages — full-screen overlay, no top bar, no bottom nav
 const WIZARD_PAGES = ["loggame"];
 // Pages that render without the shell (standalone / public)

@@ -803,7 +803,7 @@ Deno.serve(async (req) => {
     // ── createGame ────────────────────────────────────────────────────────────
     // Full game creation flow via asServiceRole — bypasses RLS for participant/notification creates.
     if (action === 'createGame') {
-      const { podId, contextType = 'casual', creatorProfileId, creatorAuthUserId, playedAt, notes, participants } = body;
+      const { podId, contextType = 'casual', gameFormat = 'commander', creatorProfileId, creatorAuthUserId, playedAt, notes, participants } = body;
 
       let step = 'validate_input';
       let gameId = null;
@@ -832,6 +832,7 @@ Deno.serve(async (req) => {
         const game = await base44.asServiceRole.entities.Game.create({
           pod_id: podId || null,
           context_type: contextType,
+          game_format: gameFormat || 'commander',
           played_at: playedAt || new Date().toISOString(),
           status: 'pending',
           notes: notes || '',

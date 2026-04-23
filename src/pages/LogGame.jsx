@@ -578,7 +578,11 @@ function SuccessScreen({ gameId, onBack, podIdFromUrl }) {
   const navigate = useNavigate();
 
   function handleView() {
-    navigate(ROUTES.INBOX);
+    if (gameId) {
+      navigate(ROUTES.GAME_SUMMARY(gameId, { podId: podIdFromUrl || null }));
+    } else {
+      navigate(ROUTES.INBOX);
+    }
   }
 
   return (
