@@ -256,6 +256,34 @@ export default function GameSummary() {
         </div>
       </div>
 
+      {/* ── Results (podium) ────────────────────────────────────────────────── */}
+      <Section>
+        <SectionLabel>Results</SectionLabel>
+        <div className="px-4 pb-4 pt-2">
+          <MatchResultsDisplay participants={game.participants} currentProfileId={currentProfileId} />
+        </div>
+      </Section>
+
+      {/* ── Props ───────────────────────────────────────────────────────────── */}
+      {game.status === "approved" && (
+        <Section>
+          <SectionLabel>Props</SectionLabel>
+          <div className="px-4 pb-4">
+            <GamePropsSection game={game} callerAuthUserId={currentAuthUserId} callerProfileId={currentProfileId} />
+          </div>
+        </Section>
+      )}
+
+      {/* ── Approval status ─────────────────────────────────────────────────── */}
+      {hasApprovalData && (
+        <Section>
+          <SectionLabel>Approvals</SectionLabel>
+          <div className="px-4 pb-4">
+            <ApprovalStatusRow participants={game.participants} />
+          </div>
+        </Section>
+      )}
+
       {/* ── Meta header card ────────────────────────────────────────────────── */}
       <Section>
         <div className="px-4 pt-4 pb-4 space-y-3">
@@ -265,10 +293,10 @@ export default function GameSummary() {
               <button
                 onClick={() => game.pod_id && navigate(ROUTES.POD(game.pod_id))}
                 disabled={!game.pod_id}
-                className="inline-flex items-center gap-2 bg-[rgba(92,124,250,0.12)] border border-[rgba(92,124,250,0.30)] rounded-full px-3.5 py-1.5 transition-colors hover:bg-[rgba(92,124,250,0.20)] disabled:cursor-default"
+                className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-full px-3.5 py-1.5 transition-colors hover:bg-purple-500/20 disabled:cursor-default"
               >
-                <Layers className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />
-                <span className="text-xs text-blue-300 font-semibold">{game.pod_name || "POD Game"}</span>
+                <Layers className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
+                <span className="text-xs text-purple-400 font-semibold">{game.pod_name || "POD Game"}</span>
               </button>
             ) : (
               <MetaPill icon={Swords} label="Casual Game" className="bg-sky-500/10 text-sky-400 border border-sky-500/20" />
@@ -303,34 +331,6 @@ export default function GameSummary() {
           )}
         </div>
       </Section>
-
-      {/* ── Results (podium) ────────────────────────────────────────────────── */}
-      <Section>
-        <SectionLabel>Results</SectionLabel>
-        <div className="px-4 pb-4 pt-2">
-          <MatchResultsDisplay participants={game.participants} currentProfileId={currentProfileId} />
-        </div>
-      </Section>
-
-      {/* ── Props ───────────────────────────────────────────────────────────── */}
-      {game.status === "approved" && (
-        <Section>
-          <SectionLabel>Props</SectionLabel>
-          <div className="px-4 pb-4">
-            <GamePropsSection game={game} callerAuthUserId={currentAuthUserId} callerProfileId={currentProfileId} />
-          </div>
-        </Section>
-      )}
-
-      {/* ── Approval status ─────────────────────────────────────────────────── */}
-      {hasApprovalData && (
-        <Section>
-          <SectionLabel>Approvals</SectionLabel>
-          <div className="px-4 pb-4">
-            <ApprovalStatusRow participants={game.participants} />
-          </div>
-        </Section>
-      )}
 
       {/* ── Pending review nudge ────────────────────────────────────────────── */}
       {needsMyReview && (
