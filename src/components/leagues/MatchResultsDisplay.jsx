@@ -1,5 +1,7 @@
 import React from "react";
 import { Crown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/components/utils/routes";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -27,7 +29,7 @@ function sortedParticipants(participants) {
 // overlapPx = half of imgSize — how far the image sits inside the block from the top.
 // The block's top padding = overlapPx so text starts below the image overlap zone.
 
-function PlayerCard({ p, imgSize, blockH, cardWidth, maxWidth, showCrown = false }) {
+function PlayerCard({ p, imgSize, blockH, cardWidth, maxWidth, showCrown = false, onPlayerClick }) {
   const deckLabel      = p.deck?.name || null;
   const commanderImage = p.deck?.commander_image || null;
   const isWinner       = p.placement === 1 || p.result === "win";
@@ -72,8 +74,9 @@ function PlayerCard({ p, imgSize, blockH, cardWidth, maxWidth, showCrown = false
 
   return (
     <div
-      className="flex flex-col items-center flex-shrink-0"
+      className={`flex flex-col items-center flex-shrink-0 ${onPlayerClick ? "cursor-pointer" : ""}`}
       style={{ width: 100 }}
+      onClick={onPlayerClick ? () => onPlayerClick(p) : undefined}
     >
       {/* Crown — sits above everything, only for winner */}
       {showCrown && isWinner && (
@@ -127,13 +130,13 @@ function PlayerCard({ p, imgSize, blockH, cardWidth, maxWidth, showCrown = false
 // 1st place: imgSize=104, blockH=200 (winner reference)
 // 2nd place: imgSize=88,  blockH=140 (0.70 × 200) — clear visual hierarchy
 
-function TwoPlayerLayout({ sorted }) {
+function TwoPlayerLayout({ sorted, onPlayerClick }) {
   const first  = sorted.find((p) => p.placement === 1) || sorted[0];
   const second = sorted.find((p) => p.placement === 2) || sorted[1];
   return (
     <div className="flex items-end justify-center gap-4 py-0 px-3 overflow-x-hidden">
-      {second && <PlayerCard key={second.userId} p={second} imgSize={88}  blockH={140} showCrown={false} />}
-      {first  && <PlayerCard key={first.userId}  p={first}  imgSize={104} blockH={200} showCrown />}
+      {second && <PlayerCard key={second.userId} p={second} imgSize={88}  blockH={140} showCrown={false} onPlayerClick={onPlayerClick} />}
+      {first  && <PlayerCard key={first.userId}  p={first}  imgSize={104} blockH={200} showCrown onPlayerClick={onPlayerClick} />}
     </div>
   );
 }
@@ -150,7 +153,7 @@ function TwoPlayerLayout({ sorted }) {
 
 const PODIUM_H = 220; // 1st place reference block height in px (+10% from 200)
 
-function PodiumLayout({ top3 }) {
+function PodiumLayout({ top3, onPlayerClick }) {
   const first  = top3.find((p) => p.placement === 1) || top3[0];
   const second = top3.find((p) => p.placement === 2) || top3[1];
   const third  = top3.find((p) => p.placement === 3) || top3[2];
@@ -158,13 +161,13 @@ function PodiumLayout({ top3 }) {
   return (
     <div className="flex items-end justify-center gap-2 py-0 w-full overflow-x-hidden">
       {second && (
-        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} showCrown={false} />
+        <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} showCrown={false} onPlayerClick={onPlayerClick} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={88} blockH={PODIUM_H}                    showCrown />
+        <PlayerCard p={first}  imgSize={88} blockH={PODIUM_H}                    showCrown onPlayerClick={onPlayerClick} />
       )}
       {third && (
-        <PlayerCard p={third}  imgSize={88}  blockH={Math.round(PODIUM_H * 0.50)} showCrown={false} />
+        <PlayerCard p={third}  imgSize={88}  blockH={Math.round(PODIUM_H * 0.50)} showCrown={false} onPlayerClick={onPlayerClick} />
       )}
     </div>
   );
@@ -172,12 +175,15 @@ function PodiumLayout({ top3 }) {
 
 // ── RemainingRow — compact, no commander image ────────────────────────────────
 
-function RemainingRow({ p }) {
+function RemainingRow({ p, onPlayerClick }) {
   const deckLabel = p.deck?.name || null;
   const placementLabel = p.placement != null ? `#${p.placement}` : null;
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 border-b border-gray-800/40 last:border-0">
+    <div
+      className={`flex items-center gap-3 px-3 py-2.5 border-b border-gray-800/40 last:border-0 ${onPlayerClick ? "cursor-pointer hover:bg-gray-800/20 transition-colors" : ""}`}
+      onClick={onPlayerClick ? () => onPlayerClick(p) : undefined}
+    >
       <div className="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700/60 flex items-center justify-center flex-shrink-0">
         <span className="text-gray-500 font-bold text-xs select-none">
           {(p.display_name || "?")[0].toUpperCase()}
@@ -198,14 +204,29 @@ function RemainingRow({ p }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export default function MatchResultsDisplay({ participants }) {
+export default function MatchResultsDisplay({ participants, currentProfileId }) {
+  const navigate = useNavigate();
+
   if (!participants || participants.length === 0) return null;
+
+  // Build profile navigation handler — own name → own profile, others → public profile
+  function handlePlayerClick(p) {
+    const profileId = p.userId || p.participant_profile_id;
+    if (!profileId) return;
+    if (profileId === currentProfileId) {
+      navigate(ROUTES.PROFILE);
+    } else {
+      navigate(ROUTES.USER_PROFILE(profileId));
+    }
+  }
+
+  const onPlayerClick = currentProfileId !== undefined ? handlePlayerClick : null;
 
   const sorted = sortedParticipants(participants);
   const count = sorted.length;
 
-  if (count === 2) return <TwoPlayerLayout sorted={sorted} />;
-  if (count === 3) return <PodiumLayout top3={sorted} />;
+  if (count === 2) return <TwoPlayerLayout sorted={sorted} onPlayerClick={onPlayerClick} />;
+  if (count === 3) return <PodiumLayout top3={sorted} onPlayerClick={onPlayerClick} />;
 
   // 4+: podium stays full-size, rest scrolls below
   const top3 = sorted.slice(0, 3);
@@ -213,11 +234,11 @@ export default function MatchResultsDisplay({ participants }) {
 
   return (
     <div className="space-y-3">
-      <PodiumLayout top3={top3} />
+      <PodiumLayout top3={top3} onPlayerClick={onPlayerClick} />
       {rest.length > 0 && (
         <div className="bg-gray-900/40 border border-gray-800/40 rounded-xl overflow-hidden">
           {rest.map((p) => (
-            <RemainingRow key={p.userId} p={p} />
+            <RemainingRow key={p.userId} p={p} onPlayerClick={onPlayerClick} />
           ))}
         </div>
       )}

@@ -428,6 +428,83 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── creatorDeleteGame ─────────────────────────────────────────────────────
+    // Allows the game creator/logger OR an active POD admin (for POD games) to
+    // permanently hard-delete a game they own/manage.
+    // Gate: caller must be the game's created_by_user_id OR active admin of the game's POD.
+    if (action === 'creatorDeleteGame') {
+      const { gameId: delGameId, callerAuthUserId, callerProfileId } = body;
+      let step = 'validate_input';
+      try {
+        if (!delGameId || !callerAuthUserId || !callerProfileId) {
+          return Response.json({ error: 'gameId, callerAuthUserId, callerProfileId required' }, { status: 400 });
+        }
+
+        step = 'verify_identity';
+        const callerRows = await base44.asServiceRole.entities.Profile.filter({ id: callerProfileId });
+        if (!callerRows.length || callerRows[0].user_id !== callerAuthUserId) {
+          return Response.json({ error: 'Forbidden: identity mismatch' }, { status: 403 });
+        }
+
+        step = 'load_game';
+        const gameArr = await base44.asServiceRole.entities.Game.filter({ id: delGameId });
+        if (!gameArr.length) return Response.json({ error: 'Game not found' }, { status: 404 });
+        const gameToDelete = gameArr[0];
+
+        // Permission check: creator OR active POD admin
+        step = 'check_permission';
+        const isCreator = gameToDelete.created_by_user_id === callerAuthUserId;
+        let isPodAdmin = false;
+        if (!isCreator && gameToDelete.context_type === 'pod' && gameToDelete.pod_id) {
+          const adminMembership = await base44.asServiceRole.entities.PODMembership.filter({
+            pod_id: gameToDelete.pod_id, user_id: callerAuthUserId, role: 'admin', membership_status: 'active',
+          });
+          isPodAdmin = adminMembership.length > 0;
+        }
+
+        if (!isCreator && !isPodAdmin) {
+          return Response.json({ error: 'Forbidden: only the game creator or a POD admin may delete this game' }, { status: 403 });
+        }
+
+        // Preload all dependent records
+        step = 'preload_records';
+        const [delParticipants, delApprovals, allDelNotifs, delPraises] = await Promise.all([
+          base44.asServiceRole.entities.GameParticipant.filter({ game_id: delGameId }).catch(() => []),
+          base44.asServiceRole.entities.GameApproval.filter({ game_id: delGameId }).catch(() => []),
+          base44.asServiceRole.entities.Notification.filter({ type: 'game_review_request' }, '-created_date', 500).catch(() => []),
+          base44.asServiceRole.entities.Praise.filter({ game_id: delGameId }).catch(() => []),
+        ]);
+        const delGameNotifs = allDelNotifs.filter((n) => n.metadata?.game_id === delGameId);
+
+        console.log('[creatorDeleteGame] scope', {
+          gameId: delGameId, isCreator, isPodAdmin, callerProfileId,
+          participants: delParticipants.length, notifications: delGameNotifs.length, praises: delPraises.length,
+        });
+
+        // Delete in safe order: notifications → approvals → praises → participants → game
+        step = 'delete_notifications';
+        await Promise.all(delGameNotifs.map((n) => base44.asServiceRole.entities.Notification.delete(n.id).catch(() => {})));
+
+        step = 'delete_approvals';
+        await Promise.all(delApprovals.map((a) => base44.asServiceRole.entities.GameApproval.delete(a.id).catch(() => {})));
+
+        step = 'delete_praises';
+        await Promise.all(delPraises.map((p) => base44.asServiceRole.entities.Praise.delete(p.id).catch(() => {})));
+
+        step = 'delete_participants';
+        await Promise.all(delParticipants.map((p) => base44.asServiceRole.entities.GameParticipant.delete(p.id).catch(() => {})));
+
+        step = 'delete_game';
+        await base44.asServiceRole.entities.Game.delete(delGameId);
+
+        console.log('[creatorDeleteGame] SUCCESS gameId=', delGameId, 'by=', callerProfileId, 'isCreator=', isCreator, 'isPodAdmin=', isPodAdmin);
+        return Response.json({ success: true });
+      } catch (err) {
+        console.error('[creatorDeleteGame] FAILED', { step, delGameId, callerAuthUserId, error: err?.message });
+        return Response.json({ error: err.message || 'creatorDeleteGame failed' }, { status: 500 });
+      }
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {

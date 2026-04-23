@@ -133,9 +133,12 @@ export default function GameSummary() {
   const [praiseReceiver, setPraiseReceiver] = useState(null);
   const [praiseType, setPraiseType] = useState(null);
 
-  // ── Delete state (POD admin) ─────────────────────────────────────────────────
+  // ── Delete state ─────────────────────────────────────────────────────────────
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // isPodAdmin passed via query param (set by Pod page when navigating)
+  const isPodAdminParam = params.get("isPodAdmin") === "1";
 
   // ── Load game data ──────────────────────────────────────────────────────────
   async function loadGame() {
@@ -179,9 +182,10 @@ export default function GameSummary() {
 
   const isPodGame = game?.context_type === "pod" && !!game?.pod_id;
 
-  // POD admin detection — passed via query param or inferred from membership
-  const isPodAdminParam = params.get("isPodAdmin") === "1";
+  // Permission to delete: game creator OR POD admin (for POD games)
+  const isGameCreator = game?.participants?.find((p) => p.is_creator)?.authUserId === currentAuthUserId;
   const isPodAdmin = isPodGame && isPodAdminParam;
+  const canDelete = isGameCreator || isPodAdmin;
 
   // ── Load decks when approval is needed ─────────────────────────────────────
   useEffect(() => {
@@ -239,7 +243,7 @@ export default function GameSummary() {
     setDeleteLoading(true);
     try {
       const res = await base44.functions.invoke("founderGameActions", {
-        action: "podAdminDeleteGame",
+        action: "creatorDeleteGame",
         gameId: game.id,
         callerAuthUserId: currentAuthUserId,
         callerProfileId: currentProfileId,
@@ -303,11 +307,11 @@ export default function GameSummary() {
         </button>
         <div className="flex items-center gap-2">
           {statusBadge(game.status)}
-          {isPodAdmin && (
+          {canDelete && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="w-7 h-7 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 transition-colors"
-              title="Delete game (POD admin only)"
+              title="Delete this game"
             >
               <Trash2 className="w-3 h-3 text-red-400" />
             </button>
@@ -367,7 +371,7 @@ export default function GameSummary() {
       <Section>
         <SectionLabel>Results</SectionLabel>
         <div className="px-4 pb-4 pt-2">
-          <MatchResultsDisplay participants={game.participants} />
+          <MatchResultsDisplay participants={game.participants} currentProfileId={currentProfileId} />
         </div>
       </Section>
 
