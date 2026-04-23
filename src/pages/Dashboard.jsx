@@ -93,12 +93,14 @@ function AuthDashboard({ data, displayName, auth, onRefreshActivity }) {
   const navigate = useNavigate();
 
   function handleGameClick(game) {
-    // Navigate to dedicated game summary page
-    // For pending reviews, skip podId so the page uses the participant path (not podGameDetails)
-    const isPendingReview = game.status === "pending";
-    navigate(ROUTES.GAME_SUMMARY(game.id, {
-      podId: isPendingReview ? null : (game.pod_id || null),
-    }));
+    // If this is a game the user still needs to review as a participant, go to approval page.
+    // Otherwise go to the read-only game summary page.
+    const isPendingReview = game.myApprovalStatus === "pending" && game.status === "pending";
+    if (isPendingReview) {
+      navigate(ROUTES.GAME_APPROVAL(game.id, { podId: game.pod_id || null }));
+    } else {
+      navigate(ROUTES.GAME_SUMMARY(game.id, { podId: game.pod_id || null }));
+    }
   }
 
   return (

@@ -61,10 +61,9 @@ export default function Inbox() {
   }
 
   // ── Game Review actions ───────────────────────────────────────────────────
-  // "Review & Approve" navigates to the dedicated game summary page.
-  // "Reject" is still a quick action directly from the card (no deck needed).
+  // "Review" navigates to the dedicated approval page (deck selection + approve/reject).
   function handleApprove(item) {
-    navigate(ROUTES.GAME_SUMMARY(item.game.id, { podId: item.podId || null }));
+    navigate(ROUTES.GAME_APPROVAL(item.game.id, { podId: item.podId || null }));
   }
 
   async function handleReject(item) {

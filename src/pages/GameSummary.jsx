@@ -15,18 +15,15 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext";
 import { getPodGameDetails, getGameDetailsForParticipant } from "@/components/services/profileService.jsx";
-import { approveGameWithPraise, rejectGame } from "@/components/services/gameService";
-import { listMyDecks } from "@/components/services/deckService";
 import { ROUTES } from "@/components/utils/routes";
 import { base44 } from "@/api/base44Client";
 import MatchResultsDisplay from "@/components/leagues/MatchResultsDisplay";
 import GamePropsSection from "@/components/praise/GamePropsSection";
-import PraiseSelector from "@/components/praise/PraiseSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Trophy, CheckCircle, XCircle, Clock, Loader2, Layers,
-  ChevronDown, ArrowLeft, Trash2, Swords, Calendar, FileText, Users
+  ArrowLeft, Trash2, Swords, Calendar, FileText, Users
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -124,15 +121,6 @@ export default function GameSummary() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  // ── Approval action state ───────────────────────────────────────────────────
-  const [actionLoading, setActionLoading] = useState(null);
-  const [actionError, setActionError] = useState(null);
-  const [myDecks, setMyDecks] = useState([]);
-  const [decksLoading, setDecksLoading] = useState(false);
-  const [selectedDeckId, setSelectedDeckId] = useState(null);
-  const [praiseReceiver, setPraiseReceiver] = useState(null);
-  const [praiseType, setPraiseType] = useState(null);
-
   // ── Delete state ─────────────────────────────────────────────────────────────
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -178,7 +166,7 @@ export default function GameSummary() {
   const currentAuthUserId = authUserId || currentUser?.user_id || null;
 
   const myParticipant = game?.participants?.find((p) => p.authUserId === currentAuthUserId);
-  const canAct = !isGuest && myParticipant?.approval_status === "pending" && !myParticipant?.is_creator && game?.status === "pending";
+  const needsMyReview = !isGuest && myParticipant?.approval_status === "pending" && !myParticipant?.is_creator && game?.status === "pending";
 
   const isPodGame = game?.context_type === "pod" && !!game?.pod_id;
 
@@ -186,57 +174,6 @@ export default function GameSummary() {
   const isGameCreator = game?.participants?.find((p) => p.is_creator)?.authUserId === currentAuthUserId;
   const isPodAdmin = isPodGame && isPodAdminParam;
   const canDelete = isGameCreator || isPodAdmin;
-
-  // ── Load decks when approval is needed ─────────────────────────────────────
-  useEffect(() => {
-    if (!canAct || isGuest) return;
-    setDecksLoading(true);
-    listMyDecks(auth)
-      .then((decks) => setMyDecks(decks.filter((d) => d.is_active !== false)))
-      .catch(() => setMyDecks([]))
-      .finally(() => setDecksLoading(false));
-  }, [canAct]);
-
-  // ── Approval actions ────────────────────────────────────────────────────────
-  async function handleApprove() {
-    if (actionLoading) return;
-    if (!selectedDeckId) { setActionError("Please select the deck you played before approving."); return; }
-    setActionLoading("approve");
-    setActionError(null);
-    try {
-      const praise = (praiseReceiver && praiseType) ? { receiverProfileId: praiseReceiver, praiseType } : null;
-      await approveGameWithPraise(game.id, currentAuthUserId, currentProfileId, selectedDeckId, praise);
-      toast.success("Game approved!");
-      await loadGame();
-    } catch (e) {
-      const msg = e.message?.toLowerCase().includes("rate") || e.message?.includes("429")
-        ? "Too many requests. Wait a moment and try again."
-        : (e.message || "Failed to approve.");
-      setActionError(msg);
-      toast.error(msg);
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
-  async function handleReject() {
-    if (actionLoading) return;
-    setActionLoading("reject");
-    setActionError(null);
-    try {
-      await rejectGame(game.id, currentAuthUserId, currentProfileId, "");
-      toast.success("Game rejected.");
-      await loadGame();
-    } catch (e) {
-      const msg = e.message?.toLowerCase().includes("rate") || e.message?.includes("429")
-        ? "Too many requests. Wait a moment and try again."
-        : (e.message || "Failed to reject.");
-      setActionError(msg);
-      toast.error(msg);
-    } finally {
-      setActionLoading(null);
-    }
-  }
 
   async function handleDeleteGame() {
     if (!currentAuthUserId || !currentProfileId || !game?.id) return;
@@ -395,82 +332,24 @@ export default function GameSummary() {
         </Section>
       )}
 
-      {/* ── My approval action ──────────────────────────────────────────────── */}
-      {canAct && (
-        <Section>
-          <SectionLabel>Your Review</SectionLabel>
-          <div className="px-4 pb-4 space-y-3">
-            {/* Deck selector */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-200 mb-1.5">
-                Your deck <span className="text-red-400 text-xs font-normal">(required to approve)</span>
-              </label>
-              {decksLoading ? (
-                <div className="h-10 rounded-lg bg-gray-800/50 animate-pulse" />
-              ) : myDecks.length === 0 ? (
-                <p className="text-xs text-gray-500 bg-gray-800/50 rounded-lg px-3 py-2.5">
-                  No active decks found. Create one in your profile first.
-                </p>
-              ) : (
-                <div className="relative">
-                  <select
-                    value={selectedDeckId || ""}
-                    onChange={(e) => setSelectedDeckId(e.target.value || null)}
-                    disabled={actionLoading !== null}
-                    className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 pr-8 text-sm text-white focus:outline-none focus:border-[rgb(var(--ds-primary-rgb))] appearance-none disabled:opacity-50"
-                  >
-                    <option value="">— Select your deck —</option>
-                    {myDecks.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}{d.commander_name ? ` · ${d.commander_name}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                </div>
-              )}
-            </div>
-
-            {/* Props (praise) selector */}
-            {game?.participants && (
-              <PraiseSelector
-                participants={(game.participants || []).map((p) => ({
-                  profileId: p.userId || p.profileId || p.participant_profile_id,
-                  display_name: p.display_name,
-                  avatar_url: p.avatar_url || null,
-                }))}
-                currentProfileId={currentProfileId}
-                selectedReceiver={praiseReceiver}
-                selectedPraise={praiseType}
-                onReceiverChange={(val) => { setPraiseReceiver(val); if (!val) setPraiseType(null); }}
-                onPraiseChange={setPraiseType}
-              />
-            )}
-
-            {actionError && <p className="text-red-400 text-xs">{actionError}</p>}
-
-            <div className="flex gap-3 pt-1">
-              <Button
-                className="flex-1 bg-red-600/80 hover:bg-red-600 text-white rounded-xl h-11"
-                disabled={actionLoading !== null}
-                onClick={handleReject}
-              >
-                {actionLoading === "reject" ? "Rejecting…" : "Reject"}
-              </Button>
-              <Button
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11"
-                disabled={actionLoading !== null || !selectedDeckId || decksLoading}
-                onClick={handleApprove}
-              >
-                {actionLoading === "approve" ? "Approving…" : "Approve"}
-              </Button>
-            </div>
+      {/* ── Pending review nudge ────────────────────────────────────────────── */}
+      {needsMyReview && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-amber-400 text-sm font-semibold">Your review is needed</p>
+            <p className="text-gray-400 text-xs mt-0.5">Select your deck and approve or reject this game.</p>
           </div>
-        </Section>
+          <Button
+            className="ds-btn-primary rounded-xl text-xs h-9 flex-shrink-0"
+            onClick={() => navigate(ROUTES.GAME_APPROVAL(gameId, { podId: podId || null }))}
+          >
+            Review
+          </Button>
+        </div>
       )}
 
       {/* Already responded */}
-      {!canAct && !isGuest && game.status === "pending" && myParticipant && (
+      {!needsMyReview && !isGuest && game.status === "pending" && myParticipant && (
         <p className="text-xs text-gray-600 text-center">
           {myParticipant.approval_status === "approved"
             ? "You already approved this game."

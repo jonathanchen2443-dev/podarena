@@ -61,4 +61,12 @@ export const ROUTES = {
     if (opts.isPodAdmin) url += `&isPodAdmin=1`;
     return url;
   },
+
+  // Game Approval — dedicated participant review/approve/reject page
+  // podId is optional context
+  GAME_APPROVAL: (gameId, opts = {}) => {
+    let url = `${createPageUrl("GameApproval")}?gameId=${gameId}`;
+    if (opts.podId) url += `&podId=${opts.podId}`;
+    return url;
+  },
 };

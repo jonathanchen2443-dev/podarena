@@ -6,6 +6,7 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LogGame from '@/pages/LogGame';
 import GameSummary from '@/pages/GameSummary';
+import GameApproval from '@/pages/GameApproval';
 import Inbox from '@/pages/Inbox';
 import Praises from '@/pages/Praises';
 import RandomDeckPicker from '@/pages/RandomDeckPicker';
@@ -70,6 +71,7 @@ const AuthenticatedApp = () => {
       <Route path="/RandomDeckPicker" element={<LayoutWrapper currentPageName="RandomDeckPicker"><RandomDeckPicker /></LayoutWrapper>} />
       <Route path="/DeckInsights" element={<LayoutWrapper currentPageName="DeckInsights"><DeckInsights /></LayoutWrapper>} />
       <Route path="/GameSummary" element={<LayoutWrapper currentPageName="GameSummary"><GameSummary /></LayoutWrapper>} />
+      <Route path="/GameApproval" element={<LayoutWrapper currentPageName="GameApproval"><GameApproval /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

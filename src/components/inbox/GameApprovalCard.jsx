@@ -94,7 +94,7 @@ export default function GameApprovalCard({ item, acting, onApprove, onReject }) 
           disabled={isActing}
           onClick={() => onApprove(item)}
         >
-          {isActing ? "…" : "Review & Approve"}
+          {isActing ? "…" : "Review"}
         </Button>
       </div>
     </div>
