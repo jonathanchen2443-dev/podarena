@@ -258,7 +258,24 @@ export default function GameSummary() {
 
       {/* ── Results (podium) ────────────────────────────────────────────────── */}
       <Section>
-        <SectionLabel>Results</SectionLabel>
+        <div className="flex items-center justify-between px-4 pt-3.5 pb-1.5">
+          <p className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold">Results</p>
+          {isPodGame ? (
+            <button
+              onClick={() => game.pod_id && navigate(ROUTES.POD(game.pod_id))}
+              disabled={!game.pod_id}
+              className="inline-flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 rounded-full px-2.5 py-1 transition-colors hover:bg-purple-500/20 disabled:cursor-default"
+            >
+              <Layers className="w-3 h-3 flex-shrink-0 text-purple-400" />
+              <span className="text-[11px] text-purple-400 font-semibold">{game.pod_name || "POD Game"}</span>
+            </button>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/20 rounded-full px-2.5 py-1">
+              <Swords className="w-3 h-3 flex-shrink-0 text-sky-400" />
+              <span className="text-[11px] text-sky-400 font-semibold">Casual</span>
+            </div>
+          )}
+        </div>
         <div className="px-4 pb-4 pt-2">
           <MatchResultsDisplay participants={game.participants} currentProfileId={currentProfileId} />
         </div>
@@ -287,27 +304,6 @@ export default function GameSummary() {
       {/* ── Meta header card ────────────────────────────────────────────────── */}
       <Section>
         <div className="px-4 pt-4 pb-4 space-y-3">
-          {/* Context pill row */}
-          <div className="flex flex-wrap gap-2">
-            {isPodGame ? (
-              <button
-                onClick={() => game.pod_id && navigate(ROUTES.POD(game.pod_id))}
-                disabled={!game.pod_id}
-                className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-full px-3.5 py-1.5 transition-colors hover:bg-purple-500/20 disabled:cursor-default"
-              >
-                <Layers className="w-3.5 h-3.5 flex-shrink-0 text-purple-400" />
-                <span className="text-xs text-purple-400 font-semibold">{game.pod_name || "POD Game"}</span>
-              </button>
-            ) : (
-              <MetaPill icon={Swords} label="Casual Game" className="bg-sky-500/10 text-sky-400 border border-sky-500/20" />
-            )}
-            <MetaPill
-              icon={Trophy}
-              label={formatLabel(game.game_format)}
-              className="bg-amber-500/10 text-amber-400 border border-amber-500/20"
-            />
-          </div>
-
           {/* Date + player count */}
           <div className="flex flex-wrap gap-2">
             <MetaPill
