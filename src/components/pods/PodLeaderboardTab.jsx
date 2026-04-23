@@ -228,17 +228,8 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
     async function load() {
       setLoading(true);
       try {
-        // Fetch leaderboard + pod game history in parallel.
-        // podHistory gives us approved games + participants needed to compute prevLeaderboard.
-        const [lbResult, historyResult] = await Promise.all([
-          getPODLeaderboard(podId, currentUser.id),
-          base44.functions.invoke("publicProfiles", {
-            action: "podHistory",
-            podId,
-            callerProfileId: currentUser.id,
-          }),
-        ]);
-
+        // Fetch leaderboard first, then history sequentially to avoid rate limiting.
+        const lbResult = await getPODLeaderboard(podId, currentUser.id);
         if (cancelled) return;
 
         const lb = lbResult.leaderboard || [];
@@ -249,16 +240,27 @@ export default function PodLeaderboardTab({ pod, myMembership, podId }) {
 
         // Movement computation:
         // Priority 1: use backend-provided prevLeaderboard if available (future-ready path).
-        // Priority 2: derive client-side from pod game history (current practical path).
+        // Priority 2: derive client-side from pod game history.
         const backendPrev = lbResult.prevLeaderboard || null;
         if (backendPrev) {
           setPrevLeaderboard(backendPrev);
-        } else if (historyResult?.data) {
-          const { games: podGames = [], participants: participantMap = {} } = historyResult.data;
-          const clientPrev = derivePrevLeaderboard(lb, podGames, participantMap);
-          setPrevLeaderboard(clientPrev);
         } else {
-          setPrevLeaderboard(null);
+          // Fetch history after leaderboard to avoid simultaneous requests
+          const historyResult = await base44.functions.invoke("publicProfiles", {
+            action: "podHistory",
+            podId,
+            callerProfileId: currentUser.id,
+          }).catch(() => null);
+
+          if (cancelled) return;
+
+          if (historyResult?.data) {
+            const { games: podGames = [], participants: participantMap = {} } = historyResult.data;
+            const clientPrev = derivePrevLeaderboard(lb, podGames, participantMap);
+            setPrevLeaderboard(clientPrev);
+          } else {
+            setPrevLeaderboard(null);
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
