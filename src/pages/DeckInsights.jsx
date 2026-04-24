@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Swords, Lock, RefreshCw, AlertCircle, Trophy, Skull, Sword, Users, ChevronLeft } from "lucide-react";
+import { Swords, Lock, RefreshCw, AlertCircle, Trophy, Skull, Sword, Users, ChevronLeft, ExternalLink } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
 import { getDeckInsights } from "@/components/services/deckInsightsService";
@@ -152,6 +152,9 @@ export default function DeckInsights() {
     }
   }
 
+  // Always start from the top when the page is entered
+  useEffect(() => { window.scrollTo(0, 0); }, [deckId]);
+
   useEffect(() => {
     if (auth.authLoading) return;
     if (!deckId) { setError("No deck specified."); setLoading(false); return; }
@@ -225,7 +228,7 @@ export default function DeckInsights() {
 
         <div className="relative z-10 p-4 pb-0 flex gap-4">
           {/* Commander portrait — slightly lifted with subtle inner shadow */}
-          <div className="w-[72px] h-[92px] flex-shrink-0 rounded-xl overflow-hidden"
+          <div className="w-[80px] h-[104px] flex-shrink-0 rounded-xl overflow-hidden"
             style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.07)" }}
           >
             {deck.commander_image_url ? (
@@ -247,10 +250,12 @@ export default function DeckInsights() {
                   {ownerLabel}
                 </span>
               )}
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md text-gray-500"
-                style={{ background: "rgba(255,255,255,0.05)" }}>
-                Commander
-              </span>
+              {deck.deck_format && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md text-amber-400/80"
+                  style={{ background: "rgba(251,191,36,0.08)" }}>
+                  {deck.deck_format.charAt(0).toUpperCase() + deck.deck_format.slice(1)}
+                </span>
+              )}
             </div>
 
             {/* Deck archetype label if present */}
@@ -281,6 +286,20 @@ export default function DeckInsights() {
           <KpiCard label="Win Rate" value={`${summary.win_rate_percent}%`} />
         </div>
       </div>
+
+      {/* ── DECK LINK BUTTON ────────────────────────────────────────────────── */}
+      {deck.external_deck_link && (
+        <a
+          href={deck.external_deck_link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full h-11 rounded-2xl border border-white/10 text-gray-300 hover:text-white hover:border-white/20 text-sm font-semibold transition-colors"
+          style={{ background: "rgba(255,255,255,0.04)" }}
+        >
+          <ExternalLink className="w-4 h-4 text-gray-500" />
+          Deck Link
+        </a>
+      )}
 
       {/* ── LOCKED STATE ────────────────────────────────────────────────────── */}
       {!eligibility.insights_unlocked ? (
