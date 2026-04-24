@@ -15,6 +15,7 @@ import NotificationSenderSection from "@/components/founder/NotificationSenderSe
 import ConfigEditorSection from "@/components/founder/ConfigEditorSection";
 import QAHealthSection from "@/components/founder/QAHealthSection";
 import FounderGameSection from "@/components/founder/FounderGameSection";
+import DeckLinkSourcesSection from "@/components/founder/DeckLinkSourcesSection";
 
 const TABS = [
   { key: "overview",    label: "Overview" },
@@ -22,6 +23,7 @@ const TABS = [
   { key: "founders",    label: "Founders" },
   { key: "nav",         label: "Navigation" },
   { key: "flags",       label: "Flags" },
+  { key: "decklinks",   label: "Deck Links" },
   { key: "browser",     label: "Browser" },
   { key: "notifs",      label: "Notifs" },
   { key: "config",      label: "Config" },
@@ -161,6 +163,7 @@ export default function Founder() {
       {activeTab === "founders"  && <FoundersSection settings={settings} auth={auth} onRefresh={handleRefresh} />}
       {activeTab === "nav"       && <NavBuilderSection settings={settings} onRefresh={handleRefresh} />}
       {activeTab === "flags"     && <FeatureFlagsSection settings={settings} onRefresh={handleRefresh} />}
+      {activeTab === "decklinks" && <DeckLinkSourcesSection />}
       {activeTab === "browser"   && <EntityBrowserSection />}
       {activeTab === "notifs"    && <NotificationSenderSection auth={auth} />}
       {activeTab === "config"    && <ConfigEditorSection settings={settings} onRefresh={handleRefresh} />}

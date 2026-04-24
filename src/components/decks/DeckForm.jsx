@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
@@ -9,29 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import CommanderSearch from "@/components/decks/CommanderSearch";
 import DeckIdentityCard from "@/components/decks/DeckIdentityCard";
 import { ExternalLink, Lock } from "lucide-react";
-
-const ALLOWED_DECK_LINK_HOSTS = [
-  "moxfield.com", "www.moxfield.com",
-  "archidekt.com", "www.archidekt.com",
-  "edhrec.com", "www.edhrec.com",
-  "tappedout.net", "www.tappedout.net",
-  "deckstats.net", "www.deckstats.net",
-  "mtggoldfish.com", "www.mtggoldfish.com",
-  "aetherhub.com", "www.aetherhub.com",
-  "scryfall.com", "www.scryfall.com",
-  "cubecobra.com", "www.cubecobra.com",
-];
-
-function validateExternalDeckLink(url) {
-  if (!url || !url.trim()) return { valid: true };
-  let parsed;
-  try { parsed = new URL(url.trim()); } catch { return { valid: false, error: "Must be a valid URL" }; }
-  if (parsed.protocol !== "https:") return { valid: false, error: "Link must use https://" };
-  if (!ALLOWED_DECK_LINK_HOSTS.includes(parsed.hostname)) {
-    return { valid: false, error: "Link must point to a recognized site (Moxfield, Archidekt, EDHREC, MTGGoldfish, etc.)" };
-  }
-  return { valid: true };
-}
+import { getApprovedHosts, validateDeckLinkSync, BASELINE_DECK_LINK_HOSTS } from "@/components/services/deckLinkService";
 
 // Confirmation dialog rendered via portal to escape overflow/z-index clipping
 function DeleteConfirmDialog({ deckName, onConfirm, onCancel, loading }) {
@@ -87,6 +65,11 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
   const [commanderError, setCommanderError] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // Load founder-managed + baseline approved hosts once on mount
+  const [approvedHosts, setApprovedHosts] = useState(BASELINE_DECK_LINK_HOSTS);
+  useEffect(() => {
+    getApprovedHosts().then(setApprovedHosts).catch(() => {});
+  }, []);
 
   function handleCommanderSelect({ name: cName, color_identity, commander_image_url }) {
     setCommanderName(cName);
@@ -98,7 +81,7 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
   function handleExternalLinkChange(val) {
     setExternalDeckLink(val);
     if (val.trim()) {
-      const result = validateExternalDeckLink(val);
+      const result = validateDeckLinkSync(val, approvedHosts);
       setExternalLinkError(result.valid ? "" : result.error);
     } else {
       setExternalLinkError("");
@@ -112,7 +95,7 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
       return;
     }
     // Validate external link before saving
-    const linkCheck = validateExternalDeckLink(externalDeckLink);
+    const linkCheck = validateDeckLinkSync(externalDeckLink, approvedHosts);
     if (!linkCheck.valid) {
       setExternalLinkError(linkCheck.error);
       return;

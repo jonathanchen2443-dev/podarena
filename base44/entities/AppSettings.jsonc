@@ -1,0 +1,46 @@
+{
+  "name": "AppSettings",
+  "type": "object",
+  "properties": {
+    "singleton_key": {
+      "type": "string",
+      "default": "global",
+      "description": "Always 'global' \u2014 only one row should exist"
+    },
+    "founder_user_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "User IDs with founder (internal admin) access"
+    },
+    "bottom_nav_config": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": [],
+      "description": "Ordered list of nav items: { key, label, icon, routeKey, enabled }"
+    },
+    "feature_flags": {
+      "type": "object",
+      "default": {},
+      "description": "Boolean feature flags for toggling app modules"
+    },
+    "templates": {
+      "type": "object",
+      "default": {},
+      "description": "Message templates: { invite_message: string }"
+    },
+    "approved_deck_link_hosts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": [],
+      "description": "Founder-managed list of approved external deck-link hosts. Each entry: { host, label, enabled, added_at }"
+    }
+  },
+  "required": []
+}

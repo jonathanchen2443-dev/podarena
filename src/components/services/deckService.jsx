@@ -3,37 +3,15 @@
  */
 import { base44 } from "@/api/base44Client";
 import { canCreateDeck, canEditDeck } from "@/components/services/permissionService";
-
-const ALLOWED_DECK_LINK_HOSTS = [
-  "moxfield.com", "www.moxfield.com",
-  "archidekt.com", "www.archidekt.com",
-  "edhrec.com", "www.edhrec.com",
-  "tappedout.net", "www.tappedout.net",
-  "deckstats.net", "www.deckstats.net",
-  "mtggoldfish.com", "www.mtggoldfish.com",
-  "aetherhub.com", "www.aetherhub.com",
-  "scryfall.com", "www.scryfall.com",
-  "cubecobra.com", "www.cubecobra.com",
-];
-
-function validateExternalDeckLink(url) {
-  if (!url || !url.trim()) return { valid: true };
-  let parsed;
-  try { parsed = new URL(url.trim()); } catch { return { valid: false, error: "Must be a valid URL" }; }
-  if (parsed.protocol !== "https:") return { valid: false, error: "Link must use https://" };
-  if (!ALLOWED_DECK_LINK_HOSTS.includes(parsed.hostname)) {
-    return { valid: false, error: "Link must point to a recognized site (Moxfield, Archidekt, EDHREC, MTGGoldfish, etc.)" };
-  }
-  return { valid: true };
-}
+import { validateDeckLink } from "@/components/services/deckLinkService";
 
 /**
  * Sanitize and validate fields before save.
  * Throws if any validation fails.
  */
-function sanitizeDeckPayload(payload) {
+async function sanitizeDeckPayload(payload) {
   if (payload.external_deck_link) {
-    const check = validateExternalDeckLink(payload.external_deck_link);
+    const check = await validateDeckLink(payload.external_deck_link);
     if (!check.valid) throw new Error(`Invalid deck link: ${check.error}`);
   }
   return {
