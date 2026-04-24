@@ -1,29 +1,15 @@
 /**
- * Deck Service - All deck CRUD operations with permission enforcement.
+ * Deck Service — All deck CRUD operations.
+ *
+ * create/update now route through the `deckSave` backend function which
+ * enforces the approved-host allowlist server-side (https-only, known hosts).
+ * Client-side validation in DeckForm still runs for UX, but backend is the
+ * authoritative gate — bypassing the client cannot circumvent it.
+ *
+ * delete still goes direct (ownership verified by entity RLS).
+ * list/get still go direct (read-only, RLS-scoped).
  */
 import { base44 } from "@/api/base44Client";
-import { canCreateDeck, canEditDeck } from "@/components/services/permissionService";
-import { validateDeckLink } from "@/components/services/deckLinkService";
-
-/**
- * Sanitize and validate fields before save.
- * Throws if any validation fails.
- */
-async function sanitizeDeckPayload(payload) {
-  if (payload.external_deck_link) {
-    const check = await validateDeckLink(payload.external_deck_link);
-    if (!check.valid) throw new Error(`Invalid deck link: ${check.error}`);
-  }
-  return {
-    name: payload.name,
-    commander_name: payload.commander_name || "",
-    commander_image_url: payload.commander_image_url || "",
-    color_identity: payload.color_identity || [],
-    is_active: payload.is_active !== undefined ? payload.is_active : true,
-    deck_format: payload.deck_format || "commander",
-    external_deck_link: payload.external_deck_link?.trim() || null,
-  };
-}
 
 export async function listMyDecks(auth) {
   if (auth.isGuest || !auth.currentUser || !auth.currentUser.id) return [];
@@ -40,28 +26,46 @@ export async function getMyDeckById(auth, deckId) {
 }
 
 export async function createDeck(auth, payload) {
-  if (!canCreateDeck(auth)) throw new Error("You must be logged in to create a deck.");
-  if (!auth.currentUser) throw new Error("Loading your profile — please try again in a moment.");
-  const safe = sanitizeDeckPayload(payload);
-  return base44.entities.Deck.create({
-    owner_id: auth.currentUser.id,
-    ...safe,
+  if (auth.isGuest || !auth.currentUser) throw new Error("You must be logged in to create a deck.");
+
+  const res = await base44.functions.invoke("deckSave", {
+    action: "createDeck",
+    name: payload.name,
+    commander_name: payload.commander_name || "",
+    commander_image_url: payload.commander_image_url || "",
+    color_identity: payload.color_identity || [],
+    is_active: payload.is_active !== undefined ? payload.is_active : true,
+    deck_format: payload.deck_format || "commander",
+    external_deck_link: payload.external_deck_link || null,
     is_favorite: payload.is_favorite ?? false,
   });
+
+  if (res.data?.error) throw new Error(res.data.error);
+  return res.data.deck;
 }
 
 export async function updateDeck(auth, deckId, payload) {
-  const deck = await getMyDeckById(auth, deckId);
-  if (!canEditDeck(auth, deck.owner_id)) throw new Error("You do not have permission to edit this deck.");
-  const safe = sanitizeDeckPayload(payload);
-  return base44.entities.Deck.update(deckId, {
-    ...safe,
-    is_favorite: payload.is_favorite ?? deck.is_favorite ?? false,
+  if (auth.isGuest || !auth.currentUser) throw new Error("Authentication required.");
+
+  const res = await base44.functions.invoke("deckSave", {
+    action: "updateDeck",
+    deckId,
+    name: payload.name,
+    commander_name: payload.commander_name || "",
+    commander_image_url: payload.commander_image_url || "",
+    color_identity: payload.color_identity || [],
+    is_active: payload.is_active !== undefined ? payload.is_active : true,
+    deck_format: payload.deck_format || "commander",
+    external_deck_link: payload.external_deck_link || null,
+    is_favorite: payload.is_favorite ?? false,
   });
+
+  if (res.data?.error) throw new Error(res.data.error);
+  return res.data.deck;
 }
 
 export async function deleteDeck(auth, deckId) {
   const deck = await getMyDeckById(auth, deckId);
-  if (!canEditDeck(auth, deck.owner_id)) throw new Error("You do not have permission to delete this deck.");
+  if (deck.owner_id !== auth.currentUser.id) throw new Error("You do not have permission to delete this deck.");
   await base44.entities.Deck.delete(deckId);
 }

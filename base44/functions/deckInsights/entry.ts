@@ -286,6 +286,8 @@ Deno.serve(async (req) => {
         commander_name: deck.commander_name || null,
         commander_image_url: deck.commander_image_url || null,
         color_identity: deck.color_identity || [],
+        deck_format: deck.deck_format || null,
+        external_deck_link: deck.external_deck_link || null,
         first_logged_at: firstLoggedAt,
         last_played_at: lastPlayedAt,
       },
