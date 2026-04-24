@@ -8,8 +8,30 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import CommanderSearch from "@/components/decks/CommanderSearch";
 import DeckIdentityCard from "@/components/decks/DeckIdentityCard";
-import { validateExternalDeckLink } from "@/components/decks/deckLinkValidator";
 import { ExternalLink, Lock } from "lucide-react";
+
+const ALLOWED_DECK_LINK_HOSTS = [
+  "moxfield.com", "www.moxfield.com",
+  "archidekt.com", "www.archidekt.com",
+  "edhrec.com", "www.edhrec.com",
+  "tappedout.net", "www.tappedout.net",
+  "deckstats.net", "www.deckstats.net",
+  "mtggoldfish.com", "www.mtggoldfish.com",
+  "aetherhub.com", "www.aetherhub.com",
+  "scryfall.com", "www.scryfall.com",
+  "cubecobra.com", "www.cubecobra.com",
+];
+
+function validateExternalDeckLink(url) {
+  if (!url || !url.trim()) return { valid: true };
+  let parsed;
+  try { parsed = new URL(url.trim()); } catch { return { valid: false, error: "Must be a valid URL" }; }
+  if (parsed.protocol !== "https:") return { valid: false, error: "Link must use https://" };
+  if (!ALLOWED_DECK_LINK_HOSTS.includes(parsed.hostname)) {
+    return { valid: false, error: "Link must point to a recognized site (Moxfield, Archidekt, EDHREC, MTGGoldfish, etc.)" };
+  }
+  return { valid: true };
+}
 
 // Confirmation dialog rendered via portal to escape overflow/z-index clipping
 function DeleteConfirmDialog({ deckName, onConfirm, onCancel, loading }) {
