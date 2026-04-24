@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/components/utils/routes";
-import { Plus, Lock, AlertCircle, RefreshCw, ArrowLeft } from "lucide-react";
+import { Plus, Lock, AlertCircle, RefreshCw, ArrowLeft, CheckCircle2, Share2, Pencil } from "lucide-react";
 // AlertCircle retained for error UI
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -66,6 +66,7 @@ export default function ProfileDecks() {
   const [deletingDeck, setDeletingDeck] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [createdDeck, setCreatedDeck] = useState(null); // deck record returned after create success
   const [editDeck, setEditDeck] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -121,11 +122,15 @@ export default function ProfileDecks() {
 
   async function handleCreate(payload) {
     setSaving(true);
-    await createDeck(auth, payload);
-    toast.success("Deck created!");
-    if (auth.currentUser?.id) invalidateDeckStatsCache(auth.currentUser.id);
-    navigate(ROUTES.PROFILE_DECKS);
-    setSaving(false);
+    try {
+      const deck = await createDeck(auth, payload);
+      if (auth.currentUser?.id) invalidateDeckStatsCache(auth.currentUser.id);
+      setCreatedDeck(deck);
+    } catch (e) {
+      toast.error(e?.message || "Failed to create deck. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleUpdate(payload) {
@@ -190,6 +195,60 @@ export default function ProfileDecks() {
         >
           Sign In
         </button>
+      </div>
+    );
+  }
+
+  // ── Create success ──────────────────────────────────────────────────────────
+  if (subRoute.mode === "new" && createdDeck) {
+    const shareUrl = `${window.location.origin}${ROUTES.USER_PROFILE(auth.currentUser?.id, createdDeck.id)}`;
+
+    async function handleShare() {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: createdDeck.commander_name || createdDeck.name || "My Commander Deck",
+            text: `Check out my Commander deck on PodArena!`,
+            url: shareUrl,
+          });
+        } catch {}
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Deck link copied!");
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-6 text-center gap-5">
+        <div className="w-14 h-14 rounded-full flex items-center justify-center bg-green-500/10 border border-green-500/20">
+          <CheckCircle2 className="w-7 h-7 text-green-400" />
+        </div>
+        <div>
+          <h2 className="text-white font-bold text-xl">Deck Created!</h2>
+          <p className="text-gray-400 text-sm mt-1">
+            {createdDeck.commander_name || createdDeck.name || "Your deck"} has been added to your collection.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <button
+            onClick={handleShare}
+            className="flex items-center justify-center gap-2 h-11 rounded-xl border border-gray-700 text-gray-300 hover:bg-gray-800 text-sm font-medium transition-colors"
+          >
+            <Share2 className="w-4 h-4" /> Share Deck
+          </button>
+          <button
+            onClick={() => navigate(ROUTES.PROFILE_DECK_EDIT(createdDeck.id))}
+            className="flex items-center justify-center gap-2 h-11 rounded-xl border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm transition-colors"
+          >
+            <Pencil className="w-4 h-4" /> Edit Deck
+          </button>
+          <button
+            onClick={() => { setCreatedDeck(null); navigate(ROUTES.PROFILE_DECKS); }}
+            className="h-11 rounded-xl ds-btn-primary text-white text-sm font-semibold transition-colors"
+          >
+            View All Decks
+          </button>
+        </div>
       </div>
     );
   }

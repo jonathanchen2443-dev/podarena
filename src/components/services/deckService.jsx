@@ -3,6 +3,27 @@
  */
 import { base44 } from "@/api/base44Client";
 import { canCreateDeck, canEditDeck } from "@/components/services/permissionService";
+import { validateExternalDeckLink } from "@/components/decks/deckLinkValidator.js";
+
+/**
+ * Sanitize and validate fields before save.
+ * Throws if any validation fails.
+ */
+function sanitizeDeckPayload(payload) {
+  if (payload.external_deck_link) {
+    const check = validateExternalDeckLink(payload.external_deck_link);
+    if (!check.valid) throw new Error(`Invalid deck link: ${check.error}`);
+  }
+  return {
+    name: payload.name,
+    commander_name: payload.commander_name || "",
+    commander_image_url: payload.commander_image_url || "",
+    color_identity: payload.color_identity || [],
+    is_active: payload.is_active !== undefined ? payload.is_active : true,
+    deck_format: payload.deck_format || "commander",
+    external_deck_link: payload.external_deck_link?.trim() || null,
+  };
+}
 
 export async function listMyDecks(auth) {
   if (auth.isGuest || !auth.currentUser || !auth.currentUser.id) return [];
@@ -21,13 +42,10 @@ export async function getMyDeckById(auth, deckId) {
 export async function createDeck(auth, payload) {
   if (!canCreateDeck(auth)) throw new Error("You must be logged in to create a deck.");
   if (!auth.currentUser) throw new Error("Loading your profile — please try again in a moment.");
+  const safe = sanitizeDeckPayload(payload);
   return base44.entities.Deck.create({
     owner_id: auth.currentUser.id,
-    name: payload.name,
-    commander_name: payload.commander_name || "",
-    commander_image_url: payload.commander_image_url || "",
-    color_identity: payload.color_identity || [],
-    is_active: payload.is_active !== undefined ? payload.is_active : true,
+    ...safe,
     is_favorite: payload.is_favorite ?? false,
   });
 }
@@ -35,12 +53,9 @@ export async function createDeck(auth, payload) {
 export async function updateDeck(auth, deckId, payload) {
   const deck = await getMyDeckById(auth, deckId);
   if (!canEditDeck(auth, deck.owner_id)) throw new Error("You do not have permission to edit this deck.");
+  const safe = sanitizeDeckPayload(payload);
   return base44.entities.Deck.update(deckId, {
-    name: payload.name,
-    commander_name: payload.commander_name || "",
-    commander_image_url: payload.commander_image_url || "",
-    color_identity: payload.color_identity || [],
-    is_active: payload.is_active !== undefined ? payload.is_active : true,
+    ...safe,
     is_favorite: payload.is_favorite ?? deck.is_favorite ?? false,
   });
 }
