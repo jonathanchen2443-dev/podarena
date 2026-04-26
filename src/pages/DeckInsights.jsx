@@ -13,6 +13,7 @@ import { ROUTES } from "@/components/utils/routes";
 import { format, parseISO } from "date-fns";
 import CommanderCardModal from "@/components/decks/CommanderCardModal";
 import DeckListTab from "@/components/decks/DeckListTab";
+import DeckImportButton from "@/components/decks/DeckImportButton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -280,6 +281,7 @@ export default function DeckInsights() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("insights");
   const [commanderModalOpen, setCommanderModalOpen] = useState(false);
+  const [importStatus, setImportStatus] = useState(null); // tracks live import state
 
   async function loadInsights() {
     setLoading(true);
@@ -288,6 +290,7 @@ export default function DeckInsights() {
       const result = await getDeckInsights(auth, deckId);
       if (!result) throw new Error("No data returned");
       setData(result);
+      setImportStatus(result.deck?.deck_list_import_status || 'not_imported');
     } catch (e) {
       setError(e?.message || "Failed to load deck insights");
     } finally {
@@ -456,11 +459,28 @@ export default function DeckInsights() {
       {activeTab === "insights" ? (
         <InsightsContent data={data} />
       ) : (
-        <DeckListTab
-          isOwner={isOwnDeck}
-          showDeckListPublicly={deck.show_deck_list_publicly ?? false}
-          hasDeckListData={false}
-        />
+        <>
+          {/* Owner-only import/refresh control */}
+          {isOwnDeck && deck.external_deck_link && (
+            <DeckImportButton
+              deck={{ ...deck, deck_list_import_status: importStatus ?? deck.deck_list_import_status }}
+              onImportDone={(result) => {
+                setImportStatus('imported');
+                // Invalidate insights cache so deck metadata refreshes on next load
+                import("@/components/services/deckInsightsService").then(({ invalidateDeckInsightsCache }) => {
+                  invalidateDeckInsightsCache(deckId);
+                });
+              }}
+            />
+          )}
+          <DeckListTab
+            isOwner={isOwnDeck}
+            showDeckListPublicly={deck.show_deck_list_publicly ?? false}
+            importStatus={importStatus ?? deck.deck_list_import_status ?? 'not_imported'}
+            lastSyncedAt={deck.deck_list_last_synced_at ?? null}
+            cardCount={deck.deck_list_card_count ?? null}
+          />
+        </>
       )}
 
       {/* ── BACK CTA ──────────────────────────────────────────────────────────── */}

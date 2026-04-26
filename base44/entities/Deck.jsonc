@@ -59,7 +59,32 @@
     "show_deck_list_publicly": {
       "type": "boolean",
       "default": false,
-      "description": "When true, the external deck link is visible to other users viewing this deck."
+      "description": "When true, the deck list is visible to other users viewing this deck."
+    },
+    "deck_list_import_status": {
+      "type": "string",
+      "enum": [
+        "not_imported",
+        "importing",
+        "imported",
+        "failed",
+        "unsupported_source"
+      ],
+      "default": "not_imported",
+      "description": "Current state of deck-list import from the external source."
+    },
+    "deck_list_last_synced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp of the last successful deck-list import/refresh."
+    },
+    "deck_list_source_host": {
+      "type": "string",
+      "description": "Normalized hostname of the import source (e.g. 'moxfield.com'). Set when import runs."
+    },
+    "deck_list_card_count": {
+      "type": "integer",
+      "description": "Total number of cards (by quantity) in the last successful import."
     }
   },
   "required": [

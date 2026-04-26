@@ -1,0 +1,144 @@
+{
+  "name": "DeckCard",
+  "type": "object",
+  "properties": {
+    "deck_id": {
+      "type": "string",
+      "description": "ID of the parent Deck this card belongs to."
+    },
+    "card_name": {
+      "type": "string",
+      "description": "Name of the card as imported from the external source."
+    },
+    "quantity": {
+      "type": "integer",
+      "default": 1,
+      "description": "Number of copies of this card in the deck."
+    },
+    "scryfall_id": {
+      "type": "string",
+      "description": "Scryfall card UUID, populated during enrichment."
+    },
+    "oracle_id": {
+      "type": "string",
+      "description": "Scryfall oracle ID (canonical across printings)."
+    },
+    "mana_cost": {
+      "type": "string",
+      "description": "Mana cost string from Scryfall (e.g. '{2}{W}{U}')."
+    },
+    "cmc": {
+      "type": "number",
+      "description": "Converted mana cost (numeric) from Scryfall."
+    },
+    "type_line": {
+      "type": "string",
+      "description": "Full type line from Scryfall (e.g. 'Legendary Creature \u2014 Phyrexian Praetor')."
+    },
+    "colors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Color array from Scryfall (e.g. ['W','U','B','G'])."
+    },
+    "image_small_url": {
+      "type": "string",
+      "description": "Small card image URL from Scryfall. Used for compact list rendering."
+    },
+    "section": {
+      "type": "string",
+      "description": "Deck section this card belongs to (e.g. 'Commander', 'Creatures', 'Instants', 'Lands', 'Other')."
+    },
+    "is_commander": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this card is the deck's commander."
+    },
+    "sort_order": {
+      "type": "integer",
+      "default": 0,
+      "description": "Ordering hint within section for display purposes."
+    },
+    "enrichment_status": {
+      "type": "string",
+      "enum": [
+        "enriched",
+        "not_found",
+        "failed"
+      ],
+      "default": "enriched",
+      "description": "Whether Scryfall enrichment succeeded for this card."
+    }
+  },
+  "required": [
+    "deck_id",
+    "card_name"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.deck_id": {
+            "$inQuery": {
+              "entity": "Deck",
+              "field": "id",
+              "filters": {
+                "owner_id": "{{user.id}}"
+              }
+            }
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.deck_id": {
+            "$inQuery": {
+              "entity": "Deck",
+              "field": "id",
+              "filters": {
+                "owner_id": "{{user.id}}"
+              }
+            }
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.deck_id": {
+            "$inQuery": {
+              "entity": "Deck",
+              "field": "id",
+              "filters": {
+                "owner_id": "{{user.id}}"
+              }
+            }
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
