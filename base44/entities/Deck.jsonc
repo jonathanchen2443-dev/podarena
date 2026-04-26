@@ -4,44 +4,35 @@
   "properties": {
     "owner_id": {
       "type": "string",
-      "description": "Profile entity ID of the deck owner"
+      "description": "Profile entity ID of the deck owner. Used for ownership queries and RLS."
     },
     "name": {
       "type": "string",
-      "description": "Optional nickname for the deck"
+      "description": "Optional nickname for the deck (e.g. 'Atraxa Superfriends'). Separate from commander name."
     },
     "commander_name": {
       "type": "string",
-      "description": "Name of the commander card"
+      "description": "Name of the commander card. Required for deck identity."
     },
     "commander_image_url": {
       "type": "string",
-      "description": "Art crop image URL used in hero/identity display"
+      "description": "Art crop image URL from Scryfall. Used as the portrait thumbnail in deck tiles and hero headers."
     },
     "commander_full_card_image_url": {
       "type": "string",
-      "description": "Full card image URL from Scryfall (includes frame, text, etc.) used in the commander card modal"
+      "description": "Full card image URL from Scryfall (large). Used in the CommanderCardModal for the full readable card view."
     },
     "commander_scryfall_id": {
       "type": "string",
-      "description": "Scryfall card ID for the commander. Used as a reliable reference for fetching card data."
+      "description": "Scryfall card UUID for the commander. Used for deduplication and future card data lookups."
     },
     "color_identity": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Color identity of the commander (e.g. ['W', 'U', 'B', 'R', 'G'])"
-    },
-    "is_active": {
-      "type": "boolean",
-      "default": true,
-      "description": "Active decks are shown in game logging. Retired decks are hidden."
-    },
-    "is_favorite": {
-      "type": "boolean",
-      "default": false,
-      "description": "User-starred favorite deck"
+      "default": [],
+      "description": "MTG color identity of the commander (e.g. ['W','U','B','G']). Derived from Scryfall at deck creation."
     },
     "deck_format": {
       "type": "string",
@@ -49,16 +40,26 @@
         "commander"
       ],
       "default": "commander",
-      "description": "The format of the deck. Currently only commander is supported."
+      "description": "Game format. Currently locked to 'commander'."
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Active decks appear in game logging. Retired decks are hidden from logging but remain visible in profile."
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false,
+      "description": "Owner-set favorite flag. Favorite decks are sorted to the top of the deck list."
     },
     "external_deck_link": {
       "type": "string",
-      "description": "Optional link to the deck on an approved external site (Moxfield, Archidekt, etc.)"
+      "description": "Optional HTTPS link to the decklist on an approved external site (Moxfield, Archidekt, etc.)."
     },
     "show_deck_list_publicly": {
       "type": "boolean",
       "default": false,
-      "description": "When true, the deck list is visible to other users on the public deck page"
+      "description": "When true, the external deck link is visible to other users viewing this deck."
     }
   },
   "required": [
