@@ -474,6 +474,7 @@ export default function DeckInsights() {
             />
           )}
           <DeckListTab
+            deckId={deckId}
             isOwner={isOwnDeck}
             showDeckListPublicly={deck.show_deck_list_publicly ?? false}
             importStatus={importStatus ?? deck.deck_list_import_status ?? 'not_imported'}
