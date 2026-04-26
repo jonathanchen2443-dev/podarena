@@ -44,6 +44,16 @@ function extractArtCrop(card) {
   return "";
 }
 
+function extractFullCardImage(card) {
+  // Prefer "large" for best quality full-card render; fallback to "normal"
+  if (card.image_uris?.large) return card.image_uris.large;
+  if (card.image_uris?.normal) return card.image_uris.normal;
+  // For double-faced cards use front face
+  if (card.card_faces?.[0]?.image_uris?.large) return card.card_faces[0].image_uris.large;
+  if (card.card_faces?.[0]?.image_uris?.normal) return card.card_faces[0].image_uris.normal;
+  return "";
+}
+
 /**
  * CommanderSearch
  * Props:
@@ -107,9 +117,16 @@ export default function CommanderSearch({ value, onChange, onSelect, inputClassN
     setOpen(false);
     setSuggestions([]);
     const imageUrl = extractArtCrop(card);
+    const fullCardImageUrl = extractFullCardImage(card);
     const colorIdentity = card.color_identity || card.colors || [];
     onChange(card.name);
-    onSelect({ name: card.name, color_identity: colorIdentity, commander_image_url: imageUrl });
+    onSelect({
+      name: card.name,
+      color_identity: colorIdentity,
+      commander_image_url: imageUrl,
+      commander_full_card_image_url: fullCardImageUrl,
+      commander_scryfall_id: card.id || "",
+    });
   }
 
   return (

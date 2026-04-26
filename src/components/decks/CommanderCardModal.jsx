@@ -3,11 +3,14 @@ import ReactDOM from "react-dom";
 import { X, Swords } from "lucide-react";
 
 /**
- * CommanderCardModal — full-card commander image modal.
- * Shows the commander card art in a large, centered overlay.
+ * CommanderCardModal — shows the full MTG card image (frame, text, art) in a modal.
+ * Uses commander_full_card_image_url as primary source; falls back to the art crop URL.
  * Closes on X button, backdrop click, or Escape key.
  */
-export default function CommanderCardModal({ commanderName, imageUrl, onClose }) {
+export default function CommanderCardModal({ commanderName, imageUrl, fullCardImageUrl, onClose }) {
+  // The "best" image to show — prefer full card, fall back to art crop
+  const displayUrl = fullCardImageUrl || imageUrl;
+
   // Close on Escape
   useEffect(() => {
     function handleKey(e) { if (e.key === "Escape") onClose(); }
@@ -25,48 +28,42 @@ export default function CommanderCardModal({ commanderName, imageUrl, onClose })
   const content = (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-6"
-      style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(8px)" }}
+      style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(10px)" }}
       onClick={onClose}
     >
-      {/* Card container — stop propagation so clicking image itself doesn't close */}
+      {/* Card container — stop propagation so clicking the image doesn't close */}
       <div
-        className="relative flex flex-col items-center gap-4 max-w-[320px] w-full"
+        className="relative max-w-[300px] w-full"
         onClick={(e) => e.stopPropagation()}
       >
         {/* X close button */}
         <button
           onClick={onClose}
-          className="absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+          className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
           aria-label="Close"
         >
           <X className="w-4 h-4" />
         </button>
 
-        {/* Full card image */}
-        <div className="w-full rounded-2xl overflow-hidden"
-          style={{ boxShadow: "0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.08)" }}
+        {/* Full card image — natural MTG card aspect ratio ~2:3 */}
+        <div
+          className="w-full rounded-2xl overflow-hidden"
+          style={{ boxShadow: "0 30px 90px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.08)" }}
         >
-          {imageUrl ? (
+          {displayUrl ? (
             <img
-              src={imageUrl}
+              src={displayUrl}
               alt={commanderName}
               className="w-full h-auto object-contain"
               draggable={false}
             />
           ) : (
-            <div className="w-full aspect-[2/3] bg-gray-800 flex flex-col items-center justify-center gap-3">
+            <div className="w-full aspect-[2/3] bg-gray-800 flex flex-col items-center justify-center gap-3 rounded-2xl">
               <Swords className="w-12 h-12 text-gray-600" />
               <p className="text-gray-500 text-sm">{commanderName || "Commander"}</p>
             </div>
           )}
         </div>
-
-        {/* Commander name below card */}
-        {commanderName && (
-          <p className="text-gray-300 text-sm font-semibold text-center truncate w-full px-2">
-            {commanderName}
-          </p>
-        )}
       </div>
     </div>
   );

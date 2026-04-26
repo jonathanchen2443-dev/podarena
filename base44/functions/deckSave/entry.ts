@@ -87,6 +87,8 @@ async function sanitizePayload(body, approvedHosts) {
     name: (body.name || '').trim(),
     commander_name: (body.commander_name || '').trim(),
     commander_image_url: (body.commander_image_url || '').trim(),
+    commander_full_card_image_url: (body.commander_full_card_image_url || '').trim(),
+    commander_scryfall_id: (body.commander_scryfall_id || '').trim(),
     color_identity: Array.isArray(body.color_identity) ? body.color_identity : [],
     is_active: body.is_active !== undefined ? !!body.is_active : true,
     deck_format: body.deck_format || 'commander',

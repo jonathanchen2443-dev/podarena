@@ -4,11 +4,11 @@
   "properties": {
     "owner_id": {
       "type": "string",
-      "description": "Profile ID of the deck owner (used for UI joins)"
+      "description": "Profile entity ID of the deck owner"
     },
     "name": {
       "type": "string",
-      "description": "Name of the deck"
+      "description": "Optional nickname for the deck"
     },
     "commander_name": {
       "type": "string",
@@ -16,32 +16,32 @@
     },
     "commander_image_url": {
       "type": "string",
-      "description": "URL to the commander card image"
+      "description": "Art crop image URL used in hero/identity display"
+    },
+    "commander_full_card_image_url": {
+      "type": "string",
+      "description": "Full card image URL from Scryfall (includes frame, text, etc.) used in the commander card modal"
+    },
+    "commander_scryfall_id": {
+      "type": "string",
+      "description": "Scryfall card ID for the commander. Used as a reliable reference for fetching card data."
     },
     "color_identity": {
       "type": "array",
       "items": {
-        "type": "string",
-        "enum": [
-          "W",
-          "U",
-          "B",
-          "R",
-          "G",
-          "C"
-        ]
+        "type": "string"
       },
-      "description": "Mana color identity: W=White, U=Blue, B=Black, R=Red, G=Green, C=Colorless"
+      "description": "Color identity of the commander (e.g. ['W', 'U', 'B', 'R', 'G'])"
     },
     "is_active": {
       "type": "boolean",
       "default": true,
-      "description": "Whether this deck is currently active/in use"
+      "description": "Active decks are shown in game logging. Retired decks are hidden."
     },
     "is_favorite": {
       "type": "boolean",
       "default": false,
-      "description": "Whether this deck is marked as a favorite"
+      "description": "User-starred favorite deck"
     },
     "deck_format": {
       "type": "string",
@@ -49,21 +49,21 @@
         "commander"
       ],
       "default": "commander",
-      "description": "The format this deck is built for. Extensible for future formats."
+      "description": "The format of the deck. Currently only commander is supported."
     },
     "external_deck_link": {
       "type": "string",
-      "description": "Optional public link to the decklist on a recognized external site (e.g. Moxfield, Archidekt, EDHREC)."
+      "description": "Optional link to the deck on an approved external site (Moxfield, Archidekt, etc.)"
     },
     "show_deck_list_publicly": {
       "type": "boolean",
       "default": false,
-      "description": "Whether the deck list content is visible to the public. Defaults to false (private). Owner always sees their own deck list."
+      "description": "When true, the deck list is visible to other users on the public deck page"
     }
   },
   "required": [
     "owner_id",
-    "name"
+    "commander_name"
   ],
   "rls": {
     "create": {
@@ -72,7 +72,7 @@
     "read": {
       "$or": [
         {
-          "created_by": "{{user.email}}"
+          "data.owner_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -84,7 +84,7 @@
     "update": {
       "$or": [
         {
-          "created_by": "{{user.email}}"
+          "data.owner_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -96,7 +96,7 @@
     "delete": {
       "$or": [
         {
-          "created_by": "{{user.email}}"
+          "data.owner_id": "{{user.id}}"
         },
         {
           "user_condition": {

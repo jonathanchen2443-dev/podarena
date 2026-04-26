@@ -56,6 +56,8 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
 
   const [commanderName, setCommanderName] = useState(initialValues?.commander_name || "");
   const [commanderImageUrl, setCommanderImageUrl] = useState(initialValues?.commander_image_url || "");
+  const [commanderFullCardImageUrl, setCommanderFullCardImageUrl] = useState(initialValues?.commander_full_card_image_url || "");
+  const [commanderScryfallId, setCommanderScryfallId] = useState(initialValues?.commander_scryfall_id || "");
   // colorIdentity is always derived from commander; manual editing removed
   const [colorIdentity, setColorIdentity] = useState(initialValues?.color_identity || []);
   const [name, setName] = useState(initialValues?.name || "");
@@ -72,10 +74,12 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
     getApprovedHosts().then(setApprovedHosts).catch(() => {});
   }, []);
 
-  function handleCommanderSelect({ name: cName, color_identity, commander_image_url }) {
+  function handleCommanderSelect({ name: cName, color_identity, commander_image_url, commander_full_card_image_url, commander_scryfall_id }) {
     setCommanderName(cName);
     setColorIdentity(color_identity || []);
     setCommanderImageUrl(commander_image_url || "");
+    setCommanderFullCardImageUrl(commander_full_card_image_url || "");
+    setCommanderScryfallId(commander_scryfall_id || "");
     setCommanderError("");
   }
 
@@ -106,6 +110,8 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
       name: name.trim(),
       commander_name: commanderName.trim(),
       commander_image_url: commanderImageUrl.trim(),
+      commander_full_card_image_url: commanderFullCardImageUrl.trim(),
+      commander_scryfall_id: commanderScryfallId.trim(),
       color_identity: colorIdentity,
       is_active: isActive,
       deck_format: "commander",

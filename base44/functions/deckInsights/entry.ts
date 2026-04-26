@@ -285,6 +285,8 @@ Deno.serve(async (req) => {
         name: deck.name || 'Unnamed',
         commander_name: deck.commander_name || null,
         commander_image_url: deck.commander_image_url || null,
+        commander_full_card_image_url: deck.commander_full_card_image_url || null,
+        commander_scryfall_id: deck.commander_scryfall_id || null,
         color_identity: deck.color_identity || [],
         deck_format: deck.deck_format || null,
         external_deck_link: deck.external_deck_link || null,

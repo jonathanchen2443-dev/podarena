@@ -480,6 +480,7 @@ export default function DeckInsights() {
         <CommanderCardModal
           commanderName={commanderName}
           imageUrl={deck.commander_image_url}
+          fullCardImageUrl={deck.commander_full_card_image_url}
           onClose={() => setCommanderModalOpen(false)}
         />
       )}
