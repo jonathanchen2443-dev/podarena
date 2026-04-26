@@ -85,6 +85,26 @@ export default function DeckListTab({
     return () => { cancelled = true; };
   }, [deckId, shouldLoad, importStatus]);
 
+  // ── All derived state (must be before any early returns) ──────────────────
+  const q = search.trim().toLowerCase();
+
+  const grouped = useMemo(() => {
+    const filtered = q ? cards.filter((c) => c.card_name?.toLowerCase().includes(q)) : cards;
+    const map = new Map();
+    for (const card of filtered) {
+      const sec = card.section || 'Other';
+      if (!map.has(sec)) map.set(sec, []);
+      map.get(sec).push(card);
+    }
+    return [...map.entries()].sort((a, b) => sectionSortKey(a[0]) - sectionSortKey(b[0]));
+  }, [cards, q]);
+
+  const totalCards = cards.reduce((s, c) => s + (c.quantity || 1), 0);
+
+  const syncLabel = lastSyncedAt
+    ? `Last synced ${format(parseISO(lastSyncedAt), "MMM d, yyyy")}`
+    : null;
+
   // ── Privacy gate ──────────────────────────────────────────────────────────
   if (isPrivateForViewer) {
     return (
@@ -187,27 +207,6 @@ export default function DeckListTab({
       />
     );
   }
-
-  // ── Grouping + search ─────────────────────────────────────────────────────
-
-  const q = search.trim().toLowerCase();
-
-  const grouped = useMemo(() => {
-    const filtered = q ? cards.filter((c) => c.card_name?.toLowerCase().includes(q)) : cards;
-    const map = new Map();
-    for (const card of filtered) {
-      const sec = card.section || 'Other';
-      if (!map.has(sec)) map.set(sec, []);
-      map.get(sec).push(card);
-    }
-    return [...map.entries()].sort((a, b) => sectionSortKey(a[0]) - sectionSortKey(b[0]));
-  }, [cards, q]);
-
-  const syncLabel = lastSyncedAt
-    ? `Last synced ${format(parseISO(lastSyncedAt), "MMM d, yyyy")}`
-    : null;
-
-  const totalCards = cards.reduce((s, c) => s + (c.quantity || 1), 0);
 
   return (
     <div className="space-y-3">
