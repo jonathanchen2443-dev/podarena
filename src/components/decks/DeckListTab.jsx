@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Lock, List, AlertCircle, Clock, Search, X } from "lucide-react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Lock, List, AlertCircle, Clock, Search, X, ChevronDown, ChevronRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { base44 } from "@/api/base44Client";
 import DeckCardRow from "@/components/decks/DeckCardRow";
@@ -64,6 +64,17 @@ export default function DeckListTab({
   const [loadingCards, setLoadingCards] = useState(false);
   const [cardError, setCardError] = useState(null);
   const [search, setSearch] = useState('');
+  // collapsed sections: Set of section names. Empty = all expanded.
+  const [collapsed, setCollapsed] = useState(new Set());
+
+  const toggleSection = useCallback((section) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  }, []);
 
   const isPrivateForViewer = !isOwner && !showDeckListPublicly;
   const shouldLoad = importStatus === 'imported' && !isPrivateForViewer && !!deckId;
@@ -243,21 +254,37 @@ export default function DeckListTab({
       ) : (
         grouped.map(([section, sectionCards]) => {
           const sectionQty = sectionCards.reduce((s, c) => s + (c.quantity || 1), 0);
+          // When search is active, always expand sections so results are visible
+          const isOpen = !!search.trim() || !collapsed.has(section);
           return (
             <div key={section}>
-              {/* Section header */}
-              <div className="flex items-center justify-between mb-1 px-0.5">
-                <span className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold">
-                  {section}
+              {/* Section header — clickable to collapse */}
+              <button
+                type="button"
+                onClick={() => !search.trim() && toggleSection(section)}
+                className="w-full flex items-center justify-between mb-1 px-0.5 group"
+                style={{ cursor: search.trim() ? "default" : "pointer" }}
+              >
+                <span className="flex items-center gap-1.5">
+                  {!search.trim() && (
+                    isOpen
+                      ? <ChevronDown className="w-3 h-3 text-gray-700 group-hover:text-gray-500 transition-colors flex-shrink-0" />
+                      : <ChevronRight className="w-3 h-3 text-gray-700 group-hover:text-gray-500 transition-colors flex-shrink-0" />
+                  )}
+                  <span className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold">
+                    {section}
+                  </span>
                 </span>
                 <span className="text-gray-700 text-[10px] font-medium tabular-nums">{sectionQty}</span>
-              </div>
+              </button>
               {/* Card rows */}
-              <div className="rounded-2xl px-3 py-1" style={{ background: "rgba(255,255,255,0.03)" }}>
-                {sectionCards.map((card, i) => (
-                  <DeckCardRow key={card.id || `${card.card_name}-${i}`} card={card} />
-                ))}
-              </div>
+              {isOpen && (
+                <div className="rounded-2xl px-3 py-0.5 mb-0.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                  {sectionCards.map((card, i) => (
+                    <DeckCardRow key={card.id || `${card.card_name}-${i}`} card={card} />
+                  ))}
+                </div>
+              )}
             </div>
           );
         })
