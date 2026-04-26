@@ -288,6 +288,7 @@ Deno.serve(async (req) => {
         color_identity: deck.color_identity || [],
         deck_format: deck.deck_format || null,
         external_deck_link: deck.external_deck_link || null,
+        show_deck_list_publicly: deck.show_deck_list_publicly ?? false,
         first_logged_at: firstLoggedAt,
         last_played_at: lastPlayedAt,
       },

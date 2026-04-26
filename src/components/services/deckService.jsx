@@ -38,6 +38,7 @@ export async function createDeck(auth, payload) {
     deck_format: payload.deck_format || "commander",
     external_deck_link: payload.external_deck_link || null,
     is_favorite: payload.is_favorite ?? false,
+    show_deck_list_publicly: payload.show_deck_list_publicly ?? false,
   });
 
   if (res.data?.error) throw new Error(res.data.error);
@@ -58,6 +59,7 @@ export async function updateDeck(auth, deckId, payload) {
     deck_format: payload.deck_format || "commander",
     external_deck_link: payload.external_deck_link || null,
     is_favorite: payload.is_favorite ?? false,
+    show_deck_list_publicly: payload.show_deck_list_publicly ?? false,
   });
 
   if (res.data?.error) throw new Error(res.data.error);

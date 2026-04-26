@@ -62,6 +62,7 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
   const [externalDeckLink, setExternalDeckLink] = useState(initialValues?.external_deck_link || "");
   const [externalLinkError, setExternalLinkError] = useState("");
   const [isActive, setIsActive] = useState(initialValues?.is_active !== undefined ? initialValues.is_active : true);
+  const [showDeckListPublicly, setShowDeckListPublicly] = useState(initialValues?.show_deck_list_publicly ?? false);
   const [commanderError, setCommanderError] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -109,6 +110,7 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
       is_active: isActive,
       deck_format: "commander",
       external_deck_link: externalDeckLink.trim() || null,
+      show_deck_list_publicly: showDeckListPublicly,
     });
   }
 
@@ -204,6 +206,15 @@ export default function DeckForm({ initialValues, onSave, saving, onCancel, onDe
             <p className="text-gray-500 text-xs mt-0.5">Retired decks are hidden from game logging</p>
           </div>
           <Switch checked={isActive} onCheckedChange={setIsActive} />
+        </div>
+
+        {/* 7. Deck list public toggle */}
+        <div className="flex items-center justify-between py-2">
+          <div>
+            <p className="text-gray-300 text-sm font-medium">Public deck list</p>
+            <p className="text-gray-500 text-xs mt-0.5">Allow others to view your deck list</p>
+          </div>
+          <Switch checked={showDeckListPublicly} onCheckedChange={setShowDeckListPublicly} />
         </div>
 
         {/* Bottom buttons */}

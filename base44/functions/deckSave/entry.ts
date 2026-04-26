@@ -92,6 +92,7 @@ async function sanitizePayload(body, approvedHosts) {
     deck_format: body.deck_format || 'commander',
     external_deck_link: link,
     is_favorite: body.is_favorite !== undefined ? !!body.is_favorite : false,
+    show_deck_list_publicly: body.show_deck_list_publicly !== undefined ? !!body.show_deck_list_publicly : false,
   };
 }
 

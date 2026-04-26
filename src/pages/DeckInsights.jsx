@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Swords, Lock, RefreshCw, AlertCircle, Trophy, Skull, Sword, Users, ChevronLeft, ExternalLink } from "lucide-react";
+import {
+  Swords, Lock, RefreshCw, AlertCircle, Trophy, Skull,
+  Sword, Users, ChevronLeft, ExternalLink,
+} from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
 import { getDeckInsights } from "@/components/services/deckInsightsService";
@@ -8,6 +11,8 @@ import { PRAISE_ICONS } from "@/components/praise/PraiseHelpModal";
 import { PRAISE_META } from "@/components/services/praiseService";
 import { ROUTES } from "@/components/utils/routes";
 import { format, parseISO } from "date-fns";
+import CommanderCardModal from "@/components/decks/CommanderCardModal";
+import DeckListTab from "@/components/decks/DeckListTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -32,7 +37,6 @@ function formatName(displayName) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-/** KPI card — prominent number, quiet label, borderless depth */
 function KpiCard({ label, value }) {
   return (
     <div className="flex flex-col items-center justify-center py-3 px-2 rounded-2xl bg-white/[0.04] flex-1 min-w-0 gap-0.5">
@@ -42,7 +46,6 @@ function KpiCard({ label, value }) {
   );
 }
 
-// Category accent palette — badge bg, icon color, title color
 const ACCENTS = {
   pod:   { bg: "bg-blue-500/15",   icon: "text-blue-400",   title: "text-blue-400/70"   },
   best:  { bg: "bg-green-500/15",  icon: "text-green-400",  title: "text-green-400/70"  },
@@ -50,18 +53,14 @@ const ACCENTS = {
   deck:  { bg: "bg-orange-500/15", icon: "text-orange-400", title: "text-orange-400/70" },
 };
 
-/** Stacked insight row with colored icon badge, no colored border */
 function InsightRow({ icon: Icon, title, primary, secondary, accent }) {
   const hasData = !!primary;
   const a = ACCENTS[accent] || {};
   return (
     <div className="flex items-center gap-3.5 py-3.5 border-b border-white/[0.04] last:border-0">
-      {/* Colored icon badge */}
       <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center ${hasData ? (a.bg || "bg-white/[0.06]") : "bg-white/[0.03]"}`}>
         <Icon className={`w-4 h-4 ${hasData ? (a.icon || "text-gray-500") : "text-gray-700"}`} />
       </div>
-
-      {/* Text area */}
       <div className="min-w-0 flex-1">
         <p className={`text-[10px] uppercase tracking-widest font-semibold leading-none mb-1.5 ${hasData ? (a.title || "text-gray-500") : "text-gray-700"}`}>
           {title}
@@ -72,8 +71,6 @@ function InsightRow({ icon: Icon, title, primary, secondary, accent }) {
           <p className="text-gray-700 text-xs italic">Not enough data yet</p>
         )}
       </div>
-
-      {/* Secondary badge */}
       {hasData && secondary && (
         <span className="text-gray-500 text-[11px] flex-shrink-0 font-medium bg-white/[0.04] rounded-lg px-2 py-1 leading-none ml-1">
           {secondary}
@@ -83,7 +80,6 @@ function InsightRow({ icon: Icon, title, primary, secondary, accent }) {
   );
 }
 
-/** Props row — PNG icon + label + count badge */
 function PropRow({ item }) {
   const iconUrl = PRAISE_ICONS[item.icon_key || item.type];
   const label = item.label || PRAISE_META[item.type]?.label || item.type;
@@ -108,12 +104,46 @@ function SectionLabel({ children }) {
   );
 }
 
+// ── Tab bar ───────────────────────────────────────────────────────────────────
+
+function TabBar({ activeTab, onTabChange }) {
+  const tabs = [
+    { key: "insights", label: "Insights" },
+    { key: "decklist", label: "Deck List" },
+  ];
+  return (
+    <div className="flex rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          onClick={() => onTabChange(tab.key)}
+          className="flex-1 py-2.5 text-xs font-semibold tracking-wide uppercase transition-colors relative"
+          style={
+            activeTab === tab.key
+              ? { color: "#fff", background: "rgba(92,124,250,0.18)" }
+              : { color: "#6b7280" }
+          }
+        >
+          {tab.label}
+          {activeTab === tab.key && (
+            <span
+              className="absolute bottom-0 left-4 right-4 h-px rounded-full"
+              style={{ background: "rgb(var(--ds-primary-rgb))" }}
+            />
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
 function LoadingSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-52 bg-white/[0.04] rounded-2xl" />
+      <div className="h-60 bg-white/[0.04] rounded-2xl" />
+      <div className="h-9 bg-white/[0.04] rounded-xl" />
       <div className="flex gap-2">
         {[1, 2, 3].map((i) => <div key={i} className="h-16 flex-1 bg-white/[0.04] rounded-2xl" />)}
       </div>
@@ -125,183 +155,17 @@ function LoadingSkeleton() {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Insights content ──────────────────────────────────────────────────────────
 
-export default function DeckInsights() {
-  const navigate = useNavigate();
-  const auth = useAuth();
-
-  const params = new URLSearchParams(window.location.search);
-  const deckId = params.get("deckId");
-
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  async function loadInsights() {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getDeckInsights(auth, deckId);
-      if (!result) throw new Error("No data returned");
-      setData(result);
-    } catch (e) {
-      setError(e?.message || "Failed to load deck insights");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Always start from the top when the page is entered
-  useEffect(() => { window.scrollTo(0, 0); }, [deckId]);
-
-  useEffect(() => {
-    if (auth.authLoading) return;
-    if (!deckId) { setError("No deck specified."); setLoading(false); return; }
-    if (auth.isGuest) { setError("Sign in to view deck insights."); setLoading(false); return; }
-    loadInsights();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.authLoading, auth.isGuest, deckId]);
-
-  if (loading) return <LoadingSkeleton />;
-
-  if (error || !data) {
-    const isAccess = error?.toLowerCase().includes("forbidden") || error?.toLowerCase().includes("not found");
-    return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center px-6">
-        <AlertCircle className={`w-10 h-10 ${isAccess ? "text-amber-400/70" : "text-red-400/70"}`} />
-        <p className={`text-sm font-medium ${isAccess ? "text-amber-400" : "text-red-400"}`}>
-          {isAccess ? "Deck not found or access denied." : (error || "Something went wrong.")}
-        </p>
-        {!isAccess && (
-          <button
-            onClick={loadInsights}
-            className="flex items-center gap-2 text-gray-400 hover:text-white text-sm border border-white/10 px-4 py-2 rounded-xl transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Retry
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  const { deck, owner, summary, eligibility, insights, props } = data;
-  const commanderName = deck.commander_name || deck.name;
-  const deckLabel = deck.commander_name && deck.name && deck.commander_name !== deck.name ? deck.name : null;
-  const firstLogged = formatDate(deck.first_logged_at);
-  const ownerLabel = formatOwnerName(owner?.display_name);
-  const isOwnDeck = !!(owner?.id && auth.currentUser?.id && owner.id === auth.currentUser.id);
-
+function InsightsContent({ data }) {
+  const { summary, eligibility, insights, props } = data;
   const mostPlayedPod = insights?.most_played_pod;
   const bestAgainstPlayer = insights?.best_against_player;
   const toughestOpponent = insights?.toughest_opponent;
   const bestAgainstDeck = insights?.best_against_deck;
 
-  function handleBackToProfile() {
-    if (isOwnDeck) {
-      navigate(ROUTES.PROFILE);
-    } else if (owner?.id) {
-      navigate(ROUTES.USER_PROFILE(owner.id));
-    } else {
-      navigate(-1);
-    }
-  }
-
   return (
-    <div className="space-y-4 pb-4">
-
-      {/* ── HERO HEADER ─────────────────────────────────────────────────────── */}
-      <div className="relative rounded-2xl overflow-hidden"
-        style={{ background: "linear-gradient(145deg, #161b24 0%, #111418 100%)" }}
-      >
-        {/* Blurred commander background */}
-        {deck.commander_image_url && (
-          <div className="absolute inset-0">
-            <img
-              src={deck.commander_image_url}
-              alt={commanderName}
-              className="w-full h-full object-cover object-top opacity-15 blur-md scale-110"
-            />
-            <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(17,20,24,0.55) 0%, rgba(17,20,24,0.85) 60%, #111418 100%)" }} />
-          </div>
-        )}
-
-        <div className="relative z-10 p-4 pb-0 flex gap-4">
-          {/* Commander portrait — slightly lifted with subtle inner shadow */}
-          <div className="w-[80px] h-[104px] flex-shrink-0 rounded-xl overflow-hidden"
-            style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.07)" }}
-          >
-            {deck.commander_image_url ? (
-              <img src={deck.commander_image_url} alt={commanderName} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-white/[0.04]">
-                <Swords className="w-7 h-7 text-gray-600" />
-              </div>
-            )}
-          </div>
-
-          {/* Identity */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 pt-1">
-            {/* Pills row — owner + format in the same visual family */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {ownerLabel && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md text-gray-400"
-                  style={{ background: "rgba(255,255,255,0.07)" }}>
-                  {ownerLabel}
-                </span>
-              )}
-              {deck.deck_format && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md text-amber-400/80"
-                  style={{ background: "rgba(251,191,36,0.08)" }}>
-                  {deck.deck_format.charAt(0).toUpperCase() + deck.deck_format.slice(1)}
-                </span>
-              )}
-            </div>
-
-            {/* Deck archetype label if present */}
-            {deckLabel && (
-              <p className="text-gray-500 text-[10px] uppercase tracking-wide truncate -mb-0.5">{deckLabel}</p>
-            )}
-
-            {/* Commander name — visual focal point */}
-            <p className="text-white font-extrabold text-[17px] leading-tight truncate tracking-tight">
-              {commanderName}
-            </p>
-
-            {/* Mana pips */}
-            <ManaPipRow colors={deck.color_identity || []} size={14} gap={3} />
-
-            {/* First logged — quiet supporting meta */}
-            {firstLogged && (
-              <p className="text-gray-600 text-[10px] mt-0.5">First logged {firstLogged}</p>
-            )}
-          </div>
-        </div>
-
-        {/* KPI row — flush inside the hero card, separated by subtle rule */}
-        <div className="relative z-10 px-4 pb-4 pt-4 flex gap-2 mt-2">
-          <div className="absolute top-0 left-4 right-4 h-px bg-white/[0.05]" />
-          <KpiCard label="Games" value={summary.games_played} />
-          <KpiCard label="Wins" value={summary.wins} />
-          <KpiCard label="Win Rate" value={`${summary.win_rate_percent}%`} />
-        </div>
-      </div>
-
-      {/* ── DECK LINK BUTTON ────────────────────────────────────────────────── */}
-      {deck.external_deck_link && (
-        <a
-          href={deck.external_deck_link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full h-11 rounded-2xl border border-white/10 text-gray-300 hover:text-white hover:border-white/20 text-sm font-semibold transition-colors"
-          style={{ background: "rgba(255,255,255,0.04)" }}
-        >
-          <ExternalLink className="w-4 h-4 text-gray-500" />
-          Deck Link
-        </a>
-      )}
-
-      {/* ── LOCKED STATE ────────────────────────────────────────────────────── */}
+    <div className="space-y-4">
       {!eligibility.insights_unlocked ? (
         <div className="rounded-2xl p-5 flex flex-col items-center text-center gap-3"
           style={{ background: "rgba(255,255,255,0.03)" }}>
@@ -321,7 +185,7 @@ export default function DeckInsights() {
         </div>
       ) : (
         <>
-          {/* ── INSIGHTS ────────────────────────────────────────────────────── */}
+          {/* Insights */}
           <div>
             <SectionLabel>Insights</SectionLabel>
             <div className="rounded-2xl px-4 py-1" style={{ background: "rgba(255,255,255,0.03)" }}>
@@ -356,7 +220,7 @@ export default function DeckInsights() {
             </div>
           </div>
 
-          {/* ── PROPS RECEIVED ──────────────────────────────────────────────── */}
+          {/* Props */}
           <div>
             <SectionLabel>Props received</SectionLabel>
             {props.sorted && props.sorted.length > 0 ? (
@@ -374,7 +238,7 @@ export default function DeckInsights() {
         </>
       )}
 
-      {/* ── RECORD BREAKDOWN ─────────────────────────────────────────────────── */}
+      {/* Record breakdown */}
       {summary.games_played > 0 && (summary.pod_games > 0 || summary.casual_games > 0) && (
         <div>
           <SectionLabel>Record breakdown</SectionLabel>
@@ -398,8 +262,208 @@ export default function DeckInsights() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* ── BACK TO PROFILE CTA ─────────────────────────────────────────────── */}
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+export default function DeckInsights() {
+  const navigate = useNavigate();
+  const auth = useAuth();
+
+  const params = new URLSearchParams(window.location.search);
+  const deckId = params.get("deckId");
+
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("insights");
+  const [commanderModalOpen, setCommanderModalOpen] = useState(false);
+
+  async function loadInsights() {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getDeckInsights(auth, deckId);
+      if (!result) throw new Error("No data returned");
+      setData(result);
+    } catch (e) {
+      setError(e?.message || "Failed to load deck insights");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { window.scrollTo(0, 0); }, [deckId]);
+
+  useEffect(() => {
+    if (auth.authLoading) return;
+    if (!deckId) { setError("No deck specified."); setLoading(false); return; }
+    if (auth.isGuest) { setError("Sign in to view deck insights."); setLoading(false); return; }
+    loadInsights();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.authLoading, auth.isGuest, deckId]);
+
+  if (loading) return <LoadingSkeleton />;
+
+  if (error || !data) {
+    const isAccess = error?.toLowerCase().includes("forbidden") || error?.toLowerCase().includes("not found");
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center px-6">
+        <AlertCircle className={`w-10 h-10 ${isAccess ? "text-amber-400/70" : "text-red-400/70"}`} />
+        <p className={`text-sm font-medium ${isAccess ? "text-amber-400" : "text-red-400"}`}>
+          {isAccess ? "Deck not found or access denied." : (error || "Something went wrong.")}
+        </p>
+        {!isAccess && (
+          <button
+            onClick={loadInsights}
+            className="flex items-center gap-2 text-gray-400 hover:text-white text-sm border border-white/10 px-4 py-2 rounded-xl transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const { deck, owner, summary } = data;
+  const commanderName = deck.commander_name || deck.name;
+  const deckLabel = deck.commander_name && deck.name && deck.commander_name !== deck.name ? deck.name : null;
+  const firstLogged = formatDate(deck.first_logged_at);
+  const ownerLabel = formatOwnerName(owner?.display_name);
+  const isOwnDeck = !!(owner?.id && auth.currentUser?.id && owner.id === auth.currentUser.id);
+
+  function handleBackToProfile() {
+    if (isOwnDeck) navigate(ROUTES.PROFILE);
+    else if (owner?.id) navigate(ROUTES.USER_PROFILE(owner.id));
+    else navigate(-1);
+  }
+
+  return (
+    <div className="space-y-4 pb-4">
+
+      {/* ── HERO HEADER ─────────────────────────────────────────────────────── */}
+      <div
+        className="relative rounded-2xl overflow-hidden"
+        style={{ background: "linear-gradient(145deg, #161b24 0%, #111418 100%)" }}
+      >
+        {/* Blurred commander background */}
+        {deck.commander_image_url && (
+          <div className="absolute inset-0">
+            <img
+              src={deck.commander_image_url}
+              alt={commanderName}
+              className="w-full h-full object-cover object-top opacity-20 blur-md scale-110"
+            />
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(17,20,24,0.50) 0%, rgba(17,20,24,0.82) 60%, #111418 100%)" }} />
+          </div>
+        )}
+
+        <div className="relative z-10 p-4 pb-0 flex gap-4">
+          {/* Commander portrait — clickable, slightly larger, interactive ring on hover */}
+          <button
+            className="flex-shrink-0 focus:outline-none group/portrait"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+            onClick={() => setCommanderModalOpen(true)}
+            aria-label={`View ${commanderName} card`}
+          >
+            <div
+              className="w-[96px] h-[124px] rounded-xl overflow-hidden transition-transform duration-200 group-hover/portrait:scale-[1.04]"
+              style={{
+                boxShadow: "0 6px 28px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.09)",
+              }}
+            >
+              {deck.commander_image_url ? (
+                <img
+                  src={deck.commander_image_url}
+                  alt={commanderName}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-white/[0.04]">
+                  <Swords className="w-8 h-8 text-gray-600" />
+                </div>
+              )}
+            </div>
+            {/* Tap hint — very subtle, only shows when image exists */}
+            {deck.commander_image_url && (
+              <p className="text-gray-700 text-[9px] text-center mt-1 font-medium tracking-wide">tap to view</p>
+            )}
+          </button>
+
+          {/* Identity */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 pt-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {ownerLabel && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md text-gray-400"
+                  style={{ background: "rgba(255,255,255,0.07)" }}>
+                  {ownerLabel}
+                </span>
+              )}
+              {deck.deck_format && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md text-amber-400/80"
+                  style={{ background: "rgba(251,191,36,0.08)" }}>
+                  {deck.deck_format.charAt(0).toUpperCase() + deck.deck_format.slice(1)}
+                </span>
+              )}
+            </div>
+
+            {deckLabel && (
+              <p className="text-gray-500 text-[10px] uppercase tracking-wide truncate -mb-0.5">{deckLabel}</p>
+            )}
+
+            <p className="text-white font-extrabold text-[17px] leading-tight truncate tracking-tight">
+              {commanderName}
+            </p>
+
+            <ManaPipRow colors={deck.color_identity || []} size={14} gap={3} />
+
+            {firstLogged && (
+              <p className="text-gray-600 text-[10px] mt-0.5">First logged {firstLogged}</p>
+            )}
+          </div>
+        </div>
+
+        {/* KPI row */}
+        <div className="relative z-10 px-4 pb-4 pt-4 flex gap-2 mt-2">
+          <div className="absolute top-0 left-4 right-4 h-px bg-white/[0.05]" />
+          <KpiCard label="Games" value={summary.games_played} />
+          <KpiCard label="Wins" value={summary.wins} />
+          <KpiCard label="Win Rate" value={`${summary.win_rate_percent}%`} />
+        </div>
+      </div>
+
+      {/* ── DECK LINK BUTTON ─────────────────────────────────────────────────── */}
+      {deck.external_deck_link && (
+        <a
+          href={deck.external_deck_link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full h-11 rounded-2xl border border-white/10 text-gray-300 hover:text-white hover:border-white/20 text-sm font-semibold transition-colors"
+          style={{ background: "rgba(255,255,255,0.04)" }}
+        >
+          <ExternalLink className="w-4 h-4 text-gray-500" />
+          Deck Link
+        </a>
+      )}
+
+      {/* ── TABS ─────────────────────────────────────────────────────────────── */}
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* ── TAB CONTENT ──────────────────────────────────────────────────────── */}
+      {activeTab === "insights" ? (
+        <InsightsContent data={data} />
+      ) : (
+        <DeckListTab
+          isOwner={isOwnDeck}
+          showDeckListPublicly={deck.show_deck_list_publicly ?? false}
+          hasDeckListData={false}
+        />
+      )}
+
+      {/* ── BACK CTA ──────────────────────────────────────────────────────────── */}
       <div className="flex justify-center pt-2">
         <button
           onClick={handleBackToProfile}
@@ -410,6 +474,15 @@ export default function DeckInsights() {
           Back to Profile
         </button>
       </div>
+
+      {/* ── COMMANDER CARD MODAL ─────────────────────────────────────────────── */}
+      {commanderModalOpen && (
+        <CommanderCardModal
+          commanderName={commanderName}
+          imageUrl={deck.commander_image_url}
+          onClose={() => setCommanderModalOpen(false)}
+        />
+      )}
 
     </div>
   );

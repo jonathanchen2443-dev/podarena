@@ -1,0 +1,109 @@
+{
+  "name": "Deck",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Profile ID of the deck owner (used for UI joins)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the deck"
+    },
+    "commander_name": {
+      "type": "string",
+      "description": "Name of the commander card"
+    },
+    "commander_image_url": {
+      "type": "string",
+      "description": "URL to the commander card image"
+    },
+    "color_identity": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "W",
+          "U",
+          "B",
+          "R",
+          "G",
+          "C"
+        ]
+      },
+      "description": "Mana color identity: W=White, U=Blue, B=Black, R=Red, G=Green, C=Colorless"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this deck is currently active/in use"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this deck is marked as a favorite"
+    },
+    "deck_format": {
+      "type": "string",
+      "enum": [
+        "commander"
+      ],
+      "default": "commander",
+      "description": "The format this deck is built for. Extensible for future formats."
+    },
+    "external_deck_link": {
+      "type": "string",
+      "description": "Optional public link to the decklist on a recognized external site (e.g. Moxfield, Archidekt, EDHREC)."
+    },
+    "show_deck_list_publicly": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the deck list content is visible to the public. Defaults to false (private). Owner always sees their own deck list."
+    }
+  },
+  "required": [
+    "owner_id",
+    "name"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
