@@ -271,6 +271,38 @@ function parseTxtContent(text) {
   return cards;
 }
 
+// ── Section classification from type_line ────────────────────────────────────
+
+/**
+ * Classify a card into a display section using its Scryfall type_line.
+ * Priority: Commander > Planeswalker > Creature > Instant > Sorcery > Artifact > Enchantment > Land > Other
+ *
+ * Only applied when the parser-assigned section is a generic bucket
+ * (Mainboard, Sideboard, Other) — explicit sections from parsers
+ * (Commander, Companion) are preserved as-is.
+ */
+function classifySectionFromTypeLine(typeLine, isCommander) {
+  if (isCommander) return 'Commander';
+  if (!typeLine) return 'Other';
+  const t = typeLine;
+  if (t.includes('Planeswalker')) return 'Planeswalkers';
+  if (t.includes('Creature'))    return 'Creatures';
+  if (t.includes('Instant'))     return 'Instants';
+  if (t.includes('Sorcery'))     return 'Sorceries';
+  if (t.includes('Artifact'))    return 'Artifacts';
+  if (t.includes('Enchantment')) return 'Enchantments';
+  if (t.includes('Land'))        return 'Lands';
+  return 'Other';
+}
+
+// Sections that are explicit and should NOT be overridden by type_line classification.
+// These come from parsers that already did their own reliable categorization (Archidekt categories,
+// Moxfield commanders/companions). Generic buckets (Mainboard, Sideboard, Other) ARE reclassified.
+const EXPLICIT_SECTIONS = new Set([
+  'Commander', 'Companion',
+  'Creatures', 'Instants', 'Sorceries', 'Artifacts', 'Enchantments', 'Planeswalkers', 'Lands',
+]);
+
 // ── Shared enrichment + storage pipeline ─────────────────────────────────────
 
 /**
@@ -289,15 +321,16 @@ async function runEnrichAndStore(base44, deckId, commanderName, parsedCards, sou
   // Inject / mark commander
   let cards = [...parsedCards];
   if (commanderName) {
+    const commanderNameLc = commanderName.toLowerCase();
     const hasCommander = cards.some(
-      (c) => c.is_commander || c.section === 'Commander' ||
-             c.card_name.toLowerCase() === commanderName.toLowerCase()
+      (c) => c.is_commander || c.card_name.toLowerCase() === commanderNameLc
     );
     if (!hasCommander) {
       cards.unshift({ card_name: commanderName, quantity: 1, section: 'Commander', is_commander: true });
     } else {
+      // Mark by name match only — don't flag entire sections as commander
       cards = cards.map((c) =>
-        c.card_name.toLowerCase() === commanderName.toLowerCase() || c.section === 'Commander'
+        c.card_name.toLowerCase() === commanderNameLc
           ? { ...c, is_commander: true, section: 'Commander' }
           : c
       );
@@ -310,12 +343,21 @@ async function runEnrichAndStore(base44, deckId, commanderName, parsedCards, sou
   const failedEnrichments = [];
   for (const card of cards) {
     const enrichData = await enrichCard(card.card_name);
+    const isCommander = card.is_commander || false;
+    const parserSection = card.section || 'Other';
+
+    // If the parser gave a generic bucket (Mainboard/Sideboard/Other), reclassify
+    // from Scryfall type_line. Explicit sections (Commander, Companion) are kept as-is.
+    const finalSection = EXPLICIT_SECTIONS.has(parserSection)
+      ? parserSection
+      : classifySectionFromTypeLine(enrichData.type_line || null, isCommander);
+
     enriched.push({
       deck_id: deckId,
       card_name: card.card_name,
       quantity: card.quantity || 1,
-      section: card.section || 'Other',
-      is_commander: card.is_commander || false,
+      section: finalSection,
+      is_commander: isCommander,
       sort_order: sortOrder++,
       ...enrichData,
     });
