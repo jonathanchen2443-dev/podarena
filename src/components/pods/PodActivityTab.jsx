@@ -37,6 +37,7 @@ export default function PodActivityTab({ podId, myMembership, onOpenGame }) {
   const [participantMap, setParticipantMap] = useState({});
   const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filterPlayer, setFilterPlayer] = useState("");
   const [filterWinner, setFilterWinner] = useState("");
 
@@ -45,10 +46,8 @@ export default function PodActivityTab({ podId, myMembership, onOpenGame }) {
     if (myMembership?.membership_status !== "active") { setLoading(false); return; }
     async function load() {
       setLoading(true);
+      setError(null);
       try {
-        // Use scoped backend function — pod history for active members only.
-        // This is intentionally broader than personal history (all pod games visible)
-        // but is gated server-side to active pod members only.
         const res = await base44.functions.invoke('publicProfiles', {
           action: 'podHistory',
           podId,
@@ -58,6 +57,8 @@ export default function PodActivityTab({ podId, myMembership, onOpenGame }) {
         setParticipantMap(participants);
         setProfiles(profileMap);
         setGames(podGames.sort((a, b) => new Date(b.played_at || b.created_date) - new Date(a.played_at || a.created_date)));
+      } catch (e) {
+        setError("Could not load game history. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -84,6 +85,17 @@ export default function PodActivityTab({ podId, myMembership, onOpenGame }) {
 
   if (loading) {
     return <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (error) {
+    return (
+      <div className="py-10 text-center">
+        <p className="text-red-400 text-sm">{error}</p>
+        <button onClick={() => { setError(null); setLoading(true); }} className="mt-3 text-xs text-gray-400 hover:text-gray-200 underline">
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (

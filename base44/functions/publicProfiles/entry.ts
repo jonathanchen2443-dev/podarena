@@ -229,16 +229,22 @@ Deno.serve(async (req) => {
 
       const gameIds = podGames.map((g) => g.id);
 
-      // Fetch all participant rows for these games in batches
-      const participantArrays = await Promise.all(
-        gameIds.map((gid) =>
-          base44.asServiceRole.entities.GameParticipant.filter({ game_id: gid }, '-created_date', 20).catch(() => [])
-        )
-      );
+      // Fetch all participant rows for all games in a single batched query
+      const allParticipantRows = await base44.asServiceRole.entities.GameParticipant.filter(
+        { game_id: { $in: gameIds } }, '-created_date', 500
+      ).catch(() => []);
+
+      // Group participants by game_id
+      const participantsByGame = {};
+      for (const gid of gameIds) participantsByGame[gid] = [];
+      for (const p of allParticipantRows) {
+        if (participantsByGame[p.game_id]) participantsByGame[p.game_id].push(p);
+      }
+      const participantArrays = gameIds.map((gid) => participantsByGame[gid]);
 
       // Collect all profile IDs needed for display
       const allProfileIds = [...new Set(
-        participantArrays.flat().map((p) => p.participant_profile_id).filter(Boolean)
+        allParticipantRows.map((p) => p.participant_profile_id).filter(Boolean)
       )];
 
       let profileMap = {};
