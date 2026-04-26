@@ -5,10 +5,12 @@
  *   importDeckList  — parse external source, enrich via Scryfall, store DeckCard rows
  *   getDeckCards    — return current DeckCard rows for a deck (owner or public-visible)
  *
- * Supported import sources (first implementation):
- *   - ManaBox  (manabox.app)   — public API export
- *   - Moxfield (moxfield.com)  — public deck API
- *   - Archidekt (archidekt.com) — public deck API
+ * Import-supported sources:
+ *   - Moxfield  (moxfield.com)  — api2.moxfield.com/v2/decks/all/{id}
+ *   - Archidekt (archidekt.com) — archidekt.com/api/decks/{id}/  (NOT /small/ — deprecated)
+ *
+ * Link-only sources (valid external link, no import API):
+ *   - ManaBox (manabox.app) — share URLs open in the mobile app only, no public web API
  *
  * Unsupported approved sources → status: unsupported_source (no crash)
  * Parse/enrichment failures   → status: failed (no silent corruption)
@@ -19,7 +21,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // ── Supported import hosts ────────────────────────────────────────────────────
-const IMPORT_SUPPORTED_HOSTS = ['moxfield.com', 'www.moxfield.com', 'manabox.app', 'www.manabox.app', 'archidekt.com', 'www.archidekt.com'];
+// ManaBox has no public web API — links open in the app only. Classified as unsupported_source.
+// Moxfield and Archidekt have public APIs and are import-supported.
+const IMPORT_SUPPORTED_HOSTS = ['moxfield.com', 'www.moxfield.com', 'archidekt.com', 'www.archidekt.com'];
+// Hosts that are valid external links but do NOT support programmatic import
+const LINK_ONLY_HOSTS = ['manabox.app', 'www.manabox.app'];
 
 function detectHost(url) {
   if (!url) return null;
@@ -73,6 +79,8 @@ async function enrichCard(name) {
 
 /**
  * Moxfield — uses the public /api/v2/decks/{id} endpoint.
+ * The unauthenticated API may return 401/403 for private decks.
+ * We try the JSON API first; if that fails we try the text export endpoint.
  * Returns [{card_name, quantity, section}]
  */
 async function parseMoxfield(url) {
@@ -81,41 +89,61 @@ async function parseMoxfield(url) {
   if (!match) throw new Error('Could not extract Moxfield deck ID from URL');
   const deckId = match[1];
 
+  // Try JSON API first
   const apiUrl = `https://api2.moxfield.com/v2/decks/all/${deckId}`;
   const res = await fetch(apiUrl, {
-    headers: { 'User-Agent': 'PodArena/1.0', 'Accept': 'application/json' }
-  });
-  if (!res.ok) throw new Error(`Moxfield API error ${res.status}`);
-  const data = await res.json();
-
-  const cards = [];
-  const boardNames = ['mainboard', 'sideboard', 'commanders', 'companions', 'tokens'];
-  for (const board of boardNames) {
-    const section = board === 'commanders' ? 'Commander' : board.charAt(0).toUpperCase() + board.slice(1);
-    const entries = data.boards?.[board]?.cards || {};
-    for (const entry of Object.values(entries)) {
-      const name = entry.card?.name || entry.name;
-      const qty = entry.quantity || 1;
-      if (name) cards.push({ card_name: name, quantity: qty, section });
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; PodArena/1.0)',
+      'Accept': 'application/json',
     }
+  });
+
+  if (res.ok) {
+    const data = await res.json();
+    const cards = [];
+    const boardNames = ['commanders', 'companions', 'mainboard', 'sideboard', 'tokens'];
+    for (const board of boardNames) {
+      const section = board === 'commanders' ? 'Commander'
+        : board === 'companions' ? 'Companion'
+        : board.charAt(0).toUpperCase() + board.slice(1);
+      const entries = data.boards?.[board]?.cards || {};
+      for (const entry of Object.values(entries)) {
+        const name = entry.card?.name || entry.name;
+        const qty = entry.quantity || 1;
+        if (name) cards.push({ card_name: name, quantity: qty, section });
+      }
+    }
+    if (cards.length > 0) return cards;
   }
+
+  // Fallback: text export endpoint
+  const exportUrl = `https://api2.moxfield.com/v2/decks/all/${deckId}/export?format=text`;
+  const exportRes = await fetch(exportUrl, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PodArena/1.0)', 'Accept': 'text/plain' }
+  });
+  if (!exportRes.ok) throw new Error(`Moxfield API error ${exportRes.status} — deck may be private or unavailable`);
+  const text = await exportRes.text();
+  const cards = parseArenaText(text);
+  if (cards.length === 0) throw new Error('Moxfield returned empty deck list');
   return cards;
 }
 
 /**
- * Archidekt — uses the public /api/decks/{id}/small/ endpoint.
+ * Archidekt — uses the public /api/decks/{id}/ endpoint.
+ * NOTE: /api/decks/{id}/small/ was deprecated. Use /api/decks/{id}/ instead.
  * Returns [{card_name, quantity, section}]
  */
 async function parseArchidekt(url) {
+  // Support both /decks/12345 and /decks/12345/deckname style URLs
   const match = url.match(/archidekt\.com\/decks\/(\d+)/);
   if (!match) throw new Error('Could not extract Archidekt deck ID from URL');
   const deckId = match[1];
 
-  const apiUrl = `https://archidekt.com/api/decks/${deckId}/small/`;
+  const apiUrl = `https://archidekt.com/api/decks/${deckId}/`;
   const res = await fetch(apiUrl, {
-    headers: { 'User-Agent': 'PodArena/1.0', 'Accept': 'application/json' }
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PodArena/1.0)', 'Accept': 'application/json' }
   });
-  if (!res.ok) throw new Error(`Archidekt API error ${res.status}`);
+  if (!res.ok) throw new Error(`Archidekt API error ${res.status} — deck may be private or unavailable`);
   const data = await res.json();
 
   const cards = [];
@@ -123,49 +151,25 @@ async function parseArchidekt(url) {
     const name = card.card?.oracleCard?.name || card.card?.name;
     const qty = card.quantity || 1;
     const cats = card.categories || [];
-    let section = cats[0] || 'Other';
+    let section = 'Other';
     if (cats.includes('Commander')) section = 'Commander';
+    else if (cats.includes('Creature') || cats.includes('Creatures')) section = 'Creatures';
+    else if (cats.includes('Instant') || cats.includes('Instants')) section = 'Instants';
+    else if (cats.includes('Sorcery') || cats.includes('Sorceries')) section = 'Sorceries';
+    else if (cats.includes('Artifact') || cats.includes('Artifacts')) section = 'Artifacts';
+    else if (cats.includes('Enchantment') || cats.includes('Enchantments')) section = 'Enchantments';
+    else if (cats.includes('Planeswalker') || cats.includes('Planeswalkers')) section = 'Planeswalkers';
+    else if (cats.includes('Land') || cats.includes('Lands')) section = 'Lands';
+    else if (cats.length > 0) section = cats[0];
     if (name) cards.push({ card_name: name, quantity: qty, section });
   }
+  if (cards.length === 0) throw new Error('Archidekt returned empty deck list — deck may be private');
   return cards;
 }
 
-/**
- * ManaBox — uses the public share export endpoint.
- * ManaBox share URLs look like: https://manabox.app/decks/<uuid>
- * ManaBox exposes a text/CSV export at /decks/<uuid>/export?format=arena
- * Fall back to plain text (Arena format): "1 Card Name\n2 Other Card"
- */
-async function parseManaBox(url) {
-  const match = url.match(/manabox\.app\/decks\/([a-zA-Z0-9_-]+)/);
-  if (!match) throw new Error('Could not extract ManaBox deck ID from URL');
-  const deckId = match[1];
-
-  // Try JSON API first
-  const apiUrl = `https://manabox.app/api/decks/${deckId}`;
-  let res = await fetch(apiUrl, {
-    headers: { 'User-Agent': 'PodArena/1.0', 'Accept': 'application/json' }
-  });
-
-  if (res.ok) {
-    const data = await res.json();
-    const cards = [];
-    for (const card of data.cards || data.deck?.cards || []) {
-      const name = card.name || card.card_name;
-      const qty = card.quantity || card.qty || 1;
-      const section = card.section || card.board || 'Mainboard';
-      if (name) cards.push({ card_name: name, quantity: qty, section });
-    }
-    if (cards.length > 0) return cards;
-  }
-
-  // Fallback: Arena text export
-  const exportUrl = `https://manabox.app/decks/${deckId}/export?format=arena`;
-  res = await fetch(exportUrl, { headers: { 'User-Agent': 'PodArena/1.0' } });
-  if (!res.ok) throw new Error(`ManaBox export error ${res.status}`);
-  const text = await res.text();
-  return parseArenaText(text);
-}
+// ManaBox is intentionally NOT supported for programmatic import.
+// ManaBox share URLs open in the mobile app only — there is no public web API.
+// It is listed in LINK_ONLY_HOSTS so it will be classified as unsupported_source.
 
 /**
  * Parse Arena-format text: "1 Card Name\n2 Other Card"
@@ -199,7 +203,8 @@ async function parseSource(hostname, url) {
   const bare = normalizeHost(hostname);
   if (bare === 'moxfield.com') return parseMoxfield(url);
   if (bare === 'archidekt.com') return parseArchidekt(url);
-  if (bare === 'manabox.app') return parseManaBox(url);
+  // All other hosts fall through — will never reach here for link-only hosts
+  // because the caller checks LINK_ONLY_HOSTS before calling parseSource.
   throw new Error(`unsupported_source:${bare}`);
 }
 
@@ -275,6 +280,18 @@ Deno.serve(async (req) => {
       const hostname = detectHost(externalLink);
       const sourceHost = normalizeHost(hostname);
 
+      // Link-only hosts: valid deck links but no import API available
+      if (LINK_ONLY_HOSTS.includes(hostname)) {
+        await base44.asServiceRole.entities.Deck.update(deckId, {
+          deck_list_import_status: 'unsupported_source',
+          deck_list_source_host: sourceHost,
+        });
+        return Response.json({
+          status: 'unsupported_source',
+          message: 'This deck source is not supported for import yet.',
+        });
+      }
+
       // Check if source is import-supported
       if (!IMPORT_SUPPORTED_HOSTS.includes(hostname)) {
         await base44.asServiceRole.entities.Deck.update(deckId, {
@@ -283,7 +300,7 @@ Deno.serve(async (req) => {
         });
         return Response.json({
           status: 'unsupported_source',
-          message: `Import is not yet supported for ${sourceHost}. The deck link is saved and valid, but we cannot import card data from this source yet.`,
+          message: 'This deck source is not supported for import yet.',
         });
       }
 
@@ -304,11 +321,12 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.Deck.update(deckId, {
           deck_list_import_status: isUnsupported ? 'unsupported_source' : 'failed',
         });
+        console.error('[deckImport] parse failed', { sourceHost, error: parseErr.message });
         return Response.json({
           status: isUnsupported ? 'unsupported_source' : 'failed',
           message: isUnsupported
-            ? `Import is not yet supported for ${sourceHost}.`
-            : `Failed to parse deck list: ${parseErr.message}`,
+            ? 'This deck source is not supported for import yet.'
+            : 'Failed to import the deck list from this source.',
         }, { status: 200 }); // 200 so frontend can read the status
       }
 
@@ -392,9 +410,7 @@ Deno.serve(async (req) => {
         card_count: enriched.length,
         total_quantity: totalQty,
         failed_enrichments: failedEnrichments,
-        message: failedEnrichments.length > 0
-          ? `Imported ${enriched.length} cards. ${failedEnrichments.length} card(s) could not be found on Scryfall: ${failedEnrichments.join(', ')}`
-          : `Successfully imported ${enriched.length} cards from ${sourceHost}.`,
+        message: 'Deck list imported successfully.',
       });
     }
 

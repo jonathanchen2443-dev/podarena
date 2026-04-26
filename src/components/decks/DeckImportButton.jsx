@@ -36,12 +36,12 @@ export default function DeckImportButton({ deck, onImportDone }) {
       if (data?.error) {
         setResult({ ok: false, message: data.error });
       } else if (data?.status === 'imported') {
-        setResult({ ok: true, message: data.message || 'Deck list imported successfully!' });
+        setResult({ ok: true, message: 'Deck list imported successfully.' });
         if (onImportDone) onImportDone(data);
       } else if (data?.status === 'unsupported_source') {
-        setResult({ ok: false, message: data.message || 'This source is not yet supported for import.' });
+        setResult({ ok: false, isUnsupported: true, message: 'This deck source is not supported for import yet.' });
       } else if (data?.status === 'failed') {
-        setResult({ ok: false, message: data.message || 'Import failed. Please try again.' });
+        setResult({ ok: false, message: 'Failed to import the deck list from this source.' });
       } else {
         setResult({ ok: false, message: 'Unexpected response. Please try again.' });
       }
@@ -74,6 +74,8 @@ export default function DeckImportButton({ deck, onImportDone }) {
           className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-xs leading-snug ${
             result.ok
               ? 'bg-green-500/10 border border-green-500/20 text-green-300'
+              : result.isUnsupported
+              ? 'bg-amber-500/10 border border-amber-500/20 text-amber-300'
               : 'bg-red-500/10 border border-red-500/20 text-red-300'
           }`}
         >
