@@ -12,6 +12,11 @@
  * Link-only sources (valid external link, no import API):
  *   - ManaBox (manabox.app) — share URLs open in the mobile app only, no public web API
  *
+ * Actions:
+ *   importDeckList          — import from external_deck_link (Moxfield / Archidekt)
+ *   importDeckListFromTxt   — import from uploaded TXT content (ManaBox TXT export, Arena text)
+ *   getDeckCards            — return current DeckCard rows
+ *
  * Unsupported approved sources → status: unsupported_source (no crash)
  * Parse/enrichment failures   → status: failed (no silent corruption)
  *
@@ -197,6 +202,149 @@ function parseArenaText(text) {
   return cards;
 }
 
+// ── TXT parser (ManaBox export + generic Arena text) ─────────────────────────
+
+/**
+ * parseTxtContent — parse a ManaBox TXT export or generic Arena-format TXT.
+ *
+ * ManaBox TXT export format example:
+ *   // Commander
+ *   1 Atraxa, Praetors' Voice
+ *
+ *   // Deck
+ *   1 Sol Ring
+ *   2 Cultivate
+ *
+ *   // Sideboard (ignored)
+ *   1 ...
+ *
+ * Also handles plain Arena text (no section headers):
+ *   1 Card Name
+ *   2 Another Card
+ *
+ * Returns [{card_name, quantity, section}]
+ * Throws if no valid card lines are found.
+ */
+function parseTxtContent(text) {
+  if (!text || typeof text !== 'string') throw new Error('unsupported_format');
+
+  const lines = text.split(/\r?\n/);
+  const cards = [];
+  let section = 'Mainboard';
+  let foundAny = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    // Blank line — section break in some formats
+    if (!line) continue;
+
+    // Section header comments: "// Commander", "// Deck", "// Sideboard", etc.
+    if (line.startsWith('//')) {
+      const hdr = line.replace(/^\/\/\s*/, '').toLowerCase();
+      if (hdr === 'commander') section = 'Commander';
+      else if (hdr === 'deck' || hdr === 'mainboard' || hdr === 'main') section = 'Mainboard';
+      else if (hdr === 'sideboard') section = 'Sideboard';
+      else if (hdr === 'companion') section = 'Companion';
+      // ignore other comment lines
+      continue;
+    }
+
+    // Standard "N Card Name" line (optionally with set annotation like "(SET) 123")
+    const match = line.match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      const qty = parseInt(match[1], 10);
+      let name = match[2].trim();
+      // Strip optional set/collector annotations: "Card Name (SET) 123"
+      name = name.replace(/\s+\([A-Z0-9]{2,6}\)\s+\d+.*$/, '').trim();
+      // Strip trailing tags sometimes appended by ManaBox like " *F*" (foil marker)
+      name = name.replace(/\s+\*[A-Z]+\*$/, '').trim();
+      if (name && qty > 0) {
+        cards.push({ card_name: name, quantity: qty, section });
+        foundAny = true;
+      }
+      continue;
+    }
+  }
+
+  if (!foundAny) throw new Error('unsupported_format');
+  return cards;
+}
+
+// ── Shared enrichment + storage pipeline ─────────────────────────────────────
+
+/**
+ * runEnrichAndStore — shared downstream pipeline used by both link import and TXT import.
+ * Takes a parsed card list, enriches via Scryfall, deletes old DeckCard rows, inserts new ones,
+ * and updates Deck metadata.
+ *
+ * @param {object} base44        - SDK instance
+ * @param {string} deckId        - Deck entity ID
+ * @param {string} commanderName - Deck commander name (for injection/marking)
+ * @param {Array}  parsedCards   - [{card_name, quantity, section}]
+ * @param {string} sourceHost    - source label e.g. 'moxfield.com' or 'manabox_txt'
+ * @returns {object} { card_count, total_quantity, failed_enrichments }
+ */
+async function runEnrichAndStore(base44, deckId, commanderName, parsedCards, sourceHost) {
+  // Inject / mark commander
+  let cards = [...parsedCards];
+  if (commanderName) {
+    const hasCommander = cards.some(
+      (c) => c.is_commander || c.section === 'Commander' ||
+             c.card_name.toLowerCase() === commanderName.toLowerCase()
+    );
+    if (!hasCommander) {
+      cards.unshift({ card_name: commanderName, quantity: 1, section: 'Commander', is_commander: true });
+    } else {
+      cards = cards.map((c) =>
+        c.card_name.toLowerCase() === commanderName.toLowerCase() || c.section === 'Commander'
+          ? { ...c, is_commander: true, section: 'Commander' }
+          : c
+      );
+    }
+  }
+
+  // Enrich via Scryfall
+  const enriched = [];
+  let sortOrder = 0;
+  const failedEnrichments = [];
+  for (const card of cards) {
+    const enrichData = await enrichCard(card.card_name);
+    enriched.push({
+      deck_id: deckId,
+      card_name: card.card_name,
+      quantity: card.quantity || 1,
+      section: card.section || 'Other',
+      is_commander: card.is_commander || false,
+      sort_order: sortOrder++,
+      ...enrichData,
+    });
+    if (enrichData.enrichment_status !== 'enriched') {
+      failedEnrichments.push(card.card_name);
+    }
+  }
+
+  // Replace-on-refresh: delete existing DeckCard rows
+  const existing = await base44.asServiceRole.entities.DeckCard.filter({ deck_id: deckId }, '-created_date', 500);
+  if (existing.length > 0) {
+    await Promise.all(existing.map((c) => base44.asServiceRole.entities.DeckCard.delete(c.id)));
+  }
+
+  // Bulk insert
+  const totalQty = enriched.reduce((s, c) => s + (c.quantity || 1), 0);
+  await base44.entities.DeckCard.bulkCreate(enriched);
+
+  // Update Deck metadata
+  await base44.asServiceRole.entities.Deck.update(deckId, {
+    deck_list_import_status: 'imported',
+    deck_list_last_synced_at: new Date().toISOString(),
+    deck_list_source_host: sourceHost,
+    deck_list_card_count: totalQty,
+  });
+
+  return { card_count: enriched.length, total_quantity: totalQty, failed_enrichments: failedEnrichments };
+}
+
 // ── Main parser dispatcher ────────────────────────────────────────────────────
 
 async function parseSource(hostname, url) {
@@ -335,81 +483,77 @@ Deno.serve(async (req) => {
         return Response.json({ status: 'failed', message: 'No cards found in imported deck list.' });
       }
 
-      // Inject commander row if not already present
-      const commanderName = deck.commander_name?.trim();
-      if (commanderName) {
-        const hasCommander = parsedCards.some(
-          (c) => c.is_commander || c.section === 'Commander' ||
-                 c.card_name.toLowerCase() === commanderName.toLowerCase()
-        );
-        if (!hasCommander) {
-          parsedCards.unshift({ card_name: commanderName, quantity: 1, section: 'Commander', is_commander: true });
-        } else {
-          // Mark the commander card
-          parsedCards = parsedCards.map((c) =>
-            c.card_name.toLowerCase() === commanderName.toLowerCase() || c.section === 'Commander'
-              ? { ...c, is_commander: true, section: 'Commander' }
-              : c
-          );
-        }
-      }
+      // Shared enrich + store pipeline
+      step = 'enrich_and_store';
+      const storeResult = await runEnrichAndStore(base44, deckId, deck.commander_name?.trim(), parsedCards, sourceHost);
 
-      // Enrich each card via Scryfall
-      step = 'enrich_cards';
-      const enriched = [];
-      let sortOrder = 0;
-      const failedEnrichments = [];
-
-      for (const card of parsedCards) {
-        const enrichData = await enrichCard(card.card_name);
-        enriched.push({
-          deck_id: deckId,
-          card_name: card.card_name,
-          quantity: card.quantity || 1,
-          section: card.section || 'Other',
-          is_commander: card.is_commander || false,
-          sort_order: sortOrder++,
-          ...enrichData,
-        });
-        if (enrichData.enrichment_status !== 'enriched') {
-          failedEnrichments.push(card.card_name);
-        }
-      }
-
-      // Replace-on-refresh: delete all existing DeckCard rows for this deck
-      step = 'delete_old_cards';
-      const existing = await base44.asServiceRole.entities.DeckCard.filter({ deck_id: deckId }, '-created_date', 500);
-      if (existing.length > 0) {
-        await Promise.all(existing.map((c) => base44.asServiceRole.entities.DeckCard.delete(c.id)));
-      }
-
-      // Bulk insert new cards
-      step = 'insert_cards';
-      const totalQty = enriched.reduce((s, c) => s + (c.quantity || 1), 0);
-      await base44.entities.DeckCard.bulkCreate(enriched);
-
-      // Update deck metadata
-      step = 'update_deck_metadata';
-      await base44.asServiceRole.entities.Deck.update(deckId, {
-        deck_list_import_status: 'imported',
-        deck_list_last_synced_at: new Date().toISOString(),
-        deck_list_source_host: sourceHost,
-        deck_list_card_count: totalQty,
-      });
-
-      console.log('[deckImport] success', {
-        deckId,
-        sourceHost,
-        cardCount: enriched.length,
-        totalQty,
-        failedEnrichments: failedEnrichments.length,
-      });
+      console.log('[deckImport] link import success', { deckId, sourceHost, ...storeResult });
 
       return Response.json({
         status: 'imported',
-        card_count: enriched.length,
-        total_quantity: totalQty,
-        failed_enrichments: failedEnrichments,
+        ...storeResult,
+        message: 'Deck list imported successfully.',
+      });
+    }
+
+    // ── importDeckListFromTxt ─────────────────────────────────────────────────
+    if (action === 'importDeckListFromTxt') {
+      if (!deckId) return Response.json({ error: 'deckId required' }, { status: 400 });
+
+      const txtContent = body.txtContent;
+      if (!txtContent || typeof txtContent !== 'string' || !txtContent.trim()) {
+        return Response.json({ error: 'txtContent is required' }, { status: 400 });
+      }
+
+      // Load & verify ownership
+      step = 'load_deck';
+      const deckRows = await base44.asServiceRole.entities.Deck.filter({ id: deckId });
+      const deck = deckRows[0] || null;
+      if (!deck) return Response.json({ error: 'Deck not found' }, { status: 404 });
+      if (deck.owner_id !== profile.id) {
+        return Response.json({ error: 'Forbidden: you do not own this deck' }, { status: 403 });
+      }
+
+      // Mark as importing
+      step = 'mark_importing';
+      await base44.asServiceRole.entities.Deck.update(deckId, {
+        deck_list_import_status: 'importing',
+        deck_list_source_host: 'manabox_txt',
+      });
+
+      // Parse TXT
+      step = 'parse_txt';
+      let parsedCards;
+      try {
+        parsedCards = parseTxtContent(txtContent);
+      } catch (parseErr) {
+        const isUnsupported = parseErr.message === 'unsupported_format';
+        await base44.asServiceRole.entities.Deck.update(deckId, {
+          deck_list_import_status: isUnsupported ? 'unsupported_source' : 'failed',
+        });
+        console.error('[deckImport] txt parse failed', { deckId, error: parseErr.message });
+        return Response.json({
+          status: isUnsupported ? 'unsupported_source' : 'failed',
+          message: isUnsupported
+            ? 'This file format is not supported for import yet.'
+            : 'Failed to import the deck list from this file.',
+        });
+      }
+
+      if (!parsedCards || parsedCards.length === 0) {
+        await base44.asServiceRole.entities.Deck.update(deckId, { deck_list_import_status: 'failed' });
+        return Response.json({ status: 'failed', message: 'No cards found in the uploaded file.' });
+      }
+
+      // Shared enrich + store pipeline
+      step = 'enrich_and_store';
+      const storeResult = await runEnrichAndStore(base44, deckId, deck.commander_name?.trim(), parsedCards, 'manabox_txt');
+
+      console.log('[deckImport] txt import success', { deckId, ...storeResult });
+
+      return Response.json({
+        status: 'imported',
+        ...storeResult,
         message: 'Deck list imported successfully.',
       });
     }
