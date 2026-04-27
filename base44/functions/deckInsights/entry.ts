@@ -93,10 +93,13 @@ Deno.serve(async (req) => {
       }
     } catch (_) {}
 
-    // ── Step 1: All participations for this profile, filter to this deck ──
+    // ── Step 1: All participations for the deck OWNER, filter to this deck ──
+    // We aggregate stats for the owner (deck.owner_id), not the caller.
+    // The caller is only used for auth/identity verification above.
     step = 'load_participations';
+    const ownerProfileId = deck.owner_id;
     const allMyParticipations = await base44.asServiceRole.entities.GameParticipant.filter(
-      { participant_profile_id: callerProfileId }, '-created_date', 500
+      { participant_profile_id: ownerProfileId }, '-created_date', 500
     );
     const deckParticipations = allMyParticipations.filter((p) => p.selected_deck_id === deckId);
 
@@ -160,7 +163,7 @@ Deno.serve(async (req) => {
         )
       );
       const allOpponentRows = participantArrays.flat().filter(
-        (p) => p.participant_profile_id !== callerProfileId
+        (p) => p.participant_profile_id !== ownerProfileId
       );
 
       // most_played_pod

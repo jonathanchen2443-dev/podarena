@@ -98,7 +98,18 @@
     "read": {
       "$or": [
         {
-          "data.owner_id": "{{user.id}}"
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.owner_id": {
+            "$inQuery": {
+              "entity": "Profile",
+              "field": "id",
+              "filters": {
+                "user_id": "{{user.id}}"
+              }
+            }
+          }
         },
         {
           "user_condition": {
@@ -110,7 +121,18 @@
     "update": {
       "$or": [
         {
-          "data.owner_id": "{{user.id}}"
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.owner_id": {
+            "$inQuery": {
+              "entity": "Profile",
+              "field": "id",
+              "filters": {
+                "user_id": "{{user.id}}"
+              }
+            }
+          }
         },
         {
           "user_condition": {
@@ -122,7 +144,18 @@
     "delete": {
       "$or": [
         {
-          "data.owner_id": "{{user.id}}"
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.owner_id": {
+            "$inQuery": {
+              "entity": "Profile",
+              "field": "id",
+              "filters": {
+                "user_id": "{{user.id}}"
+              }
+            }
+          }
         },
         {
           "user_condition": {
