@@ -35,7 +35,7 @@ function defaultPlayedAt() {
   return local.toISOString().slice(0, 16);
 }
 
-const STEP_TITLES = ["Game Setup", "Players & Results", "Props", "Review & Submit"];
+const STEP_TITLES = ["Game Setup & Players", "Rankings", "Props", "Review & Submit"];
 const TOTAL_STEPS = 4;
 
 // ── main component ─────────────────────────────────────────────────────────────
@@ -61,7 +61,6 @@ export default function LogGame() {
   const [podLoading, setPodLoading] = useState(lockedPodMode);
   const [podMembers, setPodMembers] = useState([]);
   const [podMembersLoading, setPodMembersLoading] = useState(false);
-  const [participantCount, setParticipantCount] = useState(4);
   const [playedAt, setPlayedAt] = useState(defaultPlayedAt);
   const [notes, setNotes] = useState("");
 
@@ -233,14 +232,12 @@ export default function LogGame() {
   function step1Valid() {
     if (mode === "pod" && !pod) return false;
     if (!playedAt) return false;
-    if (participantCount < 2 || participantCount > 10) return false;
+    if (participants.length < 2) return false;
     return true;
   }
 
   function step2Valid() {
     if (!myDeckId && myDecks.length > 0) return false; // deck required if they have decks
-    if (participants.length < 2) return false;
-    if (!participants.includes(currentUser?.id)) return false;
     if (participants.some((id) => !placements[id])) return false;
     return true;
   }
@@ -417,15 +414,22 @@ export default function LogGame() {
             lockedPodMode={lockedPodMode}
             pod={pod}
             podLoading={podLoading}
+            podMembers={podMembers}
+            podMembersLoading={podMembersLoading}
             authUserId={authUserId}
             profileId={currentUser?.id}
-            participantCount={participantCount}
+            participants={participants}
+            memberData={memberData}
+            currentUser={currentUser}
             playedAt={playedAt}
             notes={notes}
             onModeSwitch={handleModeSwitch}
             onPodSelected={handlePodSelected}
             onClearPod={() => { setPod(null); setPodMembers([]); setParticipants([]); setMemberData({}); }}
-            onParticipantCountChange={setParticipantCount}
+            onAddPodParticipant={handleAddPodParticipant}
+            onRemovePodParticipant={handleRemovePodParticipant}
+            onAddCasualParticipant={handleAddCasualParticipant}
+            onRemoveCasualParticipant={handleRemoveCasualParticipant}
             onPlayedAtChange={setPlayedAt}
             onNotesChange={setNotes}
           />
@@ -433,22 +437,13 @@ export default function LogGame() {
 
         {step === 2 && (
           <WizardStep2Players
-            mode={mode}
-            pod={pod}
-            podMembers={podMembers}
-            podMembersLoading={podMembersLoading}
             participants={participants}
             memberData={memberData}
             placements={placements}
-            participantCount={participantCount}
             currentUser={currentUser}
             myDecks={myDecks}
             myDeckId={myDeckId}
             onMyDeckChange={setMyDeckId}
-            onAddPodParticipant={handleAddPodParticipant}
-            onRemovePodParticipant={handleRemovePodParticipant}
-            onAddCasualParticipant={handleAddCasualParticipant}
-            onRemoveCasualParticipant={handleRemoveCasualParticipant}
             onPlacementChange={(uid, val) => setPlacements((prev) => ({ ...prev, [uid]: val }))}
           />
         )}
@@ -556,10 +551,10 @@ export default function LogGame() {
           {step === 1 && mode === "pod" && !pod && (
             <p className="text-center text-xs text-gray-600 mt-2">Select a POD to continue</p>
           )}
-          {step === 2 && participants.length < 2 && (
-            <p className="text-center text-xs text-gray-600 mt-2">Add at least 2 participants</p>
+          {step === 1 && (mode === "casual" || (mode === "pod" && pod)) && participants.length < 2 && (
+            <p className="text-center text-xs text-gray-600 mt-2">Add at least 2 players to continue</p>
           )}
-          {step === 2 && participants.length >= 2 && participants.some((id) => !placements[id]) && (
+          {step === 2 && participants.some((id) => !placements[id]) && (
             <p className="text-center text-xs text-gray-600 mt-2">Assign all placements to continue</p>
           )}
           {step === 3 && praiseReceiver && praiseType && (
