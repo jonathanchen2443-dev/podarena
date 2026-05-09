@@ -10,7 +10,7 @@
  *   onPraiseChange    — (praiseKey | null) => void
  */
 import React, { useState } from "react";
-import { HelpCircle, ChevronDown, X } from "lucide-react";
+import { HelpCircle, User } from "lucide-react";
 import { PRAISE_TYPES, PRAISE_META } from "@/components/services/praiseService";
 import PraiseHelpModal, { PRAISE_ICONS } from "@/components/praise/PraiseHelpModal";
 
@@ -21,84 +21,48 @@ function formatName(name) {
   return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
-// ── Receiver dropdown ─────────────────────────────────────────────────────────
-function ReceiverDropdown({ options, value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.profileId === value) || null;
-
+// ── Receiver pill (reused from WizardStep3Props pattern) ──────────────────────
+function ReceiverPill({ profile, selected, onClick }) {
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm text-left transition-colors"
-        style={{
-          backgroundColor: value ? "rgba(var(--ds-primary-rgb),0.08)" : "rgba(255,255,255,0.04)",
-          borderColor: value ? "rgba(var(--ds-primary-rgb),0.30)" : "rgba(255,255,255,0.10)",
-          color: value ? "#f3f4f6" : "#6b7280",
-        }}
-      >
-        {selected?.avatar_url ? (
-          <img src={selected.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
-        ) : (
-          <div className="w-5 h-5 rounded-full bg-gray-700 flex-shrink-0" />
-        )}
-        <span className="flex-1 min-w-0 truncate">
-          {selected ? formatName(selected.display_name) : "Choose a player…"}
-        </span>
-        {value && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onChange(null); }}
-            className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
-          >
-            <X className="w-2.5 h-2.5 text-gray-500" />
-          </button>
-        )}
-        <ChevronDown
-          className="flex-shrink-0 w-3 h-3 text-gray-600 transition-transform"
-          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
-        />
-      </button>
-
-      {open && (
-        <div
-          className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl overflow-hidden border"
-          style={{
-            backgroundColor: "#1a1f2e",
-            borderColor: "rgba(var(--ds-primary-rgb),0.25)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
-          }}
-        >
-          {options.map((o) => (
-            <button
-              key={o.profileId}
-              type="button"
-              onClick={() => { onChange(o.profileId); setOpen(false); }}
-              className="w-full flex items-center gap-2.5 text-left px-3 py-2.5 text-sm transition-colors hover:bg-white/5"
-              style={{ color: o.profileId === value ? "var(--ds-primary-text)" : "#e5e7eb" }}
-            >
-              {o.avatar_url ? (
-                <img src={o.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-gray-700 flex-shrink-0" />
-              )}
-              <span className="truncate">{formatName(o.display_name)}</span>
-            </button>
-          ))}
-          {options.length === 0 && (
-            <p className="text-xs text-gray-600 px-3 py-3">No other participants.</p>
-          )}
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 rounded-full px-3 py-1.5 transition-all flex-shrink-0"
+      style={
+        selected
+          ? {
+              background: "rgba(var(--ds-primary-rgb),0.18)",
+              border: "1.5px solid rgba(var(--ds-primary-rgb),0.60)",
+              boxShadow: "0 0 10px rgba(var(--ds-primary-rgb),0.20)",
+            }
+          : {
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }
+      }
+    >
+      {profile.avatar_url ? (
+        <img src={profile.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+      ) : (
+        <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.1)" }}>
+          <User className="w-3 h-3 text-gray-500" />
         </div>
       )}
-    </div>
+      <span
+        className="text-xs font-semibold leading-none whitespace-nowrap"
+        style={{ color: selected ? "var(--ds-primary-text)" : "#9ca3af" }}
+      >
+        {formatName(profile.display_name)}
+      </span>
+    </button>
   );
 }
 
 // ── Praise type grid ──────────────────────────────────────────────────────────
 function PraiseTypeGrid({ value, onChange, disabled }) {
   return (
-    <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-0.5">
+    <div className="grid grid-cols-3 gap-2">
       {PRAISE_TYPES.map((key) => {
         const meta = PRAISE_META[key];
         const isSelected = value === key;
@@ -110,9 +74,11 @@ function PraiseTypeGrid({ value, onChange, disabled }) {
             onClick={() => onChange(isSelected ? null : key)}
             className="flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 border transition-all"
             style={{
-              backgroundColor: isSelected ? "rgba(var(--ds-primary-rgb),0.14)" : "rgba(255,255,255,0.03)",
-              borderColor: isSelected ? "rgba(var(--ds-primary-rgb),0.45)" : "rgba(255,255,255,0.08)",
-              opacity: disabled ? 0.4 : 1,
+              backgroundColor: isSelected ? "rgba(var(--ds-primary-rgb),0.16)" : "rgba(255,255,255,0.03)",
+              borderColor: isSelected ? "rgba(var(--ds-primary-rgb),0.55)" : "rgba(255,255,255,0.08)",
+              boxShadow: isSelected ? "0 0 14px rgba(var(--ds-primary-rgb),0.22)" : "none",
+              transform: isSelected ? "scale(1.04)" : "scale(1)",
+              opacity: disabled ? 0.35 : 1,
               cursor: disabled ? "not-allowed" : "pointer",
             }}
           >
@@ -134,29 +100,26 @@ function PraiseTypeGrid({ value, onChange, disabled }) {
   );
 }
 
-// ── Selected praise preview ───────────────────────────────────────────────────
-function PraisePreview({ praiseKey, receiverName }) {
-  if (!praiseKey) return null;
+// ── Award summary banner ──────────────────────────────────────────────────────
+function AwardSummary({ praiseKey, receiverName }) {
   const meta = PRAISE_META[praiseKey];
   return (
     <div
-      className="flex items-center gap-3 rounded-xl border px-3 py-2.5"
+      className="rounded-2xl p-3 flex items-center gap-3"
       style={{
-        backgroundColor: "rgba(var(--ds-primary-rgb),0.08)",
-        borderColor: "rgba(var(--ds-primary-rgb),0.25)",
+        background: "linear-gradient(135deg, rgba(var(--ds-primary-rgb),0.12) 0%, rgba(var(--ds-primary-rgb),0.06) 100%)",
+        border: "1px solid rgba(var(--ds-primary-rgb),0.35)",
+        boxShadow: "0 0 20px rgba(var(--ds-primary-rgb),0.10)",
       }}
     >
-      <img
-        src={PRAISE_ICONS[praiseKey]}
-        alt={meta.label}
-        className="w-8 h-8 object-contain flex-shrink-0"
-      />
+      <img src={PRAISE_ICONS[praiseKey]} alt={meta.label} className="w-12 h-12 object-contain flex-shrink-0" />
       <div className="min-w-0">
-        <p className="text-xs font-bold" style={{ color: "var(--ds-primary-text)" }}>
-          {meta.label}
-        </p>
+        <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-500 mb-0.5">Awarding</p>
+        <p className="text-white font-extrabold text-sm leading-tight">{meta.label}</p>
         {receiverName && (
-          <p className="text-xs text-gray-500 truncate">for {formatName(receiverName)}</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--ds-primary-text)" }}>
+            to {formatName(receiverName)}
+          </p>
         )}
       </div>
     </div>
@@ -176,24 +139,23 @@ export default function PraiseSelector({
 
   // Only other participants (not self)
   const receiverOptions = (participants || []).filter((p) => p.profileId !== currentProfileId);
-
   const receiverName = receiverOptions.find((o) => o.profileId === selectedReceiver)?.display_name || null;
-  const praiseDisabled = !selectedReceiver;
+
+  function handlePillClick(profileId) {
+    if (selectedReceiver === profileId) {
+      onReceiverChange(null);
+      onPraiseChange(null);
+    } else {
+      onReceiverChange(profileId);
+      onPraiseChange(null); // reset prop when switching receiver
+    }
+  }
 
   return (
-    <div
-      className="rounded-2xl border overflow-visible"
-      style={{
-        backgroundColor: "rgba(255,255,255,0.02)",
-        borderColor: "rgba(255,255,255,0.08)",
-      }}
-    >
-      {/* Section header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-200">Props</span>
-          <span className="text-gray-600 text-xs font-normal">(optional)</span>
-        </div>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-500">Who stood out?</p>
         <button
           type="button"
           onClick={() => setHelpOpen(true)}
@@ -203,38 +165,38 @@ export default function PraiseSelector({
         </button>
       </div>
 
-      <div className="px-4 pb-4 space-y-3">
-        {/* Step 1 — receiver */}
-        <div>
-          <p className="text-xs text-gray-600 mb-1.5">Who stood out?</p>
-          <ReceiverDropdown
-            options={receiverOptions}
-            value={selectedReceiver}
-            onChange={(val) => {
-              onReceiverChange(val);
-              // Clear praise type if receiver is cleared
-              if (!val) onPraiseChange(null);
-            }}
-          />
-        </div>
-
-        {/* Step 2 — praise type (only enabled when receiver is chosen) */}
-        {selectedReceiver && (
-          <div>
-            <p className="text-xs text-gray-600 mb-1.5">Pick a badge</p>
-            <PraiseTypeGrid
-              value={selectedPraise}
-              onChange={onPraiseChange}
-              disabled={praiseDisabled}
+      {/* Receiver pills — always visible */}
+      {receiverOptions.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {receiverOptions.map((p) => (
+            <ReceiverPill
+              key={p.profileId}
+              profile={p}
+              selected={selectedReceiver === p.profileId}
+              onClick={() => handlePillClick(p.profileId)}
             />
-          </div>
-        )}
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-700 text-xs italic">No other participants to award.</p>
+      )}
 
-        {/* Selected praise preview */}
-        {selectedPraise && selectedReceiver && (
-          <PraisePreview praiseKey={selectedPraise} receiverName={receiverName} />
-        )}
+      {/* Props grid — always visible; disabled until player selected */}
+      <div>
+        <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-500 mb-2">
+          Choose a prop{!selectedReceiver && <span className="normal-case font-normal text-gray-700 ml-1">(select a player first)</span>}
+        </p>
+        <PraiseTypeGrid
+          value={selectedPraise}
+          onChange={onPraiseChange}
+          disabled={!selectedReceiver}
+        />
       </div>
+
+      {/* Award summary when both selected */}
+      {selectedReceiver && selectedPraise && (
+        <AwardSummary praiseKey={selectedPraise} receiverName={receiverName} />
+      )}
 
       {helpOpen && <PraiseHelpModal onClose={() => setHelpOpen(false)} />}
     </div>

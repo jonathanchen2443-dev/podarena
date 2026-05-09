@@ -134,7 +134,7 @@ function TwoPlayerLayout({ sorted, onPlayerClick }) {
   const first  = sorted.find((p) => p.placement === 1) || sorted[0];
   const second = sorted.find((p) => p.placement === 2) || sorted[1];
   return (
-    <div className="flex items-end justify-center gap-4 py-0 px-3 overflow-x-hidden">
+    <div className="flex items-end justify-center gap-4 py-2">
       {second && <PlayerCard key={second.userId} p={second} imgSize={88}  blockH={140} showCrown={false} onPlayerClick={onPlayerClick} />}
       {first  && <PlayerCard key={first.userId}  p={first}  imgSize={104} blockH={200} showCrown onPlayerClick={onPlayerClick} />}
     </div>
@@ -159,12 +159,12 @@ function PodiumLayout({ top3, onPlayerClick }) {
   const third  = top3.find((p) => p.placement === 3) || top3[2];
 
   return (
-    <div className="flex items-end justify-center gap-2 py-0 w-full overflow-x-hidden">
+    <div className="flex items-end justify-center gap-3 py-2 w-full">
       {second && (
         <PlayerCard p={second} imgSize={88}  blockH={Math.round(PODIUM_H * 0.75)} showCrown={false} onPlayerClick={onPlayerClick} />
       )}
       {first && (
-        <PlayerCard p={first}  imgSize={88} blockH={PODIUM_H}                    showCrown onPlayerClick={onPlayerClick} />
+        <PlayerCard p={first}  imgSize={104} blockH={PODIUM_H}                    showCrown onPlayerClick={onPlayerClick} />
       )}
       {third && (
         <PlayerCard p={third}  imgSize={88}  blockH={Math.round(PODIUM_H * 0.50)} showCrown={false} onPlayerClick={onPlayerClick} />

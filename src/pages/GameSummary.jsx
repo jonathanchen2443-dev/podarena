@@ -93,7 +93,7 @@ function ApprovalStatusRow({ participants }) {
 
 function Section({ children, className = "" }) {
   return (
-    <div className={`bg-gray-900/60 border border-gray-800/50 rounded-2xl overflow-hidden ${className}`}>
+    <div className={`bg-gray-900/60 border border-gray-800/50 rounded-2xl ${className.includes("overflow") ? "" : "overflow-hidden"} ${className}`}>
       {children}
     </div>
   );
@@ -257,7 +257,7 @@ export default function GameSummary() {
       </div>
 
       {/* ── Results (podium) ────────────────────────────────────────────────── */}
-      <Section>
+      <Section className="overflow-visible">
         <div className="flex items-center justify-between px-4 pt-3.5 pb-1.5">
           <p className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold">Results</p>
           {isPodGame ? (

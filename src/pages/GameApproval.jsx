@@ -52,7 +52,7 @@ function MetaPill({ icon: Icon, label, className = "" }) {
 
 function Section({ children, className = "" }) {
   return (
-    <div className={`bg-gray-900/60 border border-gray-800/50 rounded-2xl overflow-hidden ${className}`}>
+    <div className={`bg-gray-900/60 border border-gray-800/50 rounded-2xl ${className.includes("overflow") ? "" : "overflow-hidden"} ${className}`}>
       {children}
     </div>
   );
@@ -459,7 +459,7 @@ export default function GameApproval() {
       </Section>
 
       {/* ── Results (podium) ──────────────────────────────────────────────────── */}
-      <Section>
+      <Section className="overflow-visible">
         <SectionLabel>Results</SectionLabel>
         <div className="px-4 pb-4 pt-2">
           <MatchResultsDisplay participants={game.participants} currentProfileId={currentProfileId} />
@@ -515,7 +515,7 @@ export default function GameApproval() {
 
       {/* ── Optional praise / props ───────────────────────────────────────────── */}
       <Section>
-        <SectionLabel>Give Props (optional)</SectionLabel>
+        <SectionLabel>Give Props · optional</SectionLabel>
         <div className="px-4 pb-4">
           <PraiseSelector
             participants={(game.participants || []).map((p) => ({
