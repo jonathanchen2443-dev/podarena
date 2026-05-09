@@ -27,9 +27,9 @@ import PraiseSelector from "@/components/praise/PraiseSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Trophy, Clock, Loader2, Layers, ChevronDown,
+  Trophy, Clock, Loader2, Layers,
   ArrowLeft, Swords, Calendar, FileText, Users,
-  CheckCircle2, XCircle, Shield
+  CheckCircle2, XCircle, Shield, Search
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -191,6 +191,9 @@ export default function GameApproval() {
   const [myDecks, setMyDecks] = useState([]);
   const [decksLoading, setDecksLoading] = useState(false);
   const [selectedDeckId, setSelectedDeckId] = useState(null);
+
+  // ── Deck search state ───────────────────────────────────────────────────────
+  const [deckSearch, setDeckSearch] = useState("");
 
   // ── Praise state ────────────────────────────────────────────────────────────
   const [praiseReceiver, setPraiseReceiver] = useState(null);
@@ -483,7 +486,7 @@ export default function GameApproval() {
       {/* ── Your deck selection ───────────────────────────────────────────────── */}
       <Section>
         <SectionLabel>Your deck for this game</SectionLabel>
-        <div className="px-4 pb-4 space-y-2">
+        <div className="px-4 pb-4 space-y-3">
           {decksLoading ? (
             <div className="space-y-2">
               {[1, 2].map((i) => (
@@ -497,19 +500,85 @@ export default function GameApproval() {
                 Add a deck in your profile to select one here. You can still reject without a deck.
               </p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {myDecks.map((deck) => (
-                <DeckTile
-                  key={deck.id}
-                  deck={deck}
-                  selected={selectedDeckId === deck.id}
-                  onSelect={setSelectedDeckId}
-                  disabled={actionLoading !== null}
-                />
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            // Priority: favorites first, then sort by updated_date (most recently used)
+            const favorites = myDecks.filter((d) => d.is_favorite);
+            const nonFavorites = myDecks.filter((d) => !d.is_favorite);
+            const suggested = [...favorites, ...nonFavorites].slice(0, 3);
+            const suggestedIds = new Set(suggested.map((d) => d.id));
+
+            const q = deckSearch.trim().toLowerCase();
+            const searchResults = q
+              ? myDecks.filter(
+                  (d) => !suggestedIds.has(d.id) &&
+                    (d.name?.toLowerCase().includes(q) || d.commander_name?.toLowerCase().includes(q))
+                )
+              : [];
+
+            // If selected deck is not in suggested, also show it at top
+            const selectedNotInSuggested = selectedDeckId && !suggestedIds.has(selectedDeckId)
+              ? myDecks.find((d) => d.id === selectedDeckId)
+              : null;
+
+            return (
+              <>
+                {/* Suggested / top-3 */}
+                <div className="space-y-2">
+                  {selectedNotInSuggested && (
+                    <DeckTile
+                      key={selectedNotInSuggested.id}
+                      deck={selectedNotInSuggested}
+                      selected
+                      onSelect={setSelectedDeckId}
+                      disabled={actionLoading !== null}
+                    />
+                  )}
+                  {suggested.map((deck) => (
+                    <DeckTile
+                      key={deck.id}
+                      deck={deck}
+                      selected={selectedDeckId === deck.id}
+                      onSelect={setSelectedDeckId}
+                      disabled={actionLoading !== null}
+                    />
+                  ))}
+                </div>
+
+                {/* Search for other decks */}
+                {myDecks.length > 3 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={deckSearch}
+                      onChange={(e) => setDeckSearch(e.target.value)}
+                      placeholder="Search other decks…"
+                      className="w-full h-9 pl-8 pr-3 rounded-xl text-sm text-white placeholder-gray-600 outline-none border border-white/[0.07] focus:border-white/[0.15] transition-colors"
+                      style={{ background: "rgba(255,255,255,0.04)" }}
+                    />
+                  </div>
+                )}
+
+                {/* Search results */}
+                {searchResults.length > 0 && (
+                  <div className="space-y-2">
+                    {searchResults.map((deck) => (
+                      <DeckTile
+                        key={deck.id}
+                        deck={deck}
+                        selected={selectedDeckId === deck.id}
+                        onSelect={setSelectedDeckId}
+                        disabled={actionLoading !== null}
+                      />
+                    ))}
+                  </div>
+                )}
+                {q && searchResults.length === 0 && (
+                  <p className="text-xs text-gray-700 text-center py-1">No decks match your search.</p>
+                )}
+              </>
+            );
+          })()}
         </div>
       </Section>
 

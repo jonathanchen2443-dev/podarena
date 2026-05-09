@@ -1,14 +1,14 @@
 /**
- * Step 4 — Review & Submit (corrected)
- * Visually resembles the match summary display.
- * Podium/ranking style, deck info, prop callout.
+ * Step 4 — Review & Submit
+ * Uses real MatchResultsDisplay podium for result presentation.
  */
 import React from "react";
-import { Pencil, User, Layers } from "lucide-react";
+import { Pencil, Layers } from "lucide-react";
 import { format } from "date-fns";
 import { PRAISE_META } from "@/components/services/praiseService";
 import { PRAISE_ICONS } from "@/components/praise/PraiseHelpModal";
 import ManaPipRow from "@/components/mtg/ManaPipRow";
+import MatchResultsDisplay from "@/components/leagues/MatchResultsDisplay";
 
 function formatName(name) {
   if (!name) return "Player";
@@ -37,61 +37,7 @@ function EditChip({ onEdit }) {
   );
 }
 
-// Rank configs for visual treatment
-const RANK_CONFIG = {
-  1: { medal: "🥇", barH: "h-20", barColor: "rgba(251,191,36,0.55)", bg: "rgba(251,191,36,0.09)", border: "rgba(251,191,36,0.30)", nameColor: "#fbbf24", glow: "0 0 18px rgba(251,191,36,0.15)" },
-  2: { medal: "🥈", barH: "h-14", barColor: "rgba(156,163,175,0.45)", bg: "rgba(156,163,175,0.06)", border: "rgba(156,163,175,0.22)", nameColor: "#9ca3af", glow: "none" },
-  3: { medal: "🥉", barH: "h-10", barColor: "rgba(217,119,6,0.45)", bg: "rgba(217,119,6,0.06)", border: "rgba(217,119,6,0.22)", nameColor: "#d97706", glow: "none" },
-};
-function getRankCfg(rank) {
-  return RANK_CONFIG[rank] || { medal: null, barH: "h-8", barColor: "rgba(255,255,255,0.08)", bg: "rgba(255,255,255,0.02)", border: "rgba(255,255,255,0.08)", nameColor: "#9ca3af", glow: "none" };
-}
 
-// ── Podium card (top 3 shown prominently) ─────────────────────────────────────
-function PodiumRow({ rank, profile, isYou, deckLabel }) {
-  const cfg = getRankCfg(rank);
-  return (
-    <div
-      className="flex items-center gap-3 rounded-xl px-3 py-3 transition-all"
-      style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, boxShadow: cfg.glow }}
-    >
-      {/* Medal / rank */}
-      <div className="w-8 flex-shrink-0 text-center">
-        {cfg.medal ? (
-          <span className="text-xl leading-none">{cfg.medal}</span>
-        ) : (
-          <span className="text-sm font-bold text-gray-600">{rank}</span>
-        )}
-      </div>
-
-      {/* Avatar */}
-      {profile?.avatar_url ? (
-        <img src={profile.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0 border border-white/10" />
-      ) : (
-        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
-          <User className="w-4 h-4 text-gray-600" />
-        </div>
-      )}
-
-      {/* Name + deck */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold truncate leading-none" style={{ color: cfg.nameColor }}>
-          {isYou ? "You" : formatName(profile?.display_name)}
-          {isYou && <span className="text-gray-600 text-xs font-normal ml-1.5">(you)</span>}
-        </p>
-        {deckLabel && (
-          <p className="text-[11px] text-gray-600 truncate mt-0.5">{deckLabel}</p>
-        )}
-      </div>
-
-      {/* Winner crown */}
-      {rank === 1 && (
-        <span className="text-yellow-400 text-lg flex-shrink-0">👑</span>
-      )}
-    </div>
-  );
-}
 
 export default function WizardStep4Review({
   mode,
@@ -108,8 +54,24 @@ export default function WizardStep4Review({
   currentUser,
   onEditStep,
 }) {
-  const sorted = [...participants].sort((a, b) => (placements[a] || 99) - (placements[b] || 99));
   const myDeck = myDecks.find((d) => d.id === myDeckId) || null;
+
+  // Build the participant shape MatchResultsDisplay expects
+  const podiumParticipants = participants.map((uid) => {
+    const m = memberData[uid] || {};
+    const isMe = uid === currentUser?.id;
+    const deck = isMe && myDeck
+      ? { name: myDeck.name || myDeck.commander_name, commander_image: myDeck.commander_image_url || null }
+      : null;
+    return {
+      userId: uid,
+      display_name: m.display_name || uid,
+      avatar_url: m.avatar_url || null,
+      placement: placements[uid] || 99,
+      result: placements[uid] === 1 ? "win" : "loss",
+      deck,
+    };
+  });
   const praiseMeta = praiseType ? PRAISE_META[praiseType] : null;
   const praiseReceiverName = praiseReceiver ? memberData[praiseReceiver]?.display_name : null;
 
@@ -180,31 +142,13 @@ export default function WizardStep4Review({
         </div>
       )}
 
-      {/* ── Results — ranking list ─────────────────────────────────────────── */}
+      {/* ── Results — podium ──────────────────────────────────────────────── */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-500">Results</p>
           <EditChip onEdit={() => onEditStep(2)} />
         </div>
-        <div className="space-y-2">
-          {sorted.map((uid) => {
-            const rank = placements[uid] || 0;
-            const profile = memberData[uid] || {};
-            const isYou = uid === currentUser?.id;
-            const deckLabel = isYou && myDeck
-              ? (myDeck.commander_name || myDeck.name)
-              : null;
-            return (
-              <PodiumRow
-                key={uid}
-                rank={rank}
-                profile={profile}
-                isYou={isYou}
-                deckLabel={deckLabel}
-              />
-            );
-          })}
-        </div>
+        <MatchResultsDisplay participants={podiumParticipants} currentProfileId={currentUser?.id} />
       </div>
 
       {/* ── Props ─────────────────────────────────────────────────────────── */}

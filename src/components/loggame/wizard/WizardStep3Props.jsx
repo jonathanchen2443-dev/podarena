@@ -29,12 +29,13 @@ function ReceiverPill({ profile, selected, onClick }) {
       style={
         selected
           ? {
-              background: "rgba(var(--ds-primary-rgb),0.18)",
-              border: "1px solid rgba(var(--ds-primary-rgb),0.50)",
+              background: "rgba(var(--ds-primary-rgb),0.22)",
+              border: "2px solid rgba(var(--ds-primary-rgb),0.70)",
+              boxShadow: "0 0 14px rgba(var(--ds-primary-rgb),0.30)",
             }
           : {
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.05)",
+              border: "1.5px solid rgba(255,255,255,0.10)",
             }
       }
     >
