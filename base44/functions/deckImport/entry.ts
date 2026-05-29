@@ -366,25 +366,35 @@ async function runEnrichAndStore(base44, deckId, commanderName, parsedCards, sou
     }
   }
 
-  // Replace-on-refresh: delete existing DeckCard rows
+  // Replace-on-refresh: delete ONLY imported/legacy cards, preserve manual and scan cards.
+  // Backward compat: rows with no added_method are treated as "import" (legacy rows).
   const existing = await base44.asServiceRole.entities.DeckCard.filter({ deck_id: deckId }, '-created_date', 500);
-  if (existing.length > 0) {
-    await Promise.all(existing.map((c) => base44.asServiceRole.entities.DeckCard.delete(c.id)));
+  const toDelete = existing.filter((c) => !c.added_method || c.added_method === 'import');
+  if (toDelete.length > 0) {
+    await Promise.all(toDelete.map((c) => base44.asServiceRole.entities.DeckCard.delete(c.id)));
   }
 
+  // Tag all newly imported rows as added_method: "import"
+  const taggedEnriched = enriched.map((c) => ({ ...c, added_method: 'import' }));
+
   // Bulk insert
-  const totalQty = enriched.reduce((s, c) => s + (c.quantity || 1), 0);
-  await base44.entities.DeckCard.bulkCreate(enriched);
+  const totalQty = taggedEnriched.reduce((s, c) => s + (c.quantity || 1), 0);
+  await base44.entities.DeckCard.bulkCreate(taggedEnriched);
+
+  // Recalculate deck_list_card_count from ALL DeckCard rows for this deck
+  // (imported + manual + scan). Ensures manual additions are reflected in the count.
+  const allCardsAfterImport = await base44.asServiceRole.entities.DeckCard.filter({ deck_id: deckId }, '-created_date', 500);
+  const allCardsTotalQty = allCardsAfterImport.reduce((s, c) => s + (c.quantity || 1), 0);
 
   // Update Deck metadata
   await base44.asServiceRole.entities.Deck.update(deckId, {
     deck_list_import_status: 'imported',
     deck_list_last_synced_at: new Date().toISOString(),
     deck_list_source_host: sourceHost,
-    deck_list_card_count: totalQty,
+    deck_list_card_count: allCardsTotalQty,
   });
 
-  return { card_count: enriched.length, total_quantity: totalQty, failed_enrichments: failedEnrichments };
+  return { card_count: taggedEnriched.length, total_quantity: allCardsTotalQty, failed_enrichments: failedEnrichments };
 }
 
 // ── Main parser dispatcher ────────────────────────────────────────────────────

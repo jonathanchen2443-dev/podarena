@@ -8,7 +8,7 @@
     },
     "card_name": {
       "type": "string",
-      "description": "Name of the card as imported from the external source."
+      "description": "Name of the card as imported or manually added."
     },
     "quantity": {
       "type": "integer",
@@ -21,7 +21,7 @@
     },
     "oracle_id": {
       "type": "string",
-      "description": "Scryfall oracle ID (canonical across printings)."
+      "description": "Scryfall oracle ID (canonical across printings). Used for duplicate detection."
     },
     "mana_cost": {
       "type": "string",
@@ -43,9 +43,53 @@
       "default": [],
       "description": "Color array from Scryfall (e.g. ['W','U','B','G'])."
     },
+    "color_identity": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Color identity array from Scryfall. Used for Commander legality checks."
+    },
     "image_small_url": {
       "type": "string",
       "description": "Small card image URL from Scryfall. Used for compact list rendering."
+    },
+    "image_normal_url": {
+      "type": "string",
+      "description": "Normal-size card image URL from Scryfall."
+    },
+    "image_art_crop_url": {
+      "type": "string",
+      "description": "Art-crop image URL from Scryfall. Used for decorative art display."
+    },
+    "legalities": {
+      "type": "object",
+      "description": "Legalities object from Scryfall. Key = format name, value = 'legal' | 'not_legal' | 'banned' | 'restricted'."
+    },
+    "set_code": {
+      "type": "string",
+      "description": "Set code from Scryfall (e.g. 'neo', 'dom')."
+    },
+    "set_name": {
+      "type": "string",
+      "description": "Full set name from Scryfall (e.g. 'Kamigawa: Neon Dynasty')."
+    },
+    "collector_number": {
+      "type": "string",
+      "description": "Collector number within the set from Scryfall."
+    },
+    "rarity": {
+      "type": "string",
+      "description": "Card rarity from Scryfall: common, uncommon, rare, mythic, special, bonus."
+    },
+    "oracle_text": {
+      "type": "string",
+      "description": "Oracle rules text from Scryfall."
+    },
+    "layout": {
+      "type": "string",
+      "description": "Card layout from Scryfall (e.g. 'normal', 'transform', 'modal_dfc', 'split')."
     },
     "section": {
       "type": "string",
@@ -70,6 +114,10 @@
       ],
       "default": "enriched",
       "description": "Whether Scryfall enrichment succeeded for this card."
+    },
+    "added_method": {
+      "type": "string",
+      "description": "How this card was added. Expected values: 'import', 'manual', 'scan'. Treat missing value as 'import' for backward compatibility."
     }
   },
   "required": [
