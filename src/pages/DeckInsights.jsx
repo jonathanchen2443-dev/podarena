@@ -481,6 +481,7 @@ export default function DeckInsights() {
             lastSyncedAt={deck.deck_list_last_synced_at ?? null}
             cardCount={deck.deck_list_card_count ?? null}
           />
+          {/* DeckListTab re-fetches automatically when importStatus changes to 'imported' */}
         </>
       )}
 

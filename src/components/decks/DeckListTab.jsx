@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Lock, List, AlertCircle, Clock, Search, X, ChevronDown, ChevronRight } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { base44 } from "@/api/base44Client";
+import { Lock, List, AlertCircle, Plus, Search, X, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import DeckCardRow from "@/components/decks/DeckCardRow";
+import AddCardModal from "@/components/decks/AddCardModal";
+import { listDeckCards, updateCardQuantity, removeCardFromDeck } from "@/components/services/cardActionsService";
 
 // Canonical section order for display
 const SECTION_ORDER = [
@@ -24,7 +25,7 @@ function sectionSortKey(section) {
 
 // ── Placeholder states ────────────────────────────────────────────────────────
 
-function PlaceholderBox({ icon: Icon, iconBg, iconColor, title, body }) {
+function PlaceholderBox({ icon: Icon, iconBg, iconColor, title, body, action }) {
   return (
     <div className="rounded-2xl p-8 flex flex-col items-center text-center gap-4"
       style={{ background: "rgba(255,255,255,0.03)" }}>
@@ -35,6 +36,7 @@ function PlaceholderBox({ icon: Icon, iconBg, iconColor, title, body }) {
         <p className="text-white font-semibold text-sm">{title}</p>
         <p className="text-gray-500 text-xs mt-1.5 leading-relaxed max-w-[240px]">{body}</p>
       </div>
+      {action}
     </div>
   );
 }
@@ -42,15 +44,16 @@ function PlaceholderBox({ icon: Icon, iconBg, iconColor, title, body }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 /**
- * DeckListTab — renders the deck list tab with real card data.
+ * DeckListTab — renders the deck list tab, loaded via cardActionsService.listDeckCards.
  *
  * Props:
  *   deckId               – string  (required to load cards)
- *   isOwner              – boolean
- *   showDeckListPublicly – boolean
+ *   isOwner              – boolean (used as UI hint; backend is authoritative)
+ *   showDeckListPublicly – boolean (used as UI hint; backend is authoritative)
  *   importStatus         – string: not_imported | importing | imported | failed | unsupported_source
- *   lastSyncedAt         – ISO string or null
- *   cardCount            – number or null (used as hint, not for gating)
+ *   lastSyncedAt         – ISO string or null (passed through, not used for gating)
+ *   cardCount            – number or null (hint only, replaced by backend summary)
+ *   onImportDone         – optional callback; if parent refreshes after import, DeckListTab re-fetches
  */
 export default function DeckListTab({
   deckId,
@@ -59,13 +62,45 @@ export default function DeckListTab({
   importStatus = 'not_imported',
   lastSyncedAt = null,
   cardCount = null,
+  onImportDone,
 }) {
   const [cards, setCards] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loadingCards, setLoadingCards] = useState(false);
   const [cardError, setCardError] = useState(null);
   const [search, setSearch] = useState('');
-  // collapsed sections: Set of section names. Empty = all expanded.
   const [collapsed, setCollapsed] = useState(new Set());
+  const [addModalOpen, setAddModalOpen] = useState(false);
+
+  // Privacy — if non-owner and not public, show locked placeholder immediately
+  const isPrivateForViewer = !isOwner && !showDeckListPublicly;
+
+  const loadCards = useCallback(async () => {
+    if (!deckId || isPrivateForViewer) return;
+    setLoadingCards(true);
+    setCardError(null);
+    const res = await listDeckCards(deckId);
+    setLoadingCards(false);
+    if (res?.ok) {
+      setCards(res.cards || []);
+      setSummary(res.summary || null);
+    } else if (res?.code === 'DECK_PRIVATE') {
+      // Backend confirmed private — show lock
+      setCardError('PRIVATE');
+    } else {
+      setCardError(res?.message || 'Failed to load deck list.');
+    }
+  }, [deckId, isPrivateForViewer]);
+
+  useEffect(() => {
+    loadCards();
+  }, [loadCards]);
+
+  // When parent signals import completed, re-fetch cards
+  useEffect(() => {
+    if (importStatus === 'imported') loadCards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importStatus]);
 
   const toggleSection = useCallback((section) => {
     setCollapsed((prev) => {
@@ -76,27 +111,8 @@ export default function DeckListTab({
     });
   }, []);
 
-  const isPrivateForViewer = !isOwner && !showDeckListPublicly;
-  const shouldLoad = importStatus === 'imported' && !isPrivateForViewer && !!deckId;
-
-  // Load DeckCard rows when imported
-  useEffect(() => {
-    if (!shouldLoad) return;
-    let cancelled = false;
-    setLoadingCards(true);
-    setCardError(null);
-    base44.functions.invoke('deckImport', { action: 'getDeckCards', deckId })
-      .then((res) => {
-        if (cancelled) return;
-        if (res.data?.error) { setCardError(res.data.error); return; }
-        setCards(res.data?.cards || []);
-      })
-      .catch((e) => { if (!cancelled) setCardError(e?.message || 'Failed to load cards'); })
-      .finally(() => { if (!cancelled) setLoadingCards(false); });
-    return () => { cancelled = true; };
-  }, [deckId, shouldLoad, importStatus]);
-
-  // ── All derived state (must be before any early returns) ──────────────────
+  // Derived state
+  const canEdit = summary?.canEdit ?? isOwner ?? false;
   const q = search.trim().toLowerCase();
 
   const grouped = useMemo(() => {
@@ -110,14 +126,37 @@ export default function DeckListTab({
     return [...map.entries()].sort((a, b) => sectionSortKey(a[0]) - sectionSortKey(b[0]));
   }, [cards, q]);
 
-  const totalCards = cards.reduce((s, c) => s + (c.quantity || 1), 0);
+  const totalCards = summary?.totalCards ?? cards.reduce((s, c) => s + (c.quantity || 1), 0);
 
-  const syncLabel = lastSyncedAt
-    ? `Last synced ${format(parseISO(lastSyncedAt), "MMM d, yyyy")}`
-    : null;
+  // ── Mutation handlers ─────────────────────────────────────────────────────
+
+  async function handleQuantityChange(deckCardId, newQty) {
+    const res = await updateCardQuantity(deckCardId, newQty);
+    if (res?.ok) {
+      setCards(res.cards || []);
+      setSummary(res.summary || null);
+    } else {
+      toast.error(res?.message || 'Failed to update quantity.');
+    }
+  }
+
+  async function handleRemove(deckCardId) {
+    const res = await removeCardFromDeck(deckCardId);
+    if (res?.ok) {
+      setCards(res.cards || []);
+      setSummary(res.summary || null);
+    } else {
+      toast.error(res?.message || 'Failed to remove card.');
+    }
+  }
+
+  function handleCardsUpdated(newCards, newSummary) {
+    setCards(newCards || []);
+    setSummary(newSummary || null);
+  }
 
   // ── Privacy gate ──────────────────────────────────────────────────────────
-  if (isPrivateForViewer) {
+  if (isPrivateForViewer || cardError === 'PRIVATE') {
     return (
       <PlaceholderBox
         icon={Lock}
@@ -129,62 +168,20 @@ export default function DeckListTab({
     );
   }
 
-  // ── Status-based placeholder states ──────────────────────────────────────
-  if (importStatus === 'importing') {
+  // ── Importing placeholder ─────────────────────────────────────────────────
+  if (importStatus === 'importing' && cards.length === 0) {
     return (
       <PlaceholderBox
-        icon={Clock}
+        icon={RefreshCw}
         iconBg="rgba(92,124,250,0.10)"
-        iconColor="text-blue-400 animate-pulse"
+        iconColor="text-blue-400 animate-spin"
         title="Importing deck list…"
         body="This usually takes a few seconds."
       />
     );
   }
 
-  if (importStatus === 'failed') {
-    return (
-      <PlaceholderBox
-        icon={AlertCircle}
-        iconBg="rgba(239,68,68,0.10)"
-        iconColor="text-red-400"
-        title="Import failed"
-        body={isOwner
-          ? "Something went wrong importing the deck list. Try refreshing below."
-          : "The deck list could not be imported from the external source."}
-      />
-    );
-  }
-
-  if (importStatus === 'unsupported_source') {
-    return (
-      <PlaceholderBox
-        icon={AlertCircle}
-        iconBg="rgba(251,191,36,0.08)"
-        iconColor="text-amber-400"
-        title="Source not yet supported"
-        body="The deck link is saved and valid, but automatic import isn't available for this source yet."
-      />
-    );
-  }
-
-  if (importStatus !== 'imported') {
-    // not_imported or unknown
-    return (
-      <PlaceholderBox
-        icon={List}
-        iconBg="rgba(255,255,255,0.05)"
-        iconColor="text-gray-500"
-        title="No deck list yet"
-        body={isOwner
-          ? "Add a deck link or upload a TXT file to import your card list."
-          : "Deck list will appear here once imported from the external deck source."}
-      />
-    );
-  }
-
-  // ── imported state: render cards ──────────────────────────────────────────
-
+  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loadingCards) {
     return (
       <div className="space-y-2 animate-pulse">
@@ -195,7 +192,8 @@ export default function DeckListTab({
     );
   }
 
-  if (cardError) {
+  // ── Error state ───────────────────────────────────────────────────────────
+  if (cardError && cardError !== 'PRIVATE') {
     return (
       <PlaceholderBox
         icon={AlertCircle}
@@ -203,28 +201,64 @@ export default function DeckListTab({
         iconColor="text-red-400"
         title="Could not load deck list"
         body={cardError}
+        action={
+          <button
+            onClick={loadCards}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-gray-400 hover:text-white text-xs border border-white/[0.08] hover:bg-white/[0.06] transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        }
       />
     );
   }
 
+  // ── Empty state ───────────────────────────────────────────────────────────
   if (cards.length === 0) {
     return (
-      <PlaceholderBox
-        icon={List}
-        iconBg="rgba(255,255,255,0.05)"
-        iconColor="text-gray-500"
-        title="No cards found"
-        body={isOwner ? "Try re-importing the deck list." : "No cards have been imported yet."}
-      />
+      <div>
+        <PlaceholderBox
+          icon={List}
+          iconBg="rgba(255,255,255,0.05)"
+          iconColor="text-gray-500"
+          title="No cards in this deck yet"
+          body={canEdit
+            ? "Add cards manually or import your deck list from an external source."
+            : "No cards have been added to this deck yet."}
+          action={canEdit ? (
+            <button
+              onClick={() => setAddModalOpen(true)}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl ds-btn-primary text-white text-xs font-semibold transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Card
+            </button>
+          ) : null}
+        />
+        {addModalOpen && (
+          <AddCardModal
+            deckId={deckId}
+            onClose={() => setAddModalOpen(false)}
+            onCardsUpdated={handleCardsUpdated}
+          />
+        )}
+      </div>
     );
   }
 
+  // ── Card list ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
-      {/* Header row: card count + sync date */}
+      {/* Header: count + Add Card */}
       <div className="flex items-center justify-between px-0.5">
         <span className="text-gray-500 text-xs font-medium">{totalCards} cards</span>
-        {syncLabel && <span className="text-gray-700 text-xs">{syncLabel}</span>}
+        {canEdit && (
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="flex items-center gap-1 h-7 px-3 rounded-lg ds-btn-primary text-white text-xs font-semibold transition-colors"
+          >
+            <Plus className="w-3 h-3" /> Add Card
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -254,11 +288,9 @@ export default function DeckListTab({
       ) : (
         grouped.map(([section, sectionCards]) => {
           const sectionQty = sectionCards.reduce((s, c) => s + (c.quantity || 1), 0);
-          // When search is active, always expand sections so results are visible
           const isOpen = !!search.trim() || !collapsed.has(section);
           return (
             <div key={section}>
-              {/* Section header — clickable to collapse */}
               <button
                 type="button"
                 onClick={() => !search.trim() && toggleSection(section)}
@@ -277,17 +309,32 @@ export default function DeckListTab({
                 </span>
                 <span className="text-gray-700 text-[10px] font-medium tabular-nums">{sectionQty}</span>
               </button>
-              {/* Card rows */}
+
               {isOpen && (
                 <div className="rounded-2xl px-3 py-0.5 mb-0.5" style={{ background: "rgba(255,255,255,0.03)" }}>
                   {sectionCards.map((card, i) => (
-                    <DeckCardRow key={card.id || `${card.card_name}-${i}`} card={card} />
+                    <DeckCardRow
+                      key={card.id || `${card.card_name}-${i}`}
+                      card={card}
+                      canEdit={canEdit}
+                      onQuantityChange={handleQuantityChange}
+                      onRemove={handleRemove}
+                    />
                   ))}
                 </div>
               )}
             </div>
           );
         })
+      )}
+
+      {/* Add Card modal */}
+      {addModalOpen && (
+        <AddCardModal
+          deckId={deckId}
+          onClose={() => setAddModalOpen(false)}
+          onCardsUpdated={handleCardsUpdated}
+        />
       )}
     </div>
   );

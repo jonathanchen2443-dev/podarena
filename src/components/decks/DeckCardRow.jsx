@@ -1,21 +1,51 @@
-import React from "react";
+import React, { useState } from "react";
 import ManaCost from "@/components/mtg/ManaCost";
+import { Minus, Plus, Trash2 } from "lucide-react";
 
 /**
  * DeckCardRow — compact card row for the deck list view.
  *
  * Layout (L→R):
- *   [thumbnail]  [name + type line]  [mana pips · qty]
+ *   [thumbnail]  [name + type line]  [mana pips · qty controls]
  *
- * Thumbnail: art-crop style (object-top to show card art, not the frame)
- * Quantity: right-aligned, small, de-emphasised
- * Mana cost: rendered as pips via ManaCost
+ * Props:
+ *   card             – DeckCard record
+ *   canEdit          – boolean; shows owner controls when true
+ *   onQuantityChange – async (deckCardId, newQuantity) => void
+ *   onRemove         – async (deckCardId) => void
  */
-export default function DeckCardRow({ card }) {
+export default function DeckCardRow({ card, canEdit = false, onQuantityChange, onRemove }) {
+  const [pending, setPending] = useState(false);
+
+  async function handleMinus() {
+    if (pending) return;
+    setPending(true);
+    if (card.quantity <= 1) {
+      await onRemove?.(card.id);
+    } else {
+      await onQuantityChange?.(card.id, (card.quantity || 1) - 1);
+    }
+    setPending(false);
+  }
+
+  async function handlePlus() {
+    if (pending) return;
+    setPending(true);
+    await onQuantityChange?.(card.id, (card.quantity || 1) + 1);
+    setPending(false);
+  }
+
+  async function handleRemove() {
+    if (pending) return;
+    setPending(true);
+    await onRemove?.(card.id);
+    setPending(false);
+  }
+
   return (
     <div className="flex items-center gap-2.5 py-1.5 border-b border-white/[0.04] last:border-0">
 
-      {/* Thumbnail — art-crop style: landscape aspect, object-top to show art zone */}
+      {/* Thumbnail */}
       <div
         className="flex-shrink-0 rounded-md overflow-hidden bg-white/[0.05]"
         style={{ width: 36, height: 28 }}
@@ -46,17 +76,52 @@ export default function DeckCardRow({ card }) {
         )}
       </div>
 
-      {/* Right side: mana pips + quantity */}
-      <div className="flex-shrink-0 flex items-center gap-2">
+      {/* Right side */}
+      <div className="flex-shrink-0 flex items-center gap-1.5">
         {card.mana_cost && (
           <ManaCost cost={card.mana_cost} size={12} gap={1} />
         )}
-        <span
-          className="text-gray-600 text-[10px] font-medium tabular-nums leading-none"
-          style={{ minWidth: "1ch" }}
-        >
-          ×{card.quantity || 1}
-        </span>
+
+        {canEdit ? (
+          /* Owner controls: − qty + trash */
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleMinus}
+              disabled={pending}
+              className="w-5 h-5 rounded-md flex items-center justify-center text-gray-600 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
+              aria-label="Decrease quantity"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+            <span className="text-gray-400 text-[11px] font-semibold tabular-nums min-w-[16px] text-center">
+              {card.quantity || 1}
+            </span>
+            <button
+              onClick={handlePlus}
+              disabled={pending}
+              className="w-5 h-5 rounded-md flex items-center justify-center text-gray-600 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
+              aria-label="Increase quantity"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+            <button
+              onClick={handleRemove}
+              disabled={pending}
+              className="w-5 h-5 rounded-md flex items-center justify-center text-gray-700 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40 ml-0.5"
+              aria-label="Remove card"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        ) : (
+          /* View-only: quantity badge */
+          <span
+            className="text-gray-600 text-[10px] font-medium tabular-nums leading-none"
+            style={{ minWidth: "1ch" }}
+          >
+            ×{card.quantity || 1}
+          </span>
+        )}
       </div>
     </div>
   );
