@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Lock, List, AlertCircle, Plus, Search, X, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+import {
+  Lock, List, AlertCircle, Plus, Search, X, ChevronDown, ChevronRight,
+  RefreshCw, AlertTriangle, CheckCircle, Shield, HelpCircle
+} from "lucide-react";
 import { toast } from "sonner";
 import DeckCardRow from "@/components/decks/DeckCardRow";
 import AddCardModal from "@/components/decks/AddCardModal";
-import { listDeckCards, updateCardQuantity, removeCardFromDeck } from "@/components/services/cardActionsService";
+import DeckIssuesModal from "@/components/decks/DeckIssuesModal";
+import {
+  listDeckCards, updateCardQuantity, removeCardFromDeck,
+  validateDeck, addCommanderToDeckList
+} from "@/components/services/cardActionsService";
 
 // Canonical section order for display
 const SECTION_ORDER = [
@@ -41,6 +48,126 @@ function PlaceholderBox({ icon: Icon, iconBg, iconColor, title, body, action }) 
   );
 }
 
+// ── Issues banner ─────────────────────────────────────────────────────────────
+
+function IssuesBanner({ validation, onViewIssues, loading }) {
+  if (loading) {
+    return (
+      <div className="h-8 rounded-xl bg-white/[0.03] animate-pulse" />
+    );
+  }
+  if (!validation) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+        <HelpCircle className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
+        <span className="text-gray-600 text-xs">Validation unavailable</span>
+      </div>
+    );
+  }
+
+  const { status, errors = [], warnings = [] } = validation;
+  const errorCount = errors.length;
+  const warnCount = warnings.length;
+  const hasIssues = errorCount > 0 || warnCount > 0;
+
+  if (status === 'legal') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: "rgba(34,197,94,0.07)" }}>
+        <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+        <span className="text-green-500 text-xs font-medium">Commander legal</span>
+      </div>
+    );
+  }
+
+  const isNotLegal = status === 'not_legal';
+  const color = isNotLegal ? 'text-red-400' : 'text-amber-400';
+  const bg = isNotLegal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)';
+  const Icon = isNotLegal ? AlertCircle : AlertTriangle;
+  const label = isNotLegal
+    ? `${errorCount} error${errorCount !== 1 ? 's' : ''}${warnCount > 0 ? `, ${warnCount} warning${warnCount !== 1 ? 's' : ''}` : ''}`
+    : `${warnCount} warning${warnCount !== 1 ? 's' : ''}`;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: bg }}>
+      <Icon className={`w-3.5 h-3.5 ${color} flex-shrink-0`} />
+      <span className={`${color} text-xs font-medium flex-1`}>{label}</span>
+      {hasIssues && (
+        <button
+          onClick={onViewIssues}
+          className={`${color} text-xs underline-offset-2 hover:underline transition-colors`}
+        >
+          View issues
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Virtual Commander Row ─────────────────────────────────────────────────────
+
+function VirtualCommanderRow({ deck, canEdit, onAddCommanderToList, adding }) {
+  const hasImage = !!deck.commander_image_url;
+  return (
+    <div className="flex items-center gap-2.5 py-2 border-b border-white/[0.04] last:border-0">
+      {/* Thumbnail */}
+      <div className="flex-shrink-0 rounded-md overflow-hidden bg-white/[0.05]" style={{ width: 36, height: 28 }}>
+        {hasImage ? (
+          <img src={deck.commander_image_url} alt="" aria-hidden="true" className="w-full h-full object-cover object-top" loading="lazy" draggable={false} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-white/[0.06]">
+            <Shield className="w-3 h-3 text-gray-700" />
+          </div>
+        )}
+      </div>
+
+      {/* Name */}
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-300 text-[13px] font-medium leading-tight truncate">
+          {deck.commander_name || 'Unknown Commander'}
+        </p>
+        <p className="text-gray-600 text-[10px] leading-tight mt-0.5">Not added to deck list yet</p>
+      </div>
+
+      {/* Action */}
+      {canEdit && (
+        <button
+          onClick={onAddCommanderToList}
+          disabled={adding}
+          className="flex-shrink-0 flex items-center gap-1 h-6 px-2.5 rounded-lg text-[10px] font-semibold text-blue-400 border border-blue-400/30 hover:bg-blue-400/10 transition-colors disabled:opacity-50"
+        >
+          {adding ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+          Add to list
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── No Commander Placeholder Row ──────────────────────────────────────────────
+
+function NoCommanderRow({ canEdit, onAddCommander }) {
+  return (
+    <div className="flex items-center gap-2.5 py-2 border-b border-white/[0.04] last:border-0">
+      <div className="flex-shrink-0 rounded-md overflow-hidden bg-white/[0.04]" style={{ width: 36, height: 28 }}>
+        <div className="w-full h-full flex items-center justify-center">
+          <Shield className="w-3 h-3 text-gray-700" />
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-600 text-[13px] leading-tight truncate italic">No commander selected</p>
+      </div>
+      {canEdit && onAddCommander && (
+        <button
+          onClick={onAddCommander}
+          className="flex-shrink-0 flex items-center gap-1 h-6 px-2.5 rounded-lg text-[10px] font-semibold text-gray-400 border border-white/[0.10] hover:border-white/[0.20] hover:text-white transition-colors"
+        >
+          <Plus className="w-3 h-3" /> Add Commander
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 /**
@@ -48,21 +175,25 @@ function PlaceholderBox({ icon: Icon, iconBg, iconColor, title, body, action }) 
  *
  * Props:
  *   deckId               – string  (required to load cards)
+ *   deck                 – Deck entity object (for commander info)
  *   isOwner              – boolean (used as UI hint; backend is authoritative)
  *   showDeckListPublicly – boolean (used as UI hint; backend is authoritative)
  *   importStatus         – string: not_imported | importing | imported | failed | unsupported_source
- *   lastSyncedAt         – ISO string or null (passed through, not used for gating)
+ *   lastSyncedAt         – ISO string or null
  *   cardCount            – number or null (hint only, replaced by backend summary)
- *   onImportDone         – optional callback; if parent refreshes after import, DeckListTab re-fetches
+ *   onImportDone         – optional callback
+ *   onOpenDeckEdit       – optional callback to open deck edit form (for Add Commander)
  */
 export default function DeckListTab({
   deckId,
+  deck = null,
   isOwner,
   showDeckListPublicly,
   importStatus = 'not_imported',
   lastSyncedAt = null,
   cardCount = null,
   onImportDone,
+  onOpenDeckEdit,
 }) {
   const [cards, setCards] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -72,8 +203,29 @@ export default function DeckListTab({
   const [collapsed, setCollapsed] = useState(new Set());
   const [addModalOpen, setAddModalOpen] = useState(false);
 
+  // Validation state
+  const [validation, setValidation] = useState(null);
+  const [validationLoading, setValidationLoading] = useState(false);
+  const [issuesModalOpen, setIssuesModalOpen] = useState(false);
+
+  // Commander-to-list action
+  const [addingCommander, setAddingCommander] = useState(false);
+
   // Privacy — if non-owner and not public, show locked placeholder immediately
   const isPrivateForViewer = !isOwner && !showDeckListPublicly;
+
+  const loadValidation = useCallback(async () => {
+    if (!deckId || isPrivateForViewer) return;
+    setValidationLoading(true);
+    try {
+      const res = await validateDeck(deckId);
+      if (res?.ok) setValidation(res.validation || null);
+      else setValidation(null);
+    } catch {
+      setValidation(null);
+    }
+    setValidationLoading(false);
+  }, [deckId, isPrivateForViewer]);
 
   const loadCards = useCallback(async () => {
     if (!deckId || isPrivateForViewer) return;
@@ -85,7 +237,6 @@ export default function DeckListTab({
       setCards(res.cards || []);
       setSummary(res.summary || null);
     } else if (res?.code === 'DECK_PRIVATE') {
-      // Backend confirmed private — show lock
       setCardError('PRIVATE');
     } else {
       setCardError(res?.message || 'Failed to load deck list.');
@@ -96,9 +247,18 @@ export default function DeckListTab({
     loadCards();
   }, [loadCards]);
 
-  // When parent signals import completed, re-fetch cards
+  // Load validation after cards load (non-blocking)
   useEffect(() => {
-    if (importStatus === 'imported') loadCards();
+    if (!loadingCards && !cardError && deckId && !isPrivateForViewer) {
+      loadValidation();
+    }
+  }, [loadingCards, cardError, deckId, isPrivateForViewer, loadValidation]);
+
+  // When parent signals import completed, re-fetch cards + validation
+  useEffect(() => {
+    if (importStatus === 'imported') {
+      loadCards().then(() => loadValidation());
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importStatus]);
 
@@ -115,6 +275,12 @@ export default function DeckListTab({
   const canEdit = summary?.canEdit ?? isOwner ?? false;
   const q = search.trim().toLowerCase();
 
+  // Commander row logic
+  const commanderInList = cards.some((c) => c.is_commander === true);
+  const deckHasCommander = !!(deck?.commander_name || deck?.commander_scryfall_id);
+  const showVirtualCommanderRow = !commanderInList && deckHasCommander;
+  const showNoCommanderRow = !commanderInList && !deckHasCommander;
+
   const grouped = useMemo(() => {
     const filtered = q ? cards.filter((c) => c.card_name?.toLowerCase().includes(q)) : cards;
     const map = new Map();
@@ -123,10 +289,20 @@ export default function DeckListTab({
       if (!map.has(sec)) map.set(sec, []);
       map.get(sec).push(card);
     }
+    // Ensure Commander section always exists (if no search query)
+    if (!q && !map.has('Commander')) {
+      map.set('Commander', []);
+    }
     return [...map.entries()].sort((a, b) => sectionSortKey(a[0]) - sectionSortKey(b[0]));
   }, [cards, q]);
 
   const totalCards = summary?.totalCards ?? cards.reduce((s, c) => s + (c.quantity || 1), 0);
+
+  // Build issues-by-card-id lookup
+  const cardIssuesMap = useMemo(() => {
+    if (!validation?.issuesByCardId) return {};
+    return validation.issuesByCardId;
+  }, [validation]);
 
   // ── Mutation handlers ─────────────────────────────────────────────────────
 
@@ -135,6 +311,7 @@ export default function DeckListTab({
     if (res?.ok) {
       setCards(res.cards || []);
       setSummary(res.summary || null);
+      loadValidation();
     } else {
       toast.error(res?.message || 'Failed to update quantity.');
     }
@@ -145,6 +322,7 @@ export default function DeckListTab({
     if (res?.ok) {
       setCards(res.cards || []);
       setSummary(res.summary || null);
+      loadValidation();
     } else {
       toast.error(res?.message || 'Failed to remove card.');
     }
@@ -153,6 +331,22 @@ export default function DeckListTab({
   function handleCardsUpdated(newCards, newSummary) {
     setCards(newCards || []);
     setSummary(newSummary || null);
+    loadValidation();
+  }
+
+  async function handleAddCommanderToList() {
+    if (addingCommander) return;
+    setAddingCommander(true);
+    const res = await addCommanderToDeckList(deckId);
+    setAddingCommander(false);
+    if (res?.ok) {
+      setCards(res.cards || []);
+      setSummary(res.summary || null);
+      loadValidation();
+      toast.success('Commander added to deck list.');
+    } else {
+      toast.error(res?.message || 'Could not add commander to list.');
+    }
   }
 
   // ── Privacy gate ──────────────────────────────────────────────────────────
@@ -213,10 +407,35 @@ export default function DeckListTab({
     );
   }
 
-  // ── Empty state ───────────────────────────────────────────────────────────
+  // ── Empty state (no cards yet) ────────────────────────────────────────────
   if (cards.length === 0) {
     return (
-      <div>
+      <div className="space-y-3">
+        {/* Issues banner even on empty state */}
+        <IssuesBanner validation={validation} onViewIssues={() => setIssuesModalOpen(true)} loading={validationLoading} />
+
+        {/* Commander section always visible */}
+        <div>
+          <div className="flex items-center justify-between mb-1 px-0.5">
+            <span className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold">Commander</span>
+          </div>
+          <div className="rounded-2xl px-3 py-0.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+            {showVirtualCommanderRow ? (
+              <VirtualCommanderRow
+                deck={deck}
+                canEdit={canEdit}
+                onAddCommanderToList={handleAddCommanderToList}
+                adding={addingCommander}
+              />
+            ) : (
+              <NoCommanderRow
+                canEdit={canEdit}
+                onAddCommander={onOpenDeckEdit}
+              />
+            )}
+          </div>
+        </div>
+
         <PlaceholderBox
           icon={List}
           iconBg="rgba(255,255,255,0.05)"
@@ -235,11 +454,10 @@ export default function DeckListTab({
           ) : null}
         />
         {addModalOpen && (
-          <AddCardModal
-            deckId={deckId}
-            onClose={() => setAddModalOpen(false)}
-            onCardsUpdated={handleCardsUpdated}
-          />
+          <AddCardModal deckId={deckId} onClose={() => setAddModalOpen(false)} onCardsUpdated={handleCardsUpdated} />
+        )}
+        {issuesModalOpen && (
+          <DeckIssuesModal validation={validation} onClose={() => setIssuesModalOpen(false)} />
         )}
       </div>
     );
@@ -248,6 +466,9 @@ export default function DeckListTab({
   // ── Card list ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
+      {/* Issues banner */}
+      <IssuesBanner validation={validation} onViewIssues={() => setIssuesModalOpen(true)} loading={validationLoading} />
+
       {/* Header: count + Add Card */}
       <div className="flex items-center justify-between px-0.5">
         <span className="text-gray-500 text-xs font-medium">{totalCards} cards</span>
@@ -287,8 +508,13 @@ export default function DeckListTab({
         <p className="text-gray-600 text-xs text-center py-6">No cards match your search.</p>
       ) : (
         grouped.map(([section, sectionCards]) => {
+          const isCommanderSection = section === 'Commander';
           const sectionQty = sectionCards.reduce((s, c) => s + (c.quantity || 1), 0);
           const isOpen = !!search.trim() || !collapsed.has(section);
+
+          // For Commander section, we may add virtual/placeholder rows
+          const hasVirtual = isCommanderSection && !q && sectionCards.length === 0;
+
           return (
             <div key={section}>
               <button
@@ -307,7 +533,9 @@ export default function DeckListTab({
                     {section}
                   </span>
                 </span>
-                <span className="text-gray-700 text-[10px] font-medium tabular-nums">{sectionQty}</span>
+                {sectionQty > 0 && (
+                  <span className="text-gray-700 text-[10px] font-medium tabular-nums">{sectionQty}</span>
+                )}
               </button>
 
               {isOpen && (
@@ -319,8 +547,25 @@ export default function DeckListTab({
                       canEdit={canEdit}
                       onQuantityChange={handleQuantityChange}
                       onRemove={handleRemove}
+                      issues={cardIssuesMap[card.id] || []}
                     />
                   ))}
+
+                  {/* Virtual/placeholder commander rows in Commander section */}
+                  {isCommanderSection && !q && showVirtualCommanderRow && (
+                    <VirtualCommanderRow
+                      deck={deck}
+                      canEdit={canEdit}
+                      onAddCommanderToList={handleAddCommanderToList}
+                      adding={addingCommander}
+                    />
+                  )}
+                  {isCommanderSection && !q && showNoCommanderRow && (
+                    <NoCommanderRow
+                      canEdit={canEdit}
+                      onAddCommander={onOpenDeckEdit}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -330,11 +575,12 @@ export default function DeckListTab({
 
       {/* Add Card modal */}
       {addModalOpen && (
-        <AddCardModal
-          deckId={deckId}
-          onClose={() => setAddModalOpen(false)}
-          onCardsUpdated={handleCardsUpdated}
-        />
+        <AddCardModal deckId={deckId} onClose={() => setAddModalOpen(false)} onCardsUpdated={handleCardsUpdated} />
+      )}
+
+      {/* Issues modal */}
+      {issuesModalOpen && (
+        <DeckIssuesModal validation={validation} onClose={() => setIssuesModalOpen(false)} />
       )}
     </div>
   );

@@ -475,11 +475,13 @@ export default function DeckInsights() {
           )}
           <DeckListTab
             deckId={deckId}
+            deck={deck}
             isOwner={isOwnDeck}
             showDeckListPublicly={deck.show_deck_list_publicly ?? false}
             importStatus={importStatus ?? deck.deck_list_import_status ?? 'not_imported'}
             lastSyncedAt={deck.deck_list_last_synced_at ?? null}
             cardCount={deck.deck_list_card_count ?? null}
+            onOpenDeckEdit={isOwnDeck ? () => navigate(ROUTES.PROFILE_DECK_EDIT(deckId)) : undefined}
           />
           {/* DeckListTab re-fetches automatically when importStatus changes to 'imported' */}
         </>

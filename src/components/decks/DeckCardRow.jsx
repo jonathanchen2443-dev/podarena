@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ManaCost from "@/components/mtg/ManaCost";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, AlertTriangle, AlertCircle } from "lucide-react";
 
 /**
  * DeckCardRow — compact card row for the deck list view.
@@ -13,8 +13,9 @@ import { Minus, Plus, Trash2 } from "lucide-react";
  *   canEdit          – boolean; shows owner controls when true
  *   onQuantityChange – async (deckCardId, newQuantity) => void
  *   onRemove         – async (deckCardId) => void
+ *   issues           – array of issue objects for this card (optional)
  */
-export default function DeckCardRow({ card, canEdit = false, onQuantityChange, onRemove }) {
+export default function DeckCardRow({ card, canEdit = false, onQuantityChange, onRemove, issues = [] }) {
   const [pending, setPending] = useState(false);
 
   async function handleMinus() {
@@ -66,9 +67,17 @@ export default function DeckCardRow({ card, canEdit = false, onQuantityChange, o
 
       {/* Name + type line */}
       <div className="flex-1 min-w-0">
-        <p className="text-white text-[13px] font-medium leading-tight truncate">
-          {card.card_name}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-white text-[13px] font-medium leading-tight truncate">
+            {card.card_name}
+          </p>
+          {issues.length > 0 && (() => {
+            const hasError = issues.some((i) => i.severity === 'error');
+            return hasError
+              ? <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
+              : <AlertTriangle className="w-3 h-3 text-amber-400 flex-shrink-0" />;
+          })()}
+        </div>
         {card.type_line && (
           <p className="text-gray-600 text-[10px] leading-tight truncate mt-0.5">
             {card.type_line}

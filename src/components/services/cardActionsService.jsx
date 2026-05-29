@@ -93,3 +93,33 @@ export async function removeCardFromDeck(deckCardId) {
   });
   return res.data;
 }
+
+/**
+ * Validate a deck against Commander rules (or applicable format).
+ * Returns validation state, errors, warnings, and commander info.
+ *
+ * @param {string} deckId
+ * @returns {{ ok, deckId, validation }}
+ */
+export async function validateDeck(deckId) {
+  const res = await base44.functions.invoke("cardActions", {
+    action: "validateDeck",
+    deckId,
+  });
+  return res.data;
+}
+
+/**
+ * Add the commander (from Deck entity) as a DeckCard row.
+ * Creates or updates the commander row, recalculates count.
+ *
+ * @param {string} deckId
+ * @returns {{ ok, deckId, cards, summary }}
+ */
+export async function addCommanderToDeckList(deckId) {
+  const res = await base44.functions.invoke("cardActions", {
+    action: "addCommanderToDeckList",
+    deckId,
+  });
+  return res.data;
+}

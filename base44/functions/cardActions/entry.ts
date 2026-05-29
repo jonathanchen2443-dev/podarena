@@ -516,6 +516,252 @@ Deno.serve(async (req) => {
       return Response.json(buildListResponse(parentDeckId, updatedCards, true));
     }
 
+    // ── ACTION: validateDeck ──────────────────────────────────────────────────
+    if (action === 'validateDeck') {
+      const { deckId } = body;
+      if (!deckId) return Response.json({ ok: false, code: 'MISSING_PARAM', message: 'deckId is required.' });
+
+      const deckRows = await base44.asServiceRole.entities.Deck.filter({ id: deckId });
+      const deck = deckRows[0] || null;
+      if (!deck) return Response.json({ ok: false, code: 'DECK_NOT_FOUND', message: 'Deck not found.' }, { status: 404 });
+
+      const isOwner = deck.owner_id === profile.id;
+      if (!isOwner && !deck.show_deck_list_publicly) {
+        return Response.json({ ok: false, code: 'DECK_PRIVATE', message: 'This deck list is private.' }, { status: 403 });
+      }
+
+      const format = deck.deck_format || 'commander';
+      if (format !== 'commander') {
+        return Response.json({ ok: true, deckId, validation: { format, isLegal: true, status: 'legal', totalCards: 0, maxCards: null, errors: [], warnings: [], issuesByCardId: {}, issuesByCardName: {}, commander: null } });
+      }
+
+      const cards = await base44.asServiceRole.entities.DeckCard.filter({ deck_id: deckId }, 'sort_order', 500);
+      const errors = [];
+      const warnings = [];
+      const issuesByCardId = {};
+      const issuesByCardName = {};
+
+      function addIssue(issue) {
+        if (issue.severity === 'error') errors.push(issue);
+        else warnings.push(issue);
+        if (issue.cardId) issuesByCardId[issue.cardId] = [...(issuesByCardId[issue.cardId] || []), issue];
+        if (issue.cardName) issuesByCardName[issue.cardName] = [...(issuesByCardName[issue.cardName] || []), issue];
+      }
+
+      const totalCards = cards.reduce((s, c) => s + (c.quantity || 1), 0);
+
+      // 1. Deck size
+      if (totalCards === 0) {
+        addIssue({ type: 'deck_size', severity: 'warning', message: 'Deck has no cards yet.' });
+      } else if (totalCards < 100) {
+        addIssue({ type: 'deck_size', severity: 'warning', message: `Deck has ${totalCards} of 100 required cards.` });
+      } else if (totalCards > 100) {
+        addIssue({ type: 'deck_size', severity: 'error', message: `Deck has ${totalCards} cards — must be exactly 100.` });
+      }
+
+      // Basic land / multi-copy exemptions
+      const SINGLETON_EXEMPT = new Set([
+        'Plains','Island','Swamp','Mountain','Forest','Wastes',
+        'Snow-Covered Plains','Snow-Covered Island','Snow-Covered Swamp',
+        'Snow-Covered Mountain','Snow-Covered Forest',
+        'Relentless Rats','Rat Colony','Shadowborn Apostle',
+        'Persistent Petitioners',"Dragon's Approach",'Seven Dwarves',
+      ]);
+
+      // 2. Singleton — group by oracle_id then card_name
+      const oracleCount = {};
+      const nameCount = {};
+      for (const card of cards) {
+        const key = card.oracle_id || card.card_name?.toLowerCase();
+        if (!key) continue;
+        const name = card.card_name || '';
+        if (SINGLETON_EXEMPT.has(name)) continue;
+        const qty = card.quantity || 1;
+        if (card.oracle_id) {
+          oracleCount[card.oracle_id] = (oracleCount[card.oracle_id] || 0) + qty;
+          if (oracleCount[card.oracle_id] > 1 && qty > 1) {
+            addIssue({ type: 'duplicate_card', severity: 'error', cardId: card.id, cardName: name, message: `"${name}" has ${qty} copies (singleton only).` });
+          }
+        } else {
+          const lc = name.toLowerCase();
+          nameCount[lc] = (nameCount[lc] || 0) + qty;
+          if (qty > 1) {
+            addIssue({ type: 'duplicate_card', severity: 'error', cardId: card.id, cardName: name, message: `"${name}" has ${qty} copies (singleton only).` });
+          }
+        }
+      }
+
+      // 3. Color identity
+      const deckCI = deck.color_identity || [];
+      const deckCISet = new Set(deckCI);
+      if (deckCI.length === 0 && (deck.commander_name || deck.commander_scryfall_id)) {
+        addIssue({ type: 'color_identity_unknown', severity: 'warning', message: 'Commander color identity is not set — color identity check skipped.' });
+      } else if (deckCI.length > 0) {
+        for (const card of cards) {
+          if (card.is_commander) continue;
+          const cardCI = card.color_identity;
+          if (!cardCI || !Array.isArray(cardCI)) {
+            addIssue({ type: 'color_identity_missing', severity: 'warning', cardId: card.id, cardName: card.card_name, message: `"${card.card_name}" has no color identity data.` });
+            continue;
+          }
+          const outside = cardCI.filter((c) => !deckCISet.has(c));
+          if (outside.length > 0) {
+            addIssue({ type: 'color_identity_violation', severity: 'error', cardId: card.id, cardName: card.card_name, message: `"${card.card_name}" has color identity {${outside.join(',')}} outside commander's identity.` });
+          }
+        }
+      }
+
+      // 4. Commander legality
+      for (const card of cards) {
+        const legalities = card.legalities;
+        if (!legalities || typeof legalities !== 'object' || Object.keys(legalities).length === 0) {
+          addIssue({ type: 'legality_missing', severity: 'warning', cardId: card.id, cardName: card.card_name, message: `"${card.card_name}" has no legality data.` });
+        } else if (legalities.commander && legalities.commander !== 'legal') {
+          addIssue({ type: 'not_commander_legal', severity: 'error', cardId: card.id, cardName: card.card_name, message: `"${card.card_name}" is ${legalities.commander} in Commander.` });
+        }
+      }
+
+      // 5. Commander presence
+      const commanderName = deck.commander_name || null;
+      const commanderScryfallId = deck.commander_scryfall_id || null;
+      const hasCommanderInDeckEntity = !!(commanderName || commanderScryfallId);
+      let hasCommanderInDeckList = false;
+
+      if (hasCommanderInDeckEntity) {
+        hasCommanderInDeckList = cards.some((c) =>
+          (commanderScryfallId && c.scryfall_id === commanderScryfallId) ||
+          (commanderName && c.card_name?.toLowerCase() === commanderName.toLowerCase()) ||
+          c.is_commander === true
+        );
+        if (!hasCommanderInDeckList) {
+          addIssue({ type: 'commander_not_in_list', severity: 'warning', message: 'Commander is not in the deck list yet.' });
+        }
+      } else {
+        addIssue({ type: 'no_commander_selected', severity: 'warning', message: 'No commander selected for this deck yet.' });
+      }
+
+      const isLegal = errors.length === 0 && warnings.length === 0;
+      const status = errors.length > 0 ? 'not_legal' : warnings.length > 0 ? 'needs_review' : 'legal';
+
+      return Response.json({
+        ok: true,
+        deckId,
+        validation: {
+          format,
+          isLegal,
+          status,
+          totalCards,
+          maxCards: 100,
+          errors,
+          warnings,
+          issuesByCardId,
+          issuesByCardName,
+          commander: {
+            hasCommanderInDeckEntity,
+            hasCommanderInDeckList,
+            commanderName,
+            commanderScryfallId,
+            canAddCommanderToList: isOwner && hasCommanderInDeckEntity,
+            needsCommanderSelection: !hasCommanderInDeckEntity,
+          },
+        },
+      });
+    }
+
+    // ── ACTION: addCommanderToDeckList ────────────────────────────────────────
+    if (action === 'addCommanderToDeckList') {
+      const { deckId } = body;
+      if (!deckId) return Response.json({ ok: false, code: 'MISSING_PARAM', message: 'deckId is required.' });
+
+      const deckRows = await base44.asServiceRole.entities.Deck.filter({ id: deckId });
+      const deck = deckRows[0] || null;
+      if (!deck) return Response.json({ ok: false, code: 'DECK_NOT_FOUND', message: 'Deck not found.' }, { status: 404 });
+
+      if (deck.owner_id !== profile.id) {
+        return Response.json({ ok: false, code: 'FORBIDDEN', message: 'You do not own this deck.' }, { status: 403 });
+      }
+
+      if (!deck.commander_name && !deck.commander_scryfall_id) {
+        return Response.json({ ok: false, code: 'NO_COMMANDER_SELECTED', message: 'No commander is selected for this deck.' });
+      }
+
+      const commanderName = deck.commander_name || '';
+      const commanderScryfallId = deck.commander_scryfall_id || null;
+
+      // Check if commander row already exists
+      const existingCards = await base44.asServiceRole.entities.DeckCard.filter({ deck_id: deckId }, 'sort_order', 500);
+      const existingCommander = existingCards.find((c) =>
+        c.is_commander === true ||
+        (commanderScryfallId && c.scryfall_id === commanderScryfallId) ||
+        (commanderName && c.card_name?.toLowerCase() === commanderName.toLowerCase())
+      );
+
+      // Build card data from Scryfall or from deck fields
+      let commanderCardData = null;
+
+      // Try to fetch from Scryfall if we have an ID or name
+      const scryfallUrl = commanderScryfallId
+        ? `https://api.scryfall.com/cards/${commanderScryfallId}`
+        : `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(commanderName)}`;
+
+      try {
+        const sfRes = await fetch(scryfallUrl, { headers: SCRYFALL_HEADERS });
+        if (sfRes.ok) {
+          const sfData = await sfRes.json();
+          if (sfData?.object === 'card') {
+            commanderCardData = normalizeScryfallCard(sfData, { isCommander: true, addedMethod: 'manual' });
+          }
+        }
+      } catch {
+        // Fallback: use data from deck entity fields
+      }
+
+      // Fallback: build from deck fields if Scryfall failed
+      if (!commanderCardData) {
+        commanderCardData = {
+          card_name: commanderName,
+          scryfall_id: commanderScryfallId || null,
+          oracle_id: null,
+          quantity: 1,
+          section: 'Commander',
+          is_commander: true,
+          enrichment_status: 'enriched',
+          added_method: 'manual',
+          mana_cost: null, cmc: null, type_line: null, colors: [], color_identity: deck.color_identity || [],
+          legalities: {}, rarity: null, layout: null, oracle_text: null,
+          set_code: null, set_name: null, collector_number: null,
+          image_small_url: deck.commander_image_url || null,
+          image_normal_url: deck.commander_full_card_image_url || deck.commander_image_url || null,
+          image_art_crop_url: deck.commander_image_url || null,
+          sort_order: 0,
+        };
+      }
+
+      if (existingCommander) {
+        // Ensure it's properly marked as commander
+        await base44.asServiceRole.entities.DeckCard.update(existingCommander.id, {
+          is_commander: true,
+          section: 'Commander',
+          quantity: 1,
+        });
+      } else {
+        const newCard = {
+          deck_id: deckId,
+          ...commanderCardData,
+          quantity: 1,
+          section: 'Commander',
+          is_commander: true,
+          sort_order: 0,
+          added_method: 'manual',
+        };
+        await base44.entities.DeckCard.create(newCard);
+      }
+
+      await recalculateDeckCardCount(base44, deckId);
+      const updatedCards = await base44.asServiceRole.entities.DeckCard.filter({ deck_id: deckId }, 'sort_order', 500);
+      return Response.json(buildListResponse(deckId, updatedCards, true));
+    }
+
     return Response.json({ ok: false, code: 'UNKNOWN_ACTION', message: 'Unknown action.' }, { status: 400 });
 
   } catch (err) {
