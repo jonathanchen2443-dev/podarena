@@ -91,13 +91,13 @@ export default function DeckCardRow({ card, canEdit = false, onQuantityChange, o
           <ManaCost cost={card.mana_cost} size={12} gap={1} />
         )}
 
-        {canEdit ? (
-          /* Owner controls: − qty + trash */
+        {canEdit && !card.is_commander ? (
+          /* Owner controls: − qty + trash (not shown for commander row) */
           <div className="flex items-center gap-1">
             <button
               onClick={handleMinus}
               disabled={pending}
-              className="w-5 h-5 rounded-md flex items-center justify-center text-gray-600 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
+              className="w-6 h-6 rounded-md flex items-center justify-center text-gray-600 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
               aria-label="Decrease quantity"
             >
               <Minus className="w-3 h-3" />
@@ -108,7 +108,7 @@ export default function DeckCardRow({ card, canEdit = false, onQuantityChange, o
             <button
               onClick={handlePlus}
               disabled={pending}
-              className="w-5 h-5 rounded-md flex items-center justify-center text-gray-600 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
+              className="w-6 h-6 rounded-md flex items-center justify-center text-gray-600 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
               aria-label="Increase quantity"
             >
               <Plus className="w-3 h-3" />
@@ -116,14 +116,14 @@ export default function DeckCardRow({ card, canEdit = false, onQuantityChange, o
             <button
               onClick={handleRemove}
               disabled={pending}
-              className="w-5 h-5 rounded-md flex items-center justify-center text-gray-700 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40 ml-0.5"
+              className="w-6 h-6 rounded-md flex items-center justify-center text-gray-700 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40 ml-0.5"
               aria-label="Remove card"
             >
               <Trash2 className="w-3 h-3" />
             </button>
           </div>
         ) : (
-          /* View-only: quantity badge */
+          /* View-only or commander: quantity badge (commander always shows ×1) */
           <span
             className="text-gray-600 text-[10px] font-medium tabular-nums leading-none"
             style={{ minWidth: "1ch" }}

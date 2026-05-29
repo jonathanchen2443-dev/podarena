@@ -568,25 +568,37 @@ Deno.serve(async (req) => {
         'Persistent Petitioners',"Dragon's Approach",'Seven Dwarves',
       ]);
 
-      // 2. Singleton — group by oracle_id then card_name
-      const oracleCount = {};
-      const nameCount = {};
+      // 2. Singleton — group by oracle_id then card_name, flag any total > 1
+      // First pass: accumulate totals
+      const oracleCount = {};  // oracle_id -> { total, cards: [{id, name, qty}] }
+      const nameCount = {};    // name_lc   -> { total, cards: [{id, name, qty}] }
       for (const card of cards) {
-        const key = card.oracle_id || card.card_name?.toLowerCase();
-        if (!key) continue;
         const name = card.card_name || '';
         if (SINGLETON_EXEMPT.has(name)) continue;
         const qty = card.quantity || 1;
         if (card.oracle_id) {
-          oracleCount[card.oracle_id] = (oracleCount[card.oracle_id] || 0) + qty;
-          if (oracleCount[card.oracle_id] > 1 && qty > 1) {
-            addIssue({ type: 'duplicate_card', severity: 'error', cardId: card.id, cardName: name, message: `"${name}" has ${qty} copies (singleton only).` });
-          }
+          if (!oracleCount[card.oracle_id]) oracleCount[card.oracle_id] = { total: 0, rows: [] };
+          oracleCount[card.oracle_id].total += qty;
+          oracleCount[card.oracle_id].rows.push({ id: card.id, name, qty });
         } else {
           const lc = name.toLowerCase();
-          nameCount[lc] = (nameCount[lc] || 0) + qty;
-          if (qty > 1) {
-            addIssue({ type: 'duplicate_card', severity: 'error', cardId: card.id, cardName: name, message: `"${name}" has ${qty} copies (singleton only).` });
+          if (!nameCount[lc]) nameCount[lc] = { total: 0, rows: [] };
+          nameCount[lc].total += qty;
+          nameCount[lc].rows.push({ id: card.id, name, qty });
+        }
+      }
+      // Second pass: flag groups with total > 1
+      for (const { total, rows } of Object.values(oracleCount)) {
+        if (total > 1) {
+          for (const { id, name } of rows) {
+            addIssue({ type: 'duplicate_card', severity: 'error', cardId: id, cardName: name, message: `"${name}" appears ${total}× (Commander requires singleton).` });
+          }
+        }
+      }
+      for (const { total, rows } of Object.values(nameCount)) {
+        if (total > 1) {
+          for (const { id, name } of rows) {
+            addIssue({ type: 'duplicate_card', severity: 'error', cardId: id, cardName: name, message: `"${name}" appears ${total}× (Commander requires singleton).` });
           }
         }
       }

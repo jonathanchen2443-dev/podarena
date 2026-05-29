@@ -50,12 +50,14 @@ function PlaceholderBox({ icon: Icon, iconBg, iconColor, title, body, action }) 
 
 // ── Issues banner ─────────────────────────────────────────────────────────────
 
-function IssuesBanner({ validation, onViewIssues, loading }) {
+function IssuesBanner({ validation, onViewIssues, loading, attempted }) {
   if (loading) {
     return (
-      <div className="h-8 rounded-xl bg-white/[0.03] animate-pulse" />
+      <div className="h-7 rounded-xl bg-white/[0.03] animate-pulse" />
     );
   }
+  // Don't show anything until at least one validation attempt has completed
+  if (!attempted) return null;
   if (!validation) {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
@@ -206,6 +208,7 @@ export default function DeckListTab({
   // Validation state
   const [validation, setValidation] = useState(null);
   const [validationLoading, setValidationLoading] = useState(false);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [issuesModalOpen, setIssuesModalOpen] = useState(false);
 
   // Commander-to-list action
@@ -225,6 +228,7 @@ export default function DeckListTab({
       setValidation(null);
     }
     setValidationLoading(false);
+    setValidationAttempted(true);
   }, [deckId, isPrivateForViewer]);
 
   const loadCards = useCallback(async () => {
@@ -282,7 +286,12 @@ export default function DeckListTab({
   const showNoCommanderRow = !commanderInList && !deckHasCommander;
 
   const grouped = useMemo(() => {
-    const filtered = q ? cards.filter((c) => c.card_name?.toLowerCase().includes(q)) : cards;
+    const filtered = q
+      ? cards.filter((c) =>
+          c.card_name?.toLowerCase().includes(q) ||
+          c.type_line?.toLowerCase().includes(q)
+        )
+      : cards;
     const map = new Map();
     for (const card of filtered) {
       const sec = card.section || 'Other';
@@ -412,7 +421,7 @@ export default function DeckListTab({
     return (
       <div className="space-y-3">
         {/* Issues banner even on empty state */}
-        <IssuesBanner validation={validation} onViewIssues={() => setIssuesModalOpen(true)} loading={validationLoading} />
+        <IssuesBanner validation={validation} onViewIssues={() => setIssuesModalOpen(true)} loading={validationLoading} attempted={validationAttempted} />
 
         {/* Commander section always visible */}
         <div>
@@ -467,7 +476,7 @@ export default function DeckListTab({
   return (
     <div className="space-y-3">
       {/* Issues banner */}
-      <IssuesBanner validation={validation} onViewIssues={() => setIssuesModalOpen(true)} loading={validationLoading} />
+      <IssuesBanner validation={validation} onViewIssues={() => setIssuesModalOpen(true)} loading={validationLoading} attempted={validationAttempted} />
 
       {/* Header: count + Add Card */}
       <div className="flex items-center justify-between px-0.5">
@@ -511,9 +520,6 @@ export default function DeckListTab({
           const isCommanderSection = section === 'Commander';
           const sectionQty = sectionCards.reduce((s, c) => s + (c.quantity || 1), 0);
           const isOpen = !!search.trim() || !collapsed.has(section);
-
-          // For Commander section, we may add virtual/placeholder rows
-          const hasVirtual = isCommanderSection && !q && sectionCards.length === 0;
 
           return (
             <div key={section}>
