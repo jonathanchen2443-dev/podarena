@@ -238,31 +238,87 @@ Deno.serve(async (req) => {
         return Response.json({ ok: false, code: 'QUERY_TOO_SHORT', message: 'Search query must be at least 2 characters.' });
       }
 
-      // Scryfall search — name-contains search, unique cards, ordered by name
-      // Wrap query in name: prefix for best results on partial names
-      const scryfallUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&unique=cards&order=name`;
-      let scryfallRes;
+      // Sanitize: collapse whitespace, strip characters that could break Scryfall query syntax
+      const safeQuery = query.replace(/\s+/g, ' ').replace(/["\\]/g, '');
+
+      // Step A — fuzzy/exact named lookup: returns the single best match for the query.
+      // This is what makes "Sol Ring" → Sol Ring first.
+      let fuzzyCard = null;
       try {
-        scryfallRes = await fetch(scryfallUrl, { headers: SCRYFALL_HEADERS });
+        const fuzzyRes = await fetch(
+          `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(safeQuery)}`,
+          { headers: SCRYFALL_HEADERS }
+        );
+        if (fuzzyRes.ok) {
+          const data = await fuzzyRes.json();
+          if (data?.object === 'card') fuzzyCard = normalizeScryfallCard(data);
+        }
+        // 404 = no match found — not an error, just no fuzzy result
       } catch {
-        return Response.json({ ok: false, code: 'SCRYFALL_UNREACHABLE', message: 'Card search service is unavailable. Please try again.' });
+        // Non-fatal: continue to name search
       }
 
-      if (scryfallRes.status === 404) {
-        // Scryfall returns 404 when no cards match
+      // Step B — name-prefix search using Scryfall name:"..." syntax.
+      // This surfaces cards whose name contains/starts-with the query terms.
+      let nameResults = [];
+      try {
+        const nameQuery = `name:"${safeQuery}"`;
+        const nameRes = await fetch(
+          `https://api.scryfall.com/cards/search?q=${encodeURIComponent(nameQuery)}&unique=cards&order=name`,
+          { headers: SCRYFALL_HEADERS }
+        );
+        if (nameRes.ok) {
+          const data = await nameRes.json();
+          nameResults = (data.data || []).map((c) => normalizeScryfallCard(c));
+        }
+        // 404 = no matches — not an error
+      } catch {
+        // Non-fatal: continue with whatever we have
+      }
+
+      // Step C — fallback: if both steps returned nothing, try a broader name: search
+      // using individual words (handles partial-word queries like "sol r")
+      if (!fuzzyCard && nameResults.length === 0) {
+        try {
+          const words = safeQuery.split(' ').filter(Boolean);
+          // Build a query that requires each word to appear in the name
+          const broadQuery = words.map((w) => `name:${w}`).join(' ');
+          const broadRes = await fetch(
+            `https://api.scryfall.com/cards/search?q=${encodeURIComponent(broadQuery)}&unique=cards&order=name`,
+            { headers: SCRYFALL_HEADERS }
+          );
+          if (broadRes.ok) {
+            const data = await broadRes.json();
+            nameResults = (data.data || []).map((c) => normalizeScryfallCard(c));
+          }
+        } catch {
+          // Non-fatal
+        }
+      }
+
+      // Step D — merge and deduplicate.
+      // Fuzzy result goes first; name results follow, deduped by oracle_id then scryfall_id.
+      const seen = new Set();
+      const merged = [];
+
+      function addCard(c) {
+        const key = c.oracle_id || c.scryfall_id;
+        if (key && seen.has(key)) return;
+        if (key) seen.add(key);
+        merged.push(c);
+      }
+
+      if (fuzzyCard) addCard(fuzzyCard);
+      for (const c of nameResults) addCard(c);
+
+      // Cap at 20
+      const candidates = merged.slice(0, 20);
+
+      if (candidates.length === 0) {
         return Response.json({ ok: true, cards: [], total: 0 });
       }
 
-      if (!scryfallRes.ok) {
-        return Response.json({ ok: false, code: 'SCRYFALL_ERROR', message: 'Card search failed. Please try again.' });
-      }
-
-      const scryfallData = await scryfallRes.json();
-      const raw = scryfallData.data || [];
-      // Cap at 20 results
-      const candidates = raw.slice(0, 20).map((c) => normalizeScryfallCard(c));
-
-      return Response.json({ ok: true, cards: candidates, total: scryfallData.total_cards || candidates.length });
+      return Response.json({ ok: true, cards: candidates, total: candidates.length });
     }
 
     // ── ACTION: listDeckCards ─────────────────────────────────────────────────
