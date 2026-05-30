@@ -94,13 +94,42 @@ function classifySection(typeLine, isCommander) {
 
 /**
  * normalizeScryfallCard — convert raw Scryfall card into DeckCard-compatible shape.
+ * Includes price, finish, and set_svg_uri fields.
+ *
+ * @param {object} card          – raw Scryfall card object
+ * @param {object} opts
+ * @param {boolean} opts.isCommander
+ * @param {string}  opts.addedMethod
+ * @param {string}  opts.selectedFinish  – override for finish selection
  */
-function normalizeScryfallCard(card, { isCommander = false, addedMethod = 'manual' } = {}) {
+function normalizeScryfallCard(card, { isCommander = false, addedMethod = 'manual', selectedFinish = null } = {}) {
   const typeLine   = extractTypeLine(card);
   const images     = extractImages(card);
   const manaCost   = extractManaCost(card);
   const oracleText = extractOracleText(card);
   const section    = classifySection(typeLine, isCommander);
+
+  // ── Finishes ────────────────────────────────────────────────────────────────
+  const finishes = Array.isArray(card.finishes) ? card.finishes : [];
+  // Determine selected_finish: respect incoming override if valid, else pick sensible default
+  let chosen = null;
+  if (selectedFinish === 'nonfoil' || selectedFinish === 'foil') {
+    chosen = selectedFinish;
+  } else if (finishes.includes('nonfoil')) {
+    chosen = 'nonfoil';
+  } else if (finishes.includes('foil')) {
+    chosen = 'foil';
+  } else {
+    chosen = 'nonfoil'; // safe fallback
+  }
+  const is_foil = chosen === 'foil';
+
+  // ── Prices ──────────────────────────────────────────────────────────────────
+  // Keep as string (Scryfall returns strings like "0.50" or null).
+  // null means "missing price" — UI should display "---".
+  const prices = card.prices || {};
+  const price_usd_nonfoil = prices.usd  != null ? String(prices.usd)  : null;
+  const price_usd_foil    = prices.usd_foil != null ? String(prices.usd_foil) : null;
 
   return {
     scryfall_id:        card.id          || null,
@@ -121,6 +150,12 @@ function normalizeScryfallCard(card, { isCommander = false, addedMethod = 'manua
     rarity:             card.rarity      || null,
     oracle_text:        oracleText,
     layout:             card.layout      || null,
+    finishes,
+    selected_finish:    chosen,
+    is_foil,
+    price_usd_nonfoil,
+    price_usd_foil,
+    set_svg_uri:        card.set_svg_uri || null,
     section,
     is_commander:       isCommander,
     enrichment_status:  'enriched',
@@ -348,9 +383,37 @@ Deno.serve(async (req) => {
       return Response.json(buildListResponse(deckId, cards, isOwner));
     }
 
+    // ── ACTION: getCardPrintings ──────────────────────────────────────────────
+    if (action === 'getCardPrintings') {
+      const { oracleId } = body;
+      if (!oracleId) {
+        return Response.json({ ok: false, code: 'MISSING_PARAM', message: 'oracleId is required.' });
+      }
+
+      let printings = [];
+      try {
+        const sfRes = await fetch(
+          `https://api.scryfall.com/cards/search?order=released&dir=desc&q=oracleid%3A${encodeURIComponent(oracleId)}&unique=prints`,
+          { headers: SCRYFALL_HEADERS }
+        );
+        if (sfRes.ok) {
+          const data = await sfRes.json();
+          printings = (data.data || [])
+            .slice(0, 50)
+            .map((c) => normalizeScryfallCard(c));
+        } else if (sfRes.status === 404) {
+          return Response.json({ ok: true, printings: [] });
+        }
+      } catch {
+        return Response.json({ ok: false, code: 'SCRYFALL_ERROR', message: 'Failed to fetch printings. Please try again.' });
+      }
+
+      return Response.json({ ok: true, printings });
+    }
+
     // ── ACTION: addCardToDeck ─────────────────────────────────────────────────
     if (action === 'addCardToDeck') {
-      const { deckId, card } = body;
+      const { deckId, card, selected_finish } = body;
       if (!deckId || !card) {
         return Response.json({ ok: false, code: 'MISSING_PARAM', message: 'deckId and card are required.' });
       }
@@ -365,42 +428,59 @@ Deno.serve(async (req) => {
         return Response.json({ ok: false, code: 'FORBIDDEN', message: 'You do not own this deck.' }, { status: 403 });
       }
 
-      // Normalize the incoming card (client sends a normalizeScryfallCard result)
       const cardName = (card.card_name || '').trim();
       if (!cardName) {
         return Response.json({ ok: false, code: 'INVALID_CARD', message: 'Card name is required.' });
       }
+
+      // Determine finish — validate and resolve against available finishes
+      const finishes = Array.isArray(card.finishes) ? card.finishes : [];
+      let chosenFinish = selected_finish;
+      if (chosenFinish !== 'nonfoil' && chosenFinish !== 'foil') {
+        // Fallback to card's natural default
+        chosenFinish = finishes.includes('nonfoil') ? 'nonfoil' : finishes.includes('foil') ? 'foil' : 'nonfoil';
+      }
+      // If chosen finish is not available in this printing's finishes and finishes are known,
+      // fall back to what's available
+      if (finishes.length > 0 && !finishes.includes(chosenFinish)) {
+        chosenFinish = finishes.includes('nonfoil') ? 'nonfoil' : 'foil';
+      }
+      const is_foil = chosenFinish === 'foil';
 
       // Load existing cards for duplicate detection
       const existingCards = await base44.asServiceRole.entities.DeckCard.filter(
         { deck_id: deckId }, 'sort_order', 500
       );
 
-      // Duplicate detection: prefer oracle_id match, fall back to normalized card_name
-      const incomingOracleId = card.oracle_id || null;
-      const incomingNameLc = cardName.toLowerCase();
-
+      // Duplicate detection:
+      // Same scryfall_id (specific printing) + same selected_finish → increment quantity
+      // Same scryfall_id + different finish → new row
+      // Different printing of same card → new row
+      // Commander cards always use oracle_id/name fallback (legacy compatibility)
+      const incomingScryfallId = card.scryfall_id || null;
       let matchedCard = null;
-      if (incomingOracleId) {
-        matchedCard = existingCards.find((c) => c.oracle_id === incomingOracleId) || null;
+
+      if (incomingScryfallId) {
+        matchedCard = existingCards.find(
+          (c) => c.scryfall_id === incomingScryfallId && (c.selected_finish || 'nonfoil') === chosenFinish
+        ) || null;
       }
-      if (!matchedCard) {
-        matchedCard = existingCards.find((c) => (c.card_name || '').toLowerCase() === incomingNameLc) || null;
+      // Fallback for cards without scryfall_id (edge case / legacy): oracle_id + finish
+      if (!matchedCard && card.oracle_id) {
+        const candidates = existingCards.filter((c) => c.oracle_id === card.oracle_id && (c.selected_finish || 'nonfoil') === chosenFinish);
+        if (candidates.length === 1) matchedCard = candidates[0];
       }
 
       if (matchedCard) {
-        // Increment quantity on the existing row
         const newQty = (matchedCard.quantity || 1) + 1;
         await base44.asServiceRole.entities.DeckCard.update(matchedCard.id, { quantity: newQty });
       } else {
-        // Determine sort_order as max existing + 1
         const maxSortOrder = existingCards.reduce((m, c) => Math.max(m, c.sort_order || 0), 0);
         const newCard = {
-          deck_id: deckId,
-          card_name: cardName,
-          quantity: 1,
-          sort_order: maxSortOrder + 1,
-          // Carry all normalized fields from the incoming card, but force added_method: "manual"
+          deck_id:            deckId,
+          card_name:          cardName,
+          quantity:           1,
+          sort_order:         maxSortOrder + 1,
           scryfall_id:        card.scryfall_id        || null,
           oracle_id:          card.oracle_id          || null,
           mana_cost:          card.mana_cost          || null,
@@ -418,6 +498,12 @@ Deno.serve(async (req) => {
           rarity:             card.rarity             || null,
           oracle_text:        card.oracle_text        || null,
           layout:             card.layout             || null,
+          finishes:           card.finishes           || [],
+          selected_finish:    chosenFinish,
+          is_foil,
+          price_usd_nonfoil:  card.price_usd_nonfoil  ?? null,
+          price_usd_foil:     card.price_usd_foil     ?? null,
+          set_svg_uri:        card.set_svg_uri        || null,
           section:            card.section            || 'Other',
           is_commander:       card.is_commander       || false,
           enrichment_status:  card.enrichment_status  || 'enriched',
@@ -426,10 +512,8 @@ Deno.serve(async (req) => {
         await base44.entities.DeckCard.create(newCard);
       }
 
-      // Recalculate count
       await recalculateDeckCardCount(base44, deckId);
 
-      // Return refreshed list
       const updatedCards = await base44.asServiceRole.entities.DeckCard.filter(
         { deck_id: deckId }, 'sort_order', 500
       );

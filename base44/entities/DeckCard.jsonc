@@ -17,7 +17,7 @@
     },
     "scryfall_id": {
       "type": "string",
-      "description": "Scryfall card UUID, populated during enrichment."
+      "description": "Scryfall card UUID, populated during enrichment. Identifies a specific printing."
     },
     "oracle_id": {
       "type": "string",
@@ -57,7 +57,7 @@
     },
     "image_normal_url": {
       "type": "string",
-      "description": "Normal-size card image URL from Scryfall."
+      "description": "Normal-size card image URL from Scryfall. Used for full image preview."
     },
     "image_art_crop_url": {
       "type": "string",
@@ -90,6 +90,35 @@
     "layout": {
       "type": "string",
       "description": "Card layout from Scryfall (e.g. 'normal', 'transform', 'modal_dfc', 'split')."
+    },
+    "finishes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Available finishes for this printing from Scryfall (e.g. ['nonfoil', 'foil'])."
+    },
+    "selected_finish": {
+      "type": "string",
+      "description": "The finish chosen by the user for this DeckCard row. Expected: 'nonfoil' or 'foil'."
+    },
+    "is_foil": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when selected_finish is 'foil'."
+    },
+    "price_usd_nonfoil": {
+      "type": "string",
+      "description": "USD price for nonfoil version from Scryfall prices.usd. Stored as string to preserve null vs missing. Display '---' when null."
+    },
+    "price_usd_foil": {
+      "type": "string",
+      "description": "USD price for foil version from Scryfall prices.usd_foil. Stored as string to preserve null vs missing. Display '---' when null."
+    },
+    "set_svg_uri": {
+      "type": "string",
+      "description": "URL to the SVG set symbol for this printing. Stored but not rendered yet."
     },
     "section": {
       "type": "string",

@@ -45,18 +45,36 @@ export async function listDeckCards(deckId) {
 
 /**
  * Add a card to a deck (manual add).
- * If card already exists by oracle_id, increments quantity.
+ * Same printing + same finish increments quantity.
+ * Same printing + different finish creates a separate row.
  * Recalculates deck_list_card_count.
  *
  * @param {string} deckId
- * @param {object} card - normalizeScryfallCard result
+ * @param {object} card           - normalizeScryfallCard result (printing-level)
+ * @param {string} selectedFinish - "nonfoil" | "foil"
  * @returns {{ ok, deckId, cards, summary }}
  */
-export async function addCardToDeck(deckId, card) {
+export async function addCardToDeck(deckId, card, selectedFinish) {
   const res = await base44.functions.invoke("cardActions", {
     action: "addCardToDeck",
     deckId,
     card,
+    selected_finish: selectedFinish,
+  });
+  return res.data;
+}
+
+/**
+ * Fetch all printings for a card by oracle_id.
+ * Returns normalized printing objects including prices and finishes.
+ *
+ * @param {string} oracleId
+ * @returns {{ ok, printings }}
+ */
+export async function getCardPrintings(oracleId) {
+  const res = await base44.functions.invoke("cardActions", {
+    action: "getCardPrintings",
+    oracleId,
   });
   return res.data;
 }

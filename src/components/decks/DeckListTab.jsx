@@ -313,6 +313,23 @@ export default function DeckListTab({
     return validation.issuesByCardId;
   }, [validation]);
 
+  // Calculate estimated USD value for a set of cards
+  function calcSectionValue(sectionCards) {
+    let total = 0;
+    let allMissing = true;
+    for (const card of sectionCards) {
+      const finish = card.selected_finish || "nonfoil";
+      const raw = finish === "foil" ? card.price_usd_foil : card.price_usd_nonfoil;
+      const n = raw != null && raw !== "" ? parseFloat(raw) : null;
+      if (n != null && !isNaN(n)) {
+        total += n * (card.quantity || 1);
+        allMissing = false;
+      }
+    }
+    if (allMissing) return null; // display "—"
+    return total;
+  }
+
   // ── Mutation handlers ─────────────────────────────────────────────────────
 
   async function handleQuantityChange(deckCardId, newQty) {
@@ -520,6 +537,10 @@ export default function DeckListTab({
           const isCommanderSection = section === 'Commander';
           const sectionQty = sectionCards.reduce((s, c) => s + (c.quantity || 1), 0);
           const isOpen = !!search.trim() || !collapsed.has(section);
+          const sectionValue = calcSectionValue(sectionCards);
+          const sectionValueStr = sectionValue != null
+            ? `$${sectionValue.toFixed(2)}`
+            : sectionCards.length > 0 ? "—" : null;
 
           return (
             <div key={section}>
@@ -539,9 +560,14 @@ export default function DeckListTab({
                     {section}
                   </span>
                 </span>
-                {sectionQty > 0 && (
-                  <span className="text-gray-700 text-[10px] font-medium tabular-nums">{sectionQty}</span>
-                )}
+                <span className="flex items-center gap-2">
+                  {sectionValueStr && (
+                    <span className="text-gray-700 text-[9px] font-mono tabular-nums">{sectionValueStr}</span>
+                  )}
+                  {sectionQty > 0 && (
+                    <span className="text-gray-700 text-[10px] font-medium tabular-nums">{sectionQty}</span>
+                  )}
+                </span>
               </button>
 
               {isOpen && (
