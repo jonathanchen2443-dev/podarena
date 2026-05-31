@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import ManaCost from "@/components/mtg/ManaCost";
+import SetIcon from "@/components/decks/SetIcon";
 import { Minus, Plus, Trash2, AlertTriangle, AlertCircle } from "lucide-react";
 import CardImageModal from "@/components/decks/CardImageModal";
 
@@ -132,13 +133,16 @@ export default function DeckCardRow({ card, canEdit = false, onQuantityChange, o
           )}
         </div>
 
-        {/* Price */}
-        <span
-          className="flex-shrink-0 text-[11px] font-mono tabular-nums min-w-[36px] text-right"
-          style={{ color: price ? "#9CA3AF" : "#4B5563" }}
-        >
-          {price ?? "---"}
-        </span>
+        {/* Set icon + Price */}
+        <div className="flex-shrink-0 flex items-center gap-1">
+          <SetIcon setSvgUri={card.set_svg_uri} setCode={card.set_code} size={12} />
+          <span
+            className="text-[11px] font-mono tabular-nums min-w-[36px] text-right"
+            style={{ color: price ? "#9CA3AF" : "#4B5563" }}
+          >
+            {price ?? "---"}
+          </span>
+        </div>
 
         {/* Controls */}
         <div

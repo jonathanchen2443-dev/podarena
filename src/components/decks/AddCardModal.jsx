@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { X, Search, Check, AlertCircle, Loader2, ChevronLeft } from "lucide-react";
 import ManaCost from "@/components/mtg/ManaCost";
+import SetIcon from "@/components/decks/SetIcon";
 import { searchCards, addCardToDeck, getCardPrintings } from "@/components/services/cardActionsService";
 import { toast } from "sonner";
 
@@ -211,13 +212,15 @@ function PrintingsView({ selectedCard, printings, printingsLoading, printingsErr
 
                   {/* Set info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-[11px] font-semibold font-mono uppercase leading-tight truncate">
-                      {printing.set_code || "???"}
-                      {printing.collector_number ? ` · ${printing.collector_number}` : ""}
-                      <span className={`ml-1 ${rarityColor} text-[9px] normal-case not-italic font-normal`}>
+                    <div className="flex items-center gap-1 leading-tight">
+                      <SetIcon setSvgUri={printing.set_svg_uri} setCode={printing.set_code} size={13} />
+                      <span className="text-white text-[11px] font-semibold font-mono truncate">
+                        {printing.collector_number ? `#${printing.collector_number}` : (printing.set_code || "???")}
+                      </span>
+                      <span className={`flex-shrink-0 ${rarityColor} text-[9px] font-normal`}>
                         {printing.rarity || ""}
                       </span>
-                    </p>
+                    </div>
                     {printing.set_name && (
                       <p className="text-gray-600 text-[9px] leading-tight truncate mt-0.5">{printing.set_name}</p>
                     )}
