@@ -398,9 +398,34 @@ Deno.serve(async (req) => {
         );
         if (sfRes.ok) {
           const data = await sfRes.json();
-          printings = (data.data || [])
-            .slice(0, 50)
-            .map((c) => normalizeScryfallCard(c));
+          const rawPrintings = (data.data || []).slice(0, 50);
+
+          // Collect unique set codes to fetch icon_svg_uri from Scryfall sets API
+          const uniqueSetCodes = [...new Set(rawPrintings.map((c) => c.set).filter(Boolean))];
+          const setIconMap = {};
+          await Promise.all(
+            uniqueSetCodes.map(async (setCode) => {
+              try {
+                const setRes = await fetch(
+                  `https://api.scryfall.com/sets/${setCode}`,
+                  { headers: SCRYFALL_HEADERS }
+                );
+                if (setRes.ok) {
+                  const setData = await setRes.json();
+                  if (setData?.icon_svg_uri) setIconMap[setCode] = setData.icon_svg_uri;
+                }
+              } catch {
+                // Non-fatal: icon just won't be available for this set
+              }
+            })
+          );
+
+          printings = rawPrintings.map((c) => {
+            const normalized = normalizeScryfallCard(c);
+            // Attach the set icon URI fetched from the sets API
+            normalized.set_svg_uri = setIconMap[c.set] || null;
+            return normalized;
+          });
         } else if (sfRes.status === 404) {
           return Response.json({ ok: true, printings: [] });
         }
